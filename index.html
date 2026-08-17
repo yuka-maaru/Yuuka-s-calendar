@@ -257,12 +257,19 @@ function openDayModal(key){
   if(dayTasks.length===0){
     taskHtml='<div class="empty">タスクはまだありません</div>';
   } else {
+    dayTasks.sort((a,b)=>{
+      if(!a.startTime&&!b.startTime)return 0;
+      if(!a.startTime)return 1;
+      if(!b.startTime)return -1;
+      return a.startTime.localeCompare(b.startTime);
+    });
     dayTasks.forEach(t=>{
+      const timeStr=t.startTime?(t.endTime?`${t.startTime}〜${t.endTime} `:`${t.startTime} `):'';
       taskHtml+=`<div class="trow${t.done?' dt':''}">
         <button class="tck${t.done?' done':''}" onclick="toggleT('${key}','${t.id}');refreshModal('${key}')">
           <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
         </button>
-        <span class="tlb">${t.label}</span>
+        <span class="tlb"><span style="font-size:11px;color:var(--sub)">${timeStr}</span>${t.label}</span>
         <button class="tdl" onclick="delT('${key}','${t.id}');refreshModal('${key}')">×</button>
       </div>`;
     });
@@ -274,8 +281,13 @@ function openDayModal(key){
       <h3>${d.getMonth()+1}月${d.getDate()}日 ${DJ[d.getDay()]}曜日</h3>
       <p>タスクを追加・管理できます</p>
       <div class="card" id="modal-tasks">${taskHtml}</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input id="modal-start" type="time" placeholder="開始時間" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
+        <span style="align-self:center;color:var(--mu);font-size:12px">〜</span>
+        <input id="modal-end" type="time" placeholder="終了時間" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
+      </div>
       <div style="display:flex;gap:8px">
-        <input id="modal-inp" placeholder="タスクを追加..." style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter')addModalTask('${key}')">
+        <input id="modal-inp" placeholder="タスク・予定を追加..." style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter')addModalTask('${key}')">
         <button class="abtn" onclick="addModalTask('${key}')">追加</button>
       </div>
     </div>
@@ -287,9 +299,14 @@ function addModalTask(key){
   const inp=document.getElementById('modal-inp');
   if(!inp)return;
   const v=inp.value.trim();if(!v)return;
+  const startTime=document.getElementById('modal-start')?.value||'';
+  const endTime=document.getElementById('modal-end')?.value||'';
   if(!tasks[key])tasks[key]=[];
-  tasks[key].push({id:'t'+Date.now(),label:v,done:false});
-  inp.value='';save();
+  tasks[key].push({id:'t'+Date.now(),label:v,done:false,startTime,endTime});
+  inp.value='';
+  if(document.getElementById('modal-start'))document.getElementById('modal-start').value='';
+  if(document.getElementById('modal-end'))document.getElementById('modal-end').value='';
+  save();
   refreshModal(key);
   render();
 }
@@ -301,12 +318,18 @@ function refreshModal(key){
   if(dayTasks.length===0){
     html='<div class="empty">タスクはまだありません</div>';
   } else {
-    dayTasks.forEach(t=>{
+    [...dayTasks].sort((a,b)=>{
+      if(!a.startTime&&!b.startTime)return 0;
+      if(!a.startTime)return 1;
+      if(!b.startTime)return -1;
+      return a.startTime.localeCompare(b.startTime);
+    }).forEach(t=>{
+      const timeStr=t.startTime?(t.endTime?`${t.startTime}〜${t.endTime} `:`${t.startTime} `):'';
       html+=`<div class="trow${t.done?' dt':''}">
         <button class="tck${t.done?' done':''}" onclick="toggleT('${key}','${t.id}');refreshModal('${key}')">
           <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
         </button>
-        <span class="tlb">${t.label}</span>
+        <span class="tlb"><span style="font-size:11px;color:var(--sub)">${timeStr}</span>${t.label}</span>
         <button class="tdl" onclick="delT('${key}','${t.id}');refreshModal('${key}')">×</button>
       </div>`;
     });
@@ -341,12 +364,18 @@ function renderToday(){
   <div class="sec"><span>タスク${dayTasks.length>0?` (${doneT}/${dayTasks.length})`:''}</span></div>
   <div class="card">`;
   if(dayTasks.length===0)h+='<div class="empty">今日のタスクはまだありません</div>';
-  else dayTasks.forEach(t=>{
+  else [...dayTasks].sort((a,b)=>{
+    if(!a.startTime&&!b.startTime)return 0;
+    if(!a.startTime)return 1;
+    if(!b.startTime)return -1;
+    return a.startTime.localeCompare(b.startTime);
+  }).forEach(t=>{
+    const timeStr=t.startTime?(t.endTime?`${t.startTime}〜${t.endTime} `:`${t.startTime} `):'';
     h+=`<div class="trow${t.done?' dt':''}">
       <button class="tck${t.done?' done':''}" onclick="toggleT('${key}','${t.id}')" aria-label="${t.label}">
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       </button>
-      <span class="tlb">${t.label}</span>
+      <span class="tlb"><span style="font-size:11px;color:var(--sub)">${timeStr}</span>${t.label}</span>
       <button class="tdl" onclick="delT('${key}','${t.id}')">×</button>
     </div>`;
   });
@@ -357,14 +386,21 @@ function renderToday(){
   <div class="sec"><span>スケジュール</span><span class="sec-edit" onclick="openSchEdit()">編集</span></div>
   <div class="card">`;
   for(let hr=6;hr<=22;hr++){
-    const evs=schedule.filter(e=>e.days.includes(dow)&&e.start>=hr&&e.start<hr+0.5);
-    const evs2=schedule.filter(e=>e.days.includes(dow)&&e.start>=hr+0.5&&e.start<hr+1);
-    h+=`<div class="tlr"><div class="tt">${hr}:00</div><div class="tc${hr>6?' hb':''}">`;
-    evs.forEach(e=>h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color}"><span style="font-size:10px;opacity:.7">${timeToStr(e.start)}〜${timeToStr(e.end)}</span> ${e.label}</div>`);
-    h+='</div></div>';
-    if(evs2.length>0){
-      h+=`<div class="tlr"><div class="tt">${hr}:30</div><div class="tc">`;
-      evs2.forEach(e=>h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color}"><span style="font-size:10px;opacity:.7">${timeToStr(e.start)}〜${timeToStr(e.end)}</span> ${e.label}</div>`);
+    for(let half=0;half<2;half++){
+      const t=hr+(half*0.5);
+      const slotEnd=t+0.5;
+      const evs=schedule.filter(e=>e.days.includes(dow)&&e.start<slotEnd&&e.end>t);
+      const label=half===0?`${hr}:00`:`${hr}:30`;
+      const isHourBorder=half===0&&hr>6;
+      h+=`<div class="tlr"><div class="tt">${half===0?hr+':00':''}</div><div class="tc${isHourBorder?' hb':''}">`;
+      evs.forEach(e=>{
+        const isStart=e.start>=t&&e.start<slotEnd;
+        if(isStart){
+          h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color}"><span style="font-size:10px;opacity:.7">${timeToStr(e.start)}〜${timeToStr(e.end)}</span> ${e.label}</div>`;
+        } else {
+          h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color};opacity:.6">↳ ${e.label}</div>`;
+        }
+      });
       h+='</div></div>';
     }
   }
@@ -481,17 +517,39 @@ function renderWeek(){
   });
   h+='</tr></thead><tbody>';
   for(let hr=7;hr<=22;hr++){
-    h+=`<tr><td>${hr}</td>`;
-    dates.forEach(d=>{
-      const dow=d.getDay(),k=dk(d);
-      const evs=schedule.filter(e=>Math.floor(e.start)===hr&&e.days.includes(dow));
-      const dayT=(tasks[k]||[]).filter(t=>!t.done);
-      h+=`<td onclick="openDayModal('${k}')" style="cursor:pointer">`;
-      evs.forEach(e=>h+=`<div class="wgev" style="background:${e.bg};border-left-color:${e.color};color:${e.color}">${e.label}</div>`);
-      if(hr===8&&dayT.length>0)h+=`<div class="wgev" style="background:#F0FDF4;border-left-color:#10B981;color:#065F46">📝${dayT.length}件</div>`;
-      h+='</td>';
-    });
-    h+='</tr>';
+    for(let half=0;half<2;half++){
+      const t=hr+(half*0.5);
+      const slotEnd=t+0.5;
+      h+=`<tr><td style="font-size:10px;color:var(--mu);text-align:right;padding-right:5px;background:var(--bg);width:34px">${half===0?hr+':00':hr+':30'}</td>`;
+      dates.forEach(d=>{
+        const dow=d.getDay(),k=dk(d);
+        const evs=schedule.filter(e=>e.days.includes(dow)&&e.start<slotEnd&&e.end>t);
+        const dayT=(tasks[k]||[]).filter(t=>!t.done);
+        h+=`<td onclick="openDayModal('${k}')" style="cursor:pointer;padding:2px;border-bottom:1px solid #F3F0EB;vertical-align:top;height:28px">`;
+        evs.forEach(e=>{
+          const isStart=e.start>=t&&e.start<slotEnd;
+          if(isStart){
+            h+=`<div class="wgev" style="background:${e.bg};border-left-color:${e.color};color:${e.color}">${timeToStr(e.start)} ${e.label}</div>`;
+          } else {
+            h+=`<div class="wgev" style="background:${e.bg};border-left-color:${e.color};color:${e.color};opacity:.5">↳</div>`;
+          }
+        });
+        const noTimeTasks=(tasks[k]||[]).filter(t=>!t.done&&!t.startTime);
+        const timedTasks=(tasks[k]||[]).filter(t=>!t.done&&t.startTime);
+        if(t===7&&noTimeTasks.length>0){
+          noTimeTasks.forEach(t=>h+=`<div class="wgev" style="background:#F0FDF4;border-left-color:#10B981;color:#065F46">📝 ${t.label}</div>`);
+        }
+        timedTasks.forEach(tk=>{
+          const tStart=strToTime(tk.startTime);
+          if(tStart>=t&&tStart<slotEnd){
+            const timeStr=tk.endTime?`${tk.startTime}〜${tk.endTime}`:`${tk.startTime}`;
+            h+=`<div class="wgev" style="background:#F0FDF4;border-left-color:#10B981;color:#065F46">📝 ${timeStr} ${tk.label}</div>`;
+          }
+        });
+        h+='</td>';
+      });
+      h+='</tr>';
+    }
   }
   h+='</tbody></table></div></div>';
   document.getElementById('view-week').innerHTML=h;
