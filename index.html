@@ -379,24 +379,61 @@ function renderToday(){
   document.getElementById('view-today').innerHTML=h;
 }
 
+function timeToStr(t){
+  const h=Math.floor(t),m=Math.round((t%1)*60);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+function strToTime(s){
+  const [h,m]=s.split(':').map(Number);
+  return h+(m/60);
+}
+
 function openSchEdit(){
   const wrap=document.getElementById('modal-wrap');
+  const dayLabels=['日','月','火','水','木','金','土'];
   let rows='';
   schedule.forEach((s,i)=>{
-    rows+=`<div class="sch-edit-row">
-      <input type="text" value="${s.label}" onchange="schedule[${i}].label=this.value;save()" style="flex:1">
-      <input type="color" class="cpick" value="${s.color}" oninput="schedule[${i}].color=this.value;schedule[${i}].bg=this.value+'22';save()" style="background:${s.color}">
-      <button class="delbtn" onclick="schedule.splice(${i},1);save();openSchEdit()">×</button>
+    const dayChecks=dayLabels.map((d,di)=>
+      `<label style="display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--sub);cursor:pointer">
+        <input type="checkbox" ${s.days.includes(di)?'checked':''} onchange="schToggleDay(${i},${di},this.checked)" style="width:14px;height:14px;accent-color:var(--ac)">
+        ${d}
+      </label>`
+    ).join('');
+    rows+=`<div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:8px;border:1px solid var(--bd)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <input type="text" value="${s.label}" onchange="schedule[${i}].label=this.value;save()" style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--sur)">
+        <input type="color" class="cpick" value="${s.color}" oninput="schedule[${i}].color=this.value;schedule[${i}].bg=this.value+'22';save()" style="background:${s.color}">
+        <button class="delbtn" onclick="schedule.splice(${i},1);save();openSchEdit()">×</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:11px;color:var(--sub);flex-shrink:0">開始</span>
+        <input type="time" value="${timeToStr(s.start)}" onchange="schedule[${i}].start=strToTime(this.value);save()" style="flex:1;padding:5px 8px;border-radius:6px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--sur)">
+        <span style="font-size:11px;color:var(--sub);flex-shrink:0">終了</span>
+        <input type="time" value="${timeToStr(s.end)}" onchange="schedule[${i}].end=strToTime(this.value);save()" style="flex:1;padding:5px 8px;border-radius:6px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--sur)">
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${dayChecks}</div>
     </div>`;
   });
   wrap.innerHTML=`<div class="modal-bg" onclick="closeModal(event)">
-    <div class="modal" style="position:relative;max-height:80vh;overflow-y:auto">
+    <div class="modal" style="position:relative;max-height:85vh;overflow-y:auto">
       <button class="modal-close" onclick="closeModal()">×</button>
       <h3>スケジュール編集</h3>
-      <p>ラベルと色を変更できます</p>
-      <div class="card" style="margin-bottom:12px">${rows}</div>
+      <p>時間・曜日・ラベル・色を編集できます</p>
+      <div style="margin-bottom:12px">${rows}</div>
+      <button class="abtn" style="width:100%;padding:12px" onclick="addSchItem()">＋ 新しいスケジュールを追加</button>
     </div>
   </div>`;
+}
+
+function schToggleDay(si,di,checked){
+  if(checked){if(!schedule[si].days.includes(di))schedule[si].days.push(di);schedule[si].days.sort();}
+  else schedule[si].days=schedule[si].days.filter(d=>d!==di);
+  save();
+}
+
+function addSchItem(){
+  schedule.push({id:'s'+Date.now(),start:9,end:10,label:'新しい予定',color:'#2D6A8F',bg:'#EBF3F8',days:[1,2,3,4,5]});
+  save();openSchEdit();
 }
 
 function renderHabits(){
