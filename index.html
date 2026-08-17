@@ -357,12 +357,16 @@ function renderToday(){
   <div class="sec"><span>スケジュール</span><span class="sec-edit" onclick="openSchEdit()">編集</span></div>
   <div class="card">`;
   for(let hr=6;hr<=22;hr++){
-    const evs=schedule.filter(e=>Math.floor(e.start)===hr&&e.days.includes(dow));
-    const evs2=schedule.filter(e=>e.start===hr+0.5&&e.days.includes(dow));
+    const evs=schedule.filter(e=>e.days.includes(dow)&&e.start>=hr&&e.start<hr+0.5);
+    const evs2=schedule.filter(e=>e.days.includes(dow)&&e.start>=hr+0.5&&e.start<hr+1);
     h+=`<div class="tlr"><div class="tt">${hr}:00</div><div class="tc${hr>6?' hb':''}">`;
-    evs.forEach(e=>h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color}">${e.label}</div>`);
-    evs2.forEach(e=>h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color};margin-top:3px">${e.label}</div>`);
+    evs.forEach(e=>h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color}"><span style="font-size:10px;opacity:.7">${timeToStr(e.start)}〜${timeToStr(e.end)}</span> ${e.label}</div>`);
     h+='</div></div>';
+    if(evs2.length>0){
+      h+=`<div class="tlr"><div class="tt">${hr}:30</div><div class="tc">`;
+      evs2.forEach(e=>h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color}"><span style="font-size:10px;opacity:.7">${timeToStr(e.start)}〜${timeToStr(e.end)}</span> ${e.label}</div>`);
+      h+='</div></div>';
+    }
   }
   h+=`</div><div class="sec"><span>今日の習慣</span><span class="sec-edit" onclick="sw('settings')">編集</span></div><div class="card">`;
   habits.forEach(hb=>{
