@@ -392,51 +392,68 @@ function render(){
   else renderSettings();
 }
 
-function renderMemo(){
-  const memos=JSON.parse(localStorage.getItem('yp_memos')||'{}');
-  const defaultMemos=[
-    {id:'copy',title:'🖨️ コピー作業まとめ',content:`【火曜日午後】水曜日のHW × 85枚
-【木曜日午前】金曜日のHW × 85枚
-【木曜日午前】月曜日のHW × 85枚
-
-📦 ボックスへの配布
-・石田先生: 27枚
-・Andrew: 32枚
-・Alexandra: 26枚`},
-    {id:'ssn',title:'📋 SSN申請メモ',content:`日時: 9月2日（水）1:30pm
-場所: 300 Ala Moana Blvd, Room 1-114
-
-持参するもの:
-・パスポート
-・I-20
-・I-94（印刷）
-・GAオファーレター
-・ISS Certification Letter
-・EIN: 99-6000354`},
-    {id:'free',title:'📝 フリーメモ',content:''},
+function getMemoPages(){
+  return JSON.parse(localStorage.getItem('yp_memo_pages')||'null')||[
+    {id:'p1',title:'🖨️ コピー作業まとめ',content:'【火曜日午後】水曜日のHW × 85枚\n【木曜日午前】金曜日のHW × 85枚\n【木曜日午前】月曜日のHW × 85枚\n\n📦 ボックスへの配布\n・石田先生: 27枚\n・Andrew: 32枚\n・Alexandra: 26枚'},
+    {id:'p2',title:'📋 SSN申請メモ',content:'日時: 9月2日（水）1:30pm\n場所: 300 Ala Moana Blvd, Room 1-114\n\n持参するもの:\n・パスポート\n・I-20\n・I-94（印刷）\n・GAオファーレター\n・ISS Certification Letter\n・EIN: 99-6000354'},
+    {id:'p3',title:'📝 フリーメモ',content:''},
   ];
+}
 
-  let html='<div style="padding-top:8px"></div>';
+function saveMemoPages(pages){
+  localStorage.setItem('yp_memo_pages',JSON.stringify(pages));
+  const el=document.getElementById('si');
+  if(el){el.style.opacity='1';setTimeout(()=>el.style.opacity='0',2000);}
+}
 
-  defaultMemos.forEach(m=>{
-    const saved=memos[m.id]||m.content;
-    html+=`<div class="sec">${m.title}</div>
-    <div class="card" style="padding:12px">
-      <textarea class="memo-box" id="memo-${m.id}" onchange="saveMemo('${m.id}',this.value)" oninput="saveMemo('${m.id}',this.value)">${saved}</textarea>
-      <div class="memo-saved" id="memo-saved-${m.id}" style="opacity:0">✅ 保存済み</div>
+function renderMemo(){
+  const pages=getMemoPages();
+  let html=`<div style="padding-top:8px"></div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+    <button class="abtn" onclick="addMemoPage()" style="font-size:12px;padding:6px 12px">＋ ページ追加</button>
+  </div>`;
+
+  pages.forEach((p,i)=>{
+    html+=`<div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bd)">
+        <input value="${p.title.replace(/"/g,'&quot;')}" onchange="updateMemoTitle(${i},this.value)" style="flex:1;font-size:14px;font-weight:600;border:none;background:transparent;outline:none;color:var(--tx)">
+        <button onclick="deleteMemoPage(${i})" style="width:24px;height:24px;border-radius:50%;background:#FEE2E2;border:none;cursor:pointer;font-size:12px;color:#DC2626;flex-shrink:0">×</button>
+      </div>
+      <textarea class="memo-box" style="border:none;border-radius:0 0 var(--r) var(--r);background:var(--sur);padding:12px" oninput="updateMemoContent(${i},this.value)">${p.content.replace(/</g,'&lt;')}</textarea>
     </div>`;
   });
 
   document.getElementById('view-memo').innerHTML=html;
 }
 
-function saveMemo(id,val){
-  const memos=JSON.parse(localStorage.getItem('yp_memos')||'{}');
-  memos[id]=val;
-  localStorage.setItem('yp_memos',JSON.stringify(memos));
-  const el=document.getElementById('memo-saved-'+id);
-  if(el){el.style.opacity='1';setTimeout(()=>el.style.opacity='0',2000);}
+function updateMemoTitle(i,val){
+  const pages=getMemoPages();
+  pages[i].title=val;
+  saveMemoPages(pages);
 }
+
+function updateMemoContent(i,val){
+  const pages=getMemoPages();
+  pages[i].content=val;
+  saveMemoPages(pages);
+}
+
+function addMemoPage(){
+  const pages=getMemoPages();
+  pages.push({id:'p'+Date.now(),title:'📝 新しいページ',content:''});
+  saveMemoPages(pages);
+  renderMemo();
+}
+
+function deleteMemoPage(i){
+  if(!confirm('このページを削除しますか？'))return;
+  const pages=getMemoPages();
+  pages.splice(i,1);
+  saveMemoPages(pages);
+  renderMemo();
+}
+
+function saveMemo(id,val){}
 
 function renderToday(){
   const d=getD(dayOff),dow=d.getDay(),key=dk(d),today=dk(new Date()),isT=key===today;
