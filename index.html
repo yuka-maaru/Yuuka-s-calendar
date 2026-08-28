@@ -215,7 +215,7 @@ let schedule=JSON.parse(localStorage.getItem('yp_sch')||'null')||[
   {id:'s4',start:9,end:10,label:'英語勉強',color:'#E8856A',bg:'#FFF3ED',days:[0,1,2,3,4,5,6]},
   {id:'s5',start:10,end:13,label:'GA仕事',color:'#9B6AD4',bg:'#F5F0FF',days:[1,2,3,4,5]},
   {id:'s16',start:9.5,end:10.33,label:'PHIL 111 セクション（KELL 401）',color:'#1A2E3A',bg:'#EEF2F5',days:[5]},
-  {id:'s12',start:10.5,end:11.33,label:'PHIL 111 TA（BUSAD A101）',color:'#1A2E3A',bg:'#EEF2F5',days:[1,3]},
+  {id:'s12',start:10.5,end:11.33,label:'PHIL 111 TA（BUSAD A101）',color:'#1A2E3A',bg:'#EEF2F5',days:[1,3,5]},
   {id:'s13',start:11,end:12,label:'ELI 111（Moore Hall 551）',color:'#E8856A',bg:'#FFF3ED',days:[1,3]},
   {id:'s7',start:15,end:17.5,label:'PHIL 414B（ギリシャ哲学）',color:'#6A3A8F',bg:'#F5F0FF',days:[2]},
   {id:'s8',start:15.5,end:18,label:'PHIL 770（荘子）',color:'#2D6A8F',bg:'#EBF3F8',days:[3]},
@@ -236,21 +236,33 @@ let recurringTasks=JSON.parse(localStorage.getItem('yp_recurring')||'null')||[
 function applyRecurringTasks(){
   const n=new Date(),dow=n.getDay();
   const monday=new Date(n);
+  // Monday of current week
   monday.setDate(n.getDate()-(dow===0?6:dow-1));
-  [-7,0,7,14].forEach(offset=>{
+  monday.setHours(0,0,0,0);
+
+  // First: remove ALL existing recurring task instances
+  const validIds=recurringTasks.map(r=>r.id);
+  Object.keys(tasks).forEach(k=>{
+    tasks[k]=(tasks[k]||[]).filter(t=>!t.recurringId);
+  });
+
+  // Then re-add for -1 week to +2 weeks
+  for(let weekOffset=-1;weekOffset<=2;weekOffset++){
     recurringTasks.forEach(rt=>{
       rt.days.forEach(d=>{
+        // d=0 means Sunday. In Mon-start week: Sun is day 6 (offset 6 from Monday)
+        const dayOffset=d===0?6:d-1;
         const target=new Date(monday);
-        target.setDate(monday.getDate()+offset+d);
+        target.setDate(monday.getDate()+weekOffset*7+dayOffset);
         const k=dk(target);
         if(!tasks[k])tasks[k]=[];
-        const exists=tasks[k].some(t=>t.recurringId===rt.id);
-        if(!exists){
-          tasks[k].push({id:'r'+Date.now()+Math.random(),label:rt.label,done:false,recurringId:rt.id});
+        // Prevent duplicates
+        if(!tasks[k].some(t=>t.recurringId===rt.id)){
+          tasks[k].push({id:'r'+rt.id+'_'+k,label:rt.label,done:false,recurringId:rt.id});
         }
       });
     });
-  });
+  }
   save();
 }
 
@@ -278,7 +290,7 @@ function toast(msg){
   setTimeout(()=>t.classList.remove('show'),2000);
 }
 
-function dk(d){return d.toISOString().slice(0,10)}
+function dk(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`;}
 function getD(o){const d=new Date();d.setDate(d.getDate()+o);return d}
 function getWk(){
   const n=new Date(),dow=n.getDay(),m=new Date(n);
@@ -344,12 +356,17 @@ function openDayModal(key){
     });
     dayTasks.forEach(t=>{
       const timeStr=t.startTime?(t.endTime?`${t.startTime}〜${t.endTime} `:`${t.startTime} `):'';
-      taskHtml+=`<div class="trow${t.done?' dt':''}">
-        <button class="tck${t.done?' done':''}" onclick="toggleT('${key}','${t.id}');refreshModal('${key}')">
-          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-        </button>
-        <span class="tlb"><span style="font-size:11px;color:var(--sub)">${timeStr}</span>${t.label}</span>
-        <button class="tdl" onclick="delT('${key}','${t.id}');refreshModal('${key}')">×</button>
+      taskHtml+=`<div>
+        <div class="trow${t.done?' dt':''}">
+          <button class="tck${t.done?' done':''}" onclick="toggleT('${key}','${t.id}');refreshModal('${key}')">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+          <span class="tlb" onclick="toggleTaskNote('${t.id}')" style="cursor:pointer"><span style="font-size:11px;color:var(--sub)">${timeStr}</span>${t.label}</span>
+          <button class="tdl" onclick="delT('${key}','${t.id}');refreshModal('${key}')">×</button>
+        </div>
+        <div id="tnote-${t.id}" style="display:none;padding:0 12px 8px 44px">
+          <textarea style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg);resize:none;min-height:50px;font-family:inherit" placeholder="メモを追加..." oninput="saveTaskNote('${key}','${t.id}',this.value)">${(t.note||'').replace(/</g,'&lt;')}</textarea>
+        </div>
       </div>`;
     });
   }
@@ -404,12 +421,17 @@ function refreshModal(key){
       return a.startTime.localeCompare(b.startTime);
     }).forEach(t=>{
       const timeStr=t.startTime?(t.endTime?`${t.startTime}〜${t.endTime} `:`${t.startTime} `):'';
-      html+=`<div class="trow${t.done?' dt':''}">
-        <button class="tck${t.done?' done':''}" onclick="toggleT('${key}','${t.id}');refreshModal('${key}')">
-          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-        </button>
-        <span class="tlb"><span style="font-size:11px;color:var(--sub)">${timeStr}</span>${t.label}</span>
-        <button class="tdl" onclick="delT('${key}','${t.id}');refreshModal('${key}')">×</button>
+      html+=`<div>
+        <div class="trow${t.done?' dt':''}">
+          <button class="tck${t.done?' done':''}" onclick="toggleT('${key}','${t.id}');refreshModal('${key}')">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+          <span class="tlb" onclick="toggleTaskNote('${t.id}')" style="cursor:pointer"><span style="font-size:11px;color:var(--sub)">${timeStr}</span>${t.label}</span>
+          <button class="tdl" onclick="delT('${key}','${t.id}');refreshModal('${key}')">×</button>
+        </div>
+        <div id="tnote-${t.id}" style="display:none;padding:0 12px 8px 44px">
+          <textarea style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg);resize:none;min-height:50px;font-family:inherit" placeholder="メモを追加..." oninput="saveTaskNote('${key}','${t.id}',this.value)">${(t.note||'').replace(/</g,'&lt;')}</textarea>
+        </div>
       </div>`;
     });
   }
@@ -421,6 +443,17 @@ function closeModal(e){
   if(e&&e.target!==e.currentTarget)return;
   document.getElementById('modal-wrap').innerHTML='';
   render();
+}
+
+function toggleTaskNote(tid){
+  const el=document.getElementById('tnote-'+tid);
+  if(el)el.style.display=el.style.display==='none'?'block':'none';
+}
+
+function saveTaskNote(key,tid,val){
+  if(!tasks[key])return;
+  const t=tasks[key].find(x=>x.id===tid);
+  if(t){t.note=val;save();}
 }
 
 function render(){
@@ -480,12 +513,19 @@ function renderMemo(){
 
   pages.forEach((p,i)=>{
     const preview=p.content.replace(/\n/g,' ').slice(0,40)+(p.content.length>40?'…':'');
-    html+=`<div onclick="memoOpenIndex=${i};renderMemo()" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--bd);cursor:pointer;${i===pages.length-1?'border-bottom:none':''}">
-      <div style="flex:1;min-width:0">
+    html+=`<div draggable="true" 
+      ondragstart="memoDragStart(${i})" 
+      ondragover="memoDragOver(event,${i})" 
+      ondrop="memoDrop(${i})"
+      ondragend="memoDragEnd()"
+      id="memo-row-${i}"
+      style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--bd);cursor:pointer;${i===pages.length-1?'border-bottom:none':''}touch-action:none">
+      <div style="color:var(--mu);font-size:18px;cursor:grab;padding-right:4px;flex-shrink:0">⠿</div>
+      <div style="flex:1;min-width:0" onclick="memoOpenIndex=${i};renderMemo()">
         <div style="font-size:14px;font-weight:600;color:var(--tx)">${p.title}</div>
         <div style="font-size:12px;color:var(--mu);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${preview||'空のページ'}</div>
       </div>
-      <div style="color:var(--mu);font-size:16px">›</div>
+      <div style="color:var(--mu);font-size:16px" onclick="memoOpenIndex=${i};renderMemo()">›</div>
     </div>`;
   });
 
@@ -524,6 +564,29 @@ function deleteMemoPage(i){
 }
 
 function saveMemo(id,val){}
+
+let schNotes=JSON.parse(localStorage.getItem('yp_sch_notes')||'{}');
+function toggleSchNote(id){
+  const el=document.getElementById(id);
+  if(el)el.style.display=el.style.display==='none'?'block':'none';
+}
+function saveSchNote(eid,key,val){
+  schNotes[eid+'_'+key]=val;
+  localStorage.setItem('yp_sch_notes',JSON.stringify(schNotes));
+}
+
+let memoDragIdx=null;
+function memoDragStart(i){memoDragIdx=i;}
+function memoDragOver(e,i){e.preventDefault();const rows=document.querySelectorAll('[id^=memo-row-]');rows.forEach(r=>r.style.background='');const el=document.getElementById('memo-row-'+i);if(el)el.style.background='var(--bg)';}
+function memoDrop(i){
+  if(memoDragIdx===null||memoDragIdx===i)return;
+  const pages=getMemoPages();
+  const [moved]=pages.splice(memoDragIdx,1);
+  pages.splice(i,0,moved);
+  saveMemoPages(pages);
+  renderMemo();
+}
+function memoDragEnd(){memoDragIdx=null;const rows=document.querySelectorAll('[id^=memo-row-]');rows.forEach(r=>r.style.background='');}
 
 function renderToday(){
   const d=getD(dayOff),dow=d.getDay(),key=dk(d),today=dk(new Date()),isT=key===today;
@@ -569,7 +632,12 @@ function renderToday(){
       evs.forEach(e=>{
         const isStart=e.start>=t&&e.start<slotEnd;
         if(isStart){
-          h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color}"><span style="font-size:10px;opacity:.7">${timeToStr(e.start)}〜${timeToStr(e.end)}</span> ${e.label}</div>`;
+          h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color};cursor:pointer" onclick="toggleSchNote('sch-note-${e.id}-${key}')">
+            <span style="font-size:10px;opacity:.7">${timeToStr(e.start)}〜${timeToStr(e.end)}</span> ${e.label}
+          </div>
+          <div id="sch-note-${e.id}-${key}" style="display:none;padding:4px 8px 6px 8px">
+            <textarea style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg);resize:none;min-height:50px;font-family:inherit" placeholder="メモを追加..." oninput="saveSchNote('${e.id}','${key}',this.value)">${(schNotes[e.id+'_'+key]||'').replace(/</g,'&lt;')}</textarea>
+          </div>`;
         } else {
           h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color};opacity:.6">↳ ${e.label}</div>`;
         }
@@ -582,7 +650,8 @@ function renderToday(){
     const done=!!(data[key]&&data[key][hb.id]),s=streak(hb.id);
     h+=`<div class="hrow">
       <div class="hic" style="background:${hb.color}22">${hb.icon}</div>
-      <div class="hin"><div class="hn">${hb.name}</div><div class="hs">${s>0?`🔥 ${s}日連続`:'今日からスタート'}</div></div>
+      <div class="hin"><div class="hn">${hb.name}</div><div class="hs">${s>0?`🔥 ${s}日連続`:'今日からスタート'}${hb.timerMins?` · ⏱${hb.timerMins}分`:''}</div></div>
+      ${hb.timerMins&&!done?`<button style="padding:6px 10px;border-radius:8px;background:${hb.color}22;border:1px solid ${hb.color};color:${hb.color};font-size:11px;cursor:pointer;margin-right:6px" onclick="startHabitTimer('${hb.id}','${key}',${hb.timerMins})">▶</button>`:''}
       <button class="hck${done?' done':''}" style="${done?`background:${hb.color};border-color:${hb.color}`:''}" onclick="toggleH('${hb.id}','${key}')" aria-label="${hb.name}">
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       </button>
@@ -755,7 +824,18 @@ function renderMonth(){
   const rem=(7-((startDow+last.getDate())%7))%7;
   for(let i=1;i<=rem;i++)h+=`<div class="ccell om"><div class="cdt">${i}</div></div>`;
   h+='</div>';
+  // Monthly memo
+  const monthKey=`month_${yr}_${((mo%12)+12)%12}`;
+  const monthMemo=localStorage.getItem('yp_month_memo_'+monthKey)||'';
+  h+=`<div class="sec">今月のメモ</div>
+  <div class="card" style="padding:12px">
+    <textarea id="month-memo-area" class="memo-box" style="border:none;background:transparent;min-height:80px" placeholder="今月のメモを書く..." oninput="saveMonthMemo('${monthKey}',this.value)">${monthMemo.replace(/</g,'&lt;')}</textarea>
+  </div>`;
   document.getElementById('view-month').innerHTML=h;
+}
+
+function saveMonthMemo(key,val){
+  localStorage.setItem('yp_month_memo_'+key,val);
 }
 
 function renderSettings(){
@@ -765,17 +845,19 @@ function renderSettings(){
       <div class="hic" style="background:${hb.color}22">${hb.icon}</div>
       <div class="sri">
         <input value="${hb.name}" onchange="habits[${i}].name=this.value;save()" placeholder="習慣名">
-        <div class="srs">アイコン: <input value="${hb.icon}" onchange="habits[${i}].icon=this.value;save();render()" style="width:28px"></div>
+        <div class="srs">アイコン: <input value="${hb.icon}" onchange="habits[${i}].icon=this.value;save();render()" style="width:28px"> ⏱<input type="number" value="${hb.timerMins||''}" placeholder="分" onchange="habits[${i}].timerMins=parseInt(this.value)||null;save()" style="width:44px"></div>
       </div>
       <input type="color" class="cpick" value="${hb.color}" oninput="habits[${i}].color=this.value;save();render()" style="background:${hb.color}">
       <button class="delbtn" onclick="if(confirm('削除しますか？')){habits.splice(${i},1);save();render()}">×</button>
     </div>`;
   });
-  h+=`<div class="af">
+  h+=`<div class="af" style="flex-wrap:wrap;gap:6px">
     <input id="ni" placeholder="🌟" style="width:38px;text-align:center;flex:none" maxlength="2">
-    <input id="nn" placeholder="新しい習慣を追加">
+    <input id="nn" placeholder="新しい習慣を追加" style="flex:1;min-width:100px">
+    <input id="nt" type="number" placeholder="分(任意)" style="width:70px;flex:none" min="1" max="120">
     <button class="abtn" onclick="addH()">追加</button>
-  </div></div>
+  </div>
+  <div style="font-size:11px;color:var(--mu);padding:4px 12px 8px">⏱ 分を入力するとタイマー形式になります</div></div>
   <div class="sec">スケジュール編集</div>
   <div class="card">`;
   schedule.forEach((s,i)=>{
@@ -794,8 +876,34 @@ function addH(){
   const icon=document.getElementById('ni').value.trim()||'⭐';
   const name=document.getElementById('nn').value.trim();
   if(!name)return;
-  habits.push({id:'h'+Date.now(),name,icon,color:'#888'});
+  const timerMins=parseInt(document.getElementById('nt')?.value||'0')||0;
+  habits.push({id:'h'+Date.now(),name,icon,color:'#888',timerMins:timerMins||null});
   save();toast('習慣を追加しました！');render();
+}
+
+function startHabitTimer(hid,key,mins){
+  timerActiveItem={habitId:hid,key};
+  timerRunning=true;
+  timerPaused=false;
+  timerSeconds=0;
+  timerTotal=mins*60;
+  timerInterval=setInterval(timerTick,1000);
+  const hb=habits.find(h=>h.id===hid);
+  showOverlay(hb?hb.icon+' '+hb.name:'瞑想中');
+  // Override timerTick to mark habit on complete
+  clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    timerSeconds++;
+    updateTimerDisplay();
+    updateOverlay();
+    if(timerSeconds>=timerTotal){
+      clearInterval(timerInterval);
+      timerRunning=false;
+      hideOverlay();
+      toggleH(hid,key);
+      toast('⏰ お疲れ様でした！');
+    }
+  },1000);
 }
 
 function renderRecurring(){
