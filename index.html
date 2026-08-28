@@ -392,6 +392,8 @@ function render(){
   else renderSettings();
 }
 
+let memoOpenIndex=null;
+
 function getMemoPages(){
   return JSON.parse(localStorage.getItem('yp_memo_pages')||'null')||[
     {id:'p1',title:'🖨️ コピー作業まとめ',content:'【火曜日午後】水曜日のHW × 85枚\n【木曜日午前】金曜日のHW × 85枚\n【木曜日午前】月曜日のHW × 85枚\n\n📦 ボックスへの配布\n・石田先生: 27枚\n・Andrew: 32枚\n・Alexandra: 26枚'},
@@ -408,21 +410,45 @@ function saveMemoPages(pages){
 
 function renderMemo(){
   const pages=getMemoPages();
+
+  // ページ詳細表示
+  if(memoOpenIndex!==null&&pages[memoOpenIndex]){
+    const p=pages[memoOpenIndex];
+    const i=memoOpenIndex;
+    const html=`<div style="padding-top:8px"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <button onclick="memoOpenIndex=null;renderMemo()" style="padding:6px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">← 戻る</button>
+      <button onclick="deleteMemoPage(${i})" style="margin-left:auto;padding:6px 12px;border-radius:8px;background:#FEE2E2;border:none;font-size:13px;color:#DC2626;cursor:pointer">削除</button>
+    </div>
+    <div class="card">
+      <div style="padding:12px 14px;border-bottom:1px solid var(--bd)">
+        <input value="${p.title.replace(/"/g,'&quot;')}" onchange="updateMemoTitle(${i},this.value)" style="width:100%;font-size:18px;font-weight:700;border:none;background:transparent;outline:none;color:var(--tx)">
+      </div>
+      <textarea class="memo-box" style="border:none;border-radius:0 0 var(--r) var(--r);background:var(--sur);padding:14px;min-height:300px" oninput="updateMemoContent(${i},this.value)">${p.content.replace(/</g,'&lt;')}</textarea>
+    </div>`;
+    document.getElementById('view-memo').innerHTML=html;
+    return;
+  }
+
+  // ページ一覧表示
   let html=`<div style="padding-top:8px"></div>
   <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
     <button class="abtn" onclick="addMemoPage()" style="font-size:12px;padding:6px 12px">＋ ページ追加</button>
-  </div>`;
+  </div>
+  <div class="card">`;
 
   pages.forEach((p,i)=>{
-    html+=`<div class="card" style="margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bd)">
-        <input value="${p.title.replace(/"/g,'&quot;')}" onchange="updateMemoTitle(${i},this.value)" style="flex:1;font-size:14px;font-weight:600;border:none;background:transparent;outline:none;color:var(--tx)">
-        <button onclick="deleteMemoPage(${i})" style="width:24px;height:24px;border-radius:50%;background:#FEE2E2;border:none;cursor:pointer;font-size:12px;color:#DC2626;flex-shrink:0">×</button>
+    const preview=p.content.replace(/\n/g,' ').slice(0,40)+(p.content.length>40?'…':'');
+    html+=`<div onclick="memoOpenIndex=${i};renderMemo()" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--bd);cursor:pointer;${i===pages.length-1?'border-bottom:none':''}">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:600;color:var(--tx)">${p.title}</div>
+        <div style="font-size:12px;color:var(--mu);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${preview||'空のページ'}</div>
       </div>
-      <textarea class="memo-box" style="border:none;border-radius:0 0 var(--r) var(--r);background:var(--sur);padding:12px" oninput="updateMemoContent(${i},this.value)">${p.content.replace(/</g,'&lt;')}</textarea>
+      <div style="color:var(--mu);font-size:16px">›</div>
     </div>`;
   });
 
+  html+='</div>';
   document.getElementById('view-memo').innerHTML=html;
 }
 
@@ -440,8 +466,10 @@ function updateMemoContent(i,val){
 
 function addMemoPage(){
   const pages=getMemoPages();
+  const newIdx=pages.length;
   pages.push({id:'p'+Date.now(),title:'📝 新しいページ',content:''});
   saveMemoPages(pages);
+  memoOpenIndex=newIdx;
   renderMemo();
 }
 
@@ -450,6 +478,7 @@ function deleteMemoPage(i){
   const pages=getMemoPages();
   pages.splice(i,1);
   saveMemoPages(pages);
+  memoOpenIndex=null;
   renderMemo();
 }
 
