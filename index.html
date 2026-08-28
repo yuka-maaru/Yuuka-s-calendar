@@ -187,26 +187,28 @@ let schedule=JSON.parse(localStorage.getItem('yp_sch')||'null')||[
   {id:'s11',start:21.5,end:22.5,label:'シャワー・日記',color:'#888',bg:'#FAFAFA',days:[0,1,2,3,4,5,6]},
 ];
 
-// 毎週繰り返すタスク定義 (dow: 0=日,1=月,2=火,3=水,4=木,5=金,6=土)
-const weeklyTasks=[
-  {dow:2,label:'📝 PHIL 770 リフレクション提出（深夜締め切り）'},
-  {dow:0,label:'🍱 作り置き料理'},
+// 繰り返しタスク管理
+let recurringTasks=JSON.parse(localStorage.getItem('yp_recurring')||'null')||[
+  {id:'r1',label:'📝 PHIL 770 リフレクション提出',days:[2],icon:'📝'},
+  {id:'r2',label:'🍱 作り置き料理',days:[0],icon:'🍱'},
 ];
 
-function addWeeklyTasks(){
+function applyRecurringTasks(){
   const n=new Date(),dow=n.getDay();
   const monday=new Date(n);
   monday.setDate(n.getDate()-(dow===0?6:dow-1));
-  [-7,0,7].forEach(offset=>{
-    weeklyTasks.forEach(wt=>{
-      const target=new Date(monday);
-      target.setDate(monday.getDate()+offset+wt.dow);
-      const k=dk(target);
-      if(!tasks[k])tasks[k]=[];
-      const exists=tasks[k].some(t=>t.weekly&&t.label===wt.label);
-      if(!exists){
-        tasks[k].push({id:'w'+Date.now()+Math.random(),label:wt.label,done:false,weekly:true});
-      }
+  [-7,0,7,14].forEach(offset=>{
+    recurringTasks.forEach(rt=>{
+      rt.days.forEach(d=>{
+        const target=new Date(monday);
+        target.setDate(monday.getDate()+offset+d);
+        const k=dk(target);
+        if(!tasks[k])tasks[k]=[];
+        const exists=tasks[k].some(t=>t.recurringId===rt.id);
+        if(!exists){
+          tasks[k].push({id:'r'+Date.now()+Math.random(),label:rt.label,done:false,recurringId:rt.id});
+        }
+      });
     });
   });
   save();
@@ -224,6 +226,7 @@ function save(){
     localStorage.setItem('yp_sch',JSON.stringify(schedule));
     localStorage.setItem('yp_d',JSON.stringify(data));
     localStorage.setItem('yp_t',JSON.stringify(tasks));
+    localStorage.setItem('yp_recurring',JSON.stringify(recurringTasks));
     const el=document.getElementById('si');
     el.style.opacity='1';setTimeout(()=>el.style.opacity='0',2000);
   },500);
@@ -696,6 +699,7 @@ function renderSettings(){
     </div>`;
   });
   h+='</div>';
+  h+=renderRecurring();
   document.getElementById('view-settings').innerHTML=h;
 }
 
@@ -707,7 +711,56 @@ function addH(){
   save();toast('習慣を追加しました！');render();
 }
 
-addWeeklyTasks();
+function renderRecurring(){
+  const DJ2=['日','月','火','水','木','金','土'];
+  let h='<div style="padding-top:8px"></div><div class="sec">繰り返しタスク</div><div class="card">';
+  recurringTasks.forEach((rt,i)=>{
+    const dayChecks=DJ2.map((d,di)=>
+      `<label style="display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--sub);cursor:pointer">
+        <input type="checkbox" ${rt.days.includes(di)?'checked':''} onchange="toggleRecurringDay(${i},${di},this.checked)" style="width:14px;height:14px;accent-color:var(--ac)">
+        ${d}
+      </label>`
+    ).join('');
+    h+=`<div style="padding:12px;border-bottom:1px solid var(--bd)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <input value="${rt.label}" onchange="recurringTasks[${i}].label=this.value;save();applyRecurringTasks()" style="flex:1;font-size:13px;border:none;background:transparent;outline:none;color:var(--tx)">
+        <button class="delbtn" onclick="deleteRecurring(${i})">×</button>
+      </div>
+      <div style="display:flex;gap:8px">${dayChecks}</div>
+    </div>`;
+  });
+  h+=`<div class="af">
+    <input id="ri" placeholder="新しい繰り返しタスク" style="flex:1">
+    <button class="abtn" onclick="addRecurring()">追加</button>
+  </div></div>`;
+  return h;
+}
+
+function toggleRecurringDay(i,d,checked){
+  if(checked){if(!recurringTasks[i].days.includes(d))recurringTasks[i].days.push(d);recurringTasks[i].days.sort();}
+  else recurringTasks[i].days=recurringTasks[i].days.filter(x=>x!==d);
+  save();applyRecurringTasks();render();
+}
+
+function deleteRecurring(i){
+  if(!confirm('削除しますか？'))return;
+  const id=recurringTasks[i].id;
+  recurringTasks.splice(i,1);
+  // 未完了の繰り返しタスクを削除
+  Object.keys(tasks).forEach(k=>{
+    tasks[k]=tasks[k].filter(t=>t.recurringId!==id);
+  });
+  save();render();
+}
+
+function addRecurring(){
+  const label=document.getElementById('ri')?.value.trim();
+  if(!label)return;
+  recurringTasks.push({id:'r'+Date.now(),label,days:[],icon:'📌'});
+  save();toast('繰り返しタスクを追加しました！');render();
+}
+
+applyRecurringTasks();
 render();
 </script>
 </body>
