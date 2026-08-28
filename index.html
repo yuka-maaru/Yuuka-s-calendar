@@ -106,10 +106,45 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
 .memo-box{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);resize:vertical;min-height:80px;font-family:inherit;line-height:1.5}
 .memo-box:focus{border-color:var(--ac)}
 .memo-saved{font-size:11px;color:var(--mu);margin-top:4px;transition:opacity .3s}
+.timer-circle{width:140px;height:140px;border-radius:50%;background:conic-gradient(var(--ac) 0deg,var(--bd) 0deg);display:flex;align-items:center;justify-content:center;margin:0 auto;position:relative;transition:background 0.5s}
+.timer-inner{width:110px;height:110px;border-radius:50%;background:var(--sur);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.timer-time{font-size:24px;font-weight:700;color:var(--tx)}
+.timer-label{font-size:11px;color:var(--mu)}
+.study-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bd);cursor:pointer}
+.study-item:last-child{border-bottom:none}
+.study-item.active{background:var(--bg)}
+.study-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--bd);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.study-check.done{background:#10B981;border-color:#10B981}
+.study-check svg{width:11px;height:11px;stroke:white;stroke-width:2.8;fill:none;opacity:0}
+.study-check.done svg{opacity:1}
+.play-btn{padding:10px 28px;border-radius:20px;background:var(--ac);color:white;border:none;font-size:14px;font-weight:600;cursor:pointer}
+.stop-btn{padding:10px 28px;border-radius:20px;background:#DC2626;color:white;border:none;font-size:14px;font-weight:600;cursor:pointer}
+#timer-overlay{position:fixed;inset:0;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;background:#000}
+#timer-overlay.active{display:flex}
+#timer-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0.7;transition:opacity 1s}
+#timer-overlay-content{position:relative;z-index:1;text-align:center;color:white}
+.overlay-time{font-size:80px;font-weight:200;letter-spacing:4px;text-shadow:0 2px 20px rgba(0,0,0,.5)}
+.overlay-label{font-size:16px;opacity:0.8;margin-bottom:40px;letter-spacing:2px}
+.overlay-pause{padding:14px 40px;border-radius:30px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:white;font-size:16px;cursor:pointer;backdrop-filter:blur(8px);transition:background .2s}
+.overlay-pause:hover{background:rgba(255,255,255,0.25)}
+.overlay-stop{margin-top:16px;padding:10px 30px;border-radius:30px;background:rgba(220,38,38,0.5);border:1px solid rgba(220,38,38,0.6);color:white;font-size:14px;cursor:pointer;backdrop-filter:blur(8px)}
+.overlay-progress{width:200px;height:3px;background:rgba(255,255,255,0.2);border-radius:2px;margin:24px auto}
+.overlay-progress-bar{height:100%;background:white;border-radius:2px;transition:width 1s linear}
 .sch-edit-row .delbtn{flex-shrink:0}
 </style>
 </head>
 <body>
+<div id="timer-overlay">
+  <div id="timer-bg"></div>
+  <div id="timer-overlay-content">
+    <div class="overlay-label" id="overlay-label">集中中</div>
+    <div class="overlay-time" id="overlay-time">25:00</div>
+    <div class="overlay-progress"><div class="overlay-progress-bar" id="overlay-bar" style="width:100%"></div></div>
+    <button class="overlay-pause" id="overlay-pause-btn" onclick="togglePause()">⏸ 一時停止</button>
+    <br>
+    <button class="overlay-stop" onclick="stopTimerOverlay()">⏹ 終了</button>
+  </div>
+</div>
 <div class="app">
   <header>
     <div class="logo">
@@ -130,6 +165,7 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
   <div id="view-month" class="view"></div>
   <div id="view-settings" class="view"></div>
   <div id="view-memo" class="view"></div>
+  <div id="view-study" class="view"></div>
 
   <nav class="nav">
     <button class="active" onclick="sw('today')">
@@ -143,6 +179,9 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
     </button>
     <button onclick="sw('month')">
       <div class="ni"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="10" x2="9" y2="21"/></svg></div>月間
+    </button>
+    <button onclick="sw('study')">
+      <div class="ni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>学習
     </button>
     <button onclick="sw('memo')">
       <div class="ni"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>メモ
@@ -175,7 +214,8 @@ let schedule=JSON.parse(localStorage.getItem('yp_sch')||'null')||[
   {id:'s3',start:8.25,end:9,label:'朝食・準備',color:'#C4882A',bg:'#FFF8F0',days:[0,1,2,3,4,5,6]},
   {id:'s4',start:9,end:10,label:'英語勉強',color:'#E8856A',bg:'#FFF3ED',days:[0,1,2,3,4,5,6]},
   {id:'s5',start:10,end:13,label:'GA仕事',color:'#9B6AD4',bg:'#F5F0FF',days:[1,2,3,4,5]},
-  {id:'s12',start:10.5,end:11.33,label:'PHIL 111 TA（BUSAD A101）',color:'#1A2E3A',bg:'#EEF2F5',days:[1]},
+  {id:'s16',start:9.5,end:10.33,label:'PHIL 111 セクション（KELL 401）',color:'#1A2E3A',bg:'#EEF2F5',days:[5]},
+  {id:'s12',start:10.5,end:11.33,label:'PHIL 111 TA（BUSAD A101）',color:'#1A2E3A',bg:'#EEF2F5',days:[1,3]},
   {id:'s13',start:11,end:12,label:'ELI 111（Moore Hall 551）',color:'#E8856A',bg:'#FFF3ED',days:[1,3]},
   {id:'s7',start:15,end:17.5,label:'PHIL 414B（ギリシャ哲学）',color:'#6A3A8F',bg:'#F5F0FF',days:[2]},
   {id:'s8',start:15.5,end:18,label:'PHIL 770（荘子）',color:'#2D6A8F',bg:'#EBF3F8',days:[3]},
@@ -253,7 +293,7 @@ function streak(hid){
 
 function sw(t){
   tab=t;
-  document.querySelectorAll('.nav button').forEach((b,i)=>b.classList.toggle('active',['today','habits','week','month','memo','settings'][i]===t));
+  document.querySelectorAll('.nav button').forEach((b,i)=>b.classList.toggle('active',['today','habits','week','month','study','memo','settings'][i]===t));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+t).classList.add('active');
   render();
@@ -388,6 +428,7 @@ function render(){
   else if(tab==='habits')renderHabits();
   else if(tab==='week')renderWeek();
   else if(tab==='month')renderMonth();
+  else if(tab==='study')renderStudy();
   else if(tab==='memo')renderMemo();
   else renderSettings();
 }
@@ -807,6 +848,306 @@ function addRecurring(){
 }
 
 applyRecurringTasks();
+
+// Study data
+let studyLists=JSON.parse(localStorage.getItem('yp_study_lists')||'null')||[
+  {id:'sl1',name:'PHIL 770 荘子',color:'#2D6A8F',items:[
+    {id:'i1',label:'日本語で読む',done:false},
+    {id:'i2',label:'英語で読む',done:false},
+    {id:'i3',label:'リフレクション書く',done:false},
+    {id:'i4',label:'授業コメント準備',done:false},
+  ]},
+  {id:'sl2',name:'PHIL 414B ギリシャ',color:'#6A3A8F',items:[
+    {id:'i5',label:'テキスト読む',done:false},
+    {id:'i6',label:'クイズ準備',done:false},
+    {id:'i7',label:'コメント準備',done:false},
+  ]},
+  {id:'sl3',name:'PHIL 725 プロセミナー',color:'#1A2E3A',items:[
+    {id:'i8',label:'文献読む',done:false},
+    {id:'i9',label:'ライティング練習',done:false},
+  ]},
+  {id:'sl4',name:'PHIL 111 数学',color:'#9B6AD4',items:[
+    {id:'i10',label:'HWを解く',done:false},
+    {id:'i11',label:'解答確認',done:false},
+  ]},
+  {id:'sl5',name:'ELI 111 英語',color:'#E8856A',items:[
+    {id:'i12',label:'授業参加',done:false},
+    {id:'i13',label:'英語100語書く',done:false},
+  ]},
+];
+
+let studyLog=JSON.parse(localStorage.getItem('yp_study_log')||'{}');
+let timerInterval=null;
+let timerSeconds=0;
+let timerTotal=25*60;
+let timerRunning=false;
+let timerActiveItem=null;
+let studyOpenList=null;
+
+// 毎週月曜日に自動リセット
+function checkWeeklyReset(){
+  const lastReset=localStorage.getItem('yp_last_reset');
+  const now=new Date();
+  const monday=new Date(now);
+  monday.setDate(now.getDate()-(now.getDay()===0?6:now.getDay()-1));
+  monday.setHours(0,0,0,0);
+  const mondayStr=dk(monday);
+  if(lastReset!==mondayStr){
+    studyLists.forEach(sl=>sl.items.forEach(item=>item.done=false));
+    localStorage.setItem('yp_last_reset',mondayStr);
+    saveStudy();
+  }
+}
+
+function saveStudy(){
+  localStorage.setItem('yp_study_lists',JSON.stringify(studyLists));
+  localStorage.setItem('yp_study_log',JSON.stringify(studyLog));
+  const el=document.getElementById('si');
+  if(el){el.style.opacity='1';setTimeout(()=>el.style.opacity='0',2000);}
+}
+
+function getTodayStudyTime(){
+  const today=dk(new Date());
+  return studyLog[today]||0;
+}
+
+function getWeekStudyTime(){
+  const dates=getWk();
+  return dates.reduce((sum,d)=>sum+(studyLog[dk(d)]||0),0);
+}
+
+function fmtDuration(secs){
+  const h=Math.floor(secs/3600);
+  const m=Math.floor((secs%3600)/60);
+  if(h>0)return h+'時間'+m+'分';
+  return m+'分';
+}
+
+const bgImages=[
+  'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=1600&q=80', // 自然・森
+  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1600&q=80', // 山
+  'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1600&q=80', // 宇宙・星
+  'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1600&q=80', // 宇宙
+  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1600&q=80', // 海
+  'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=1600&q=80', // 夕暮れ
+];
+let timerPaused=false;
+
+function showOverlay(label){
+  const overlay=document.getElementById('timer-overlay');
+  const bg=document.getElementById('timer-bg');
+  const randomBg=bgImages[Math.floor(Math.random()*bgImages.length)];
+  bg.style.backgroundImage=`url(${randomBg})`;
+  document.getElementById('overlay-label').textContent=label||'集中中';
+  overlay.classList.add('active');
+  updateOverlay();
+}
+
+function hideOverlay(){
+  document.getElementById('timer-overlay').classList.remove('active');
+}
+
+function updateOverlay(){
+  const el=document.getElementById('overlay-time');
+  const bar=document.getElementById('overlay-bar');
+  if(!el)return;
+  const remaining=timerTotal-timerSeconds;
+  const m=Math.floor(remaining/60);
+  const s=remaining%60;
+  el.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  if(bar)bar.style.width=`${((timerTotal-timerSeconds)/timerTotal)*100}%`;
+}
+
+function togglePause(){
+  const btn=document.getElementById('overlay-pause-btn');
+  if(timerPaused){
+    timerPaused=false;
+    if(btn)btn.textContent='⏸ 一時停止';
+    timerInterval=setInterval(timerTick,1000);
+  } else {
+    timerPaused=true;
+    if(btn)btn.textContent='▶ 再開';
+    clearInterval(timerInterval);
+  }
+}
+
+function timerTick(){
+  timerSeconds++;
+  const today=dk(new Date());
+  studyLog[today]=(studyLog[today]||0)+1;
+  saveStudy();
+  updateTimerDisplay();
+  updateOverlay();
+  if(timerSeconds>=timerTotal){
+    stopTimerOverlay();
+    toast('⏰ お疲れ様でした！');
+    if(timerActiveItem){
+      studyLists[timerActiveItem.listIdx].items[timerActiveItem.itemIdx].done=true;
+      saveStudy();
+      renderStudy();
+    }
+  }
+}
+
+function startTimer(listIdx,itemIdx){
+  if(timerRunning)stopTimer();
+  timerActiveItem={listIdx,itemIdx};
+  timerRunning=true;
+  timerPaused=false;
+  timerSeconds=0;
+  const customMins=parseInt(document.getElementById('timer-mins')?.value||'25');
+  timerTotal=customMins*60;
+  timerInterval=setInterval(timerTick,1000);
+  const label=studyLists[listIdx]?.items[itemIdx]?.label||'集中中';
+  showOverlay(label);
+  renderStudy();
+}
+
+function stopTimer(){
+  clearInterval(timerInterval);
+  timerRunning=false;
+  timerPaused=false;
+  timerInterval=null;
+  hideOverlay();
+  renderStudy();
+}
+
+function stopTimerOverlay(){
+  stopTimer();
+}
+
+function updateTimerDisplay(){
+  const el=document.getElementById('timer-display');
+  if(!el)return;
+  const remaining=timerTotal-timerSeconds;
+  const m=Math.floor(remaining/60);
+  const s=remaining%60;
+  el.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  const pct=(timerSeconds/timerTotal)*360;
+  const circle=document.getElementById('timer-circle');
+  if(circle)circle.style.background=`conic-gradient(var(--ac) ${pct}deg, var(--bd) ${pct}deg)`;
+}
+
+function renderStudy(){
+  checkWeeklyReset();
+  const todaySecs=getTodayStudyTime();
+  const weekSecs=getWeekStudyTime();
+
+  // 全体の達成率
+  let totalItems=0,doneItems=0;
+  studyLists.forEach(sl=>{totalItems+=sl.items.length;doneItems+=sl.items.filter(i=>i.done).length;});
+  const pct=totalItems>0?Math.round(doneItems/totalItems*100):0;
+
+  let html=`<div style="padding-top:8px"></div>
+  <div class="stats">
+    <div class="stat"><div class="sn">${pct}%</div><div class="sl">今週の達成率</div></div>
+    <div class="stat"><div class="sn">${todaySecs>0?fmtDuration(todaySecs):'0分'}</div><div class="sl">今日の学習時間</div></div>
+    <div class="stat"><div class="sn">${weekSecs>0?fmtDuration(weekSecs):'0分'}</div><div class="sl">今週の学習時間</div></div>
+  </div>`;
+
+  // タイマー
+  const remaining=timerTotal-timerSeconds;
+  const m=Math.floor(remaining/60);
+  const s=remaining%60;
+  const pctDeg=timerRunning?(timerSeconds/timerTotal)*360:0;
+  const activeLabel=timerRunning&&timerActiveItem?studyLists[timerActiveItem.listIdx]?.items[timerActiveItem.itemIdx]?.label:'';
+
+  html+=`<div class="card" style="padding:20px;text-align:center;margin-bottom:12px">
+    <div style="font-size:12px;color:var(--mu);margin-bottom:12px">${timerRunning?'⏱ '+activeLabel:'タイマー'}</div>
+    <div class="timer-circle" id="timer-circle" style="background:conic-gradient(var(--ac) ${pctDeg}deg,var(--bd) ${pctDeg}deg)">
+      <div class="timer-inner">
+        <div class="timer-time" id="timer-display">${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</div>
+        <div class="timer-label">${timerRunning?'集中中':'準備OK'}</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:16px">
+      ${timerRunning
+        ?`<button class="stop-btn" onclick="stopTimer()">⏹ ストップ</button>`
+        :`<div style="display:flex;align-items:center;gap:8px">
+          <input id="timer-mins" type="number" value="25" min="1" max="120" style="width:56px;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:14px;text-align:center;outline:none">
+          <span style="font-size:13px;color:var(--mu)">分</span>
+        </div>`
+      }
+    </div>
+  </div>`;
+
+  // チェックリスト
+  html+=`<div class="sec"><span>今週のチェックリスト</span><span class="sec-edit" onclick="studyOpenList='edit';renderStudy()">編集</span></div>`;
+
+  if(studyOpenList==='edit'){
+    html+=`<div style="margin-bottom:8px"><button onclick="studyOpenList=null;renderStudy()" style="padding:6px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:12px;cursor:pointer">← 戻る</button></div>`;
+    studyLists.forEach((sl,li)=>{
+      html+=`<div class="card" style="margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--bd)">
+          <div style="width:10px;height:10px;border-radius:50%;background:${sl.color};flex-shrink:0"></div>
+          <input value="${sl.name}" onchange="studyLists[${li}].name=this.value;saveStudy()" style="flex:1;font-size:13px;font-weight:600;border:none;background:transparent;outline:none;color:var(--tx)">
+          <button class="delbtn" onclick="studyLists.splice(${li},1);saveStudy();renderStudy()">×</button>
+        </div>
+        ${sl.items.map((item,ii)=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bd)">
+          <input value="${item.label}" onchange="studyLists[${li}].items[${ii}].label=this.value;saveStudy()" style="flex:1;font-size:12px;border:none;background:transparent;outline:none;color:var(--tx)">
+          <button class="delbtn" style="width:22px;height:22px;font-size:11px" onclick="studyLists[${li}].items.splice(${ii},1);saveStudy();renderStudy()">×</button>
+        </div>`).join('')}
+        <div style="padding:8px 12px;display:flex;gap:6px">
+          <input id="new-item-${li}" placeholder="項目を追加" style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)">
+          <button class="abtn" style="font-size:12px;padding:6px 10px" onclick="addStudyItem(${li})">追加</button>
+        </div>
+      </div>`;
+    });
+    html+=`<div style="display:flex;gap:6px;margin-top:8px">
+      <input id="new-list-name" placeholder="新しい科目を追加" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
+      <button class="abtn" onclick="addStudyList()">追加</button>
+    </div>`;
+  } else {
+    studyLists.forEach((sl,li)=>{
+      const done=sl.items.filter(i=>i.done).length;
+      const total=sl.items.length;
+      html+=`<div class="card" style="margin-bottom:8px">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px">
+          <div style="width:10px;height:10px;border-radius:50%;background:${sl.color};flex-shrink:0"></div>
+          <span style="font-size:13px;font-weight:600;flex:1">${sl.name}</span>
+          <span style="font-size:11px;color:var(--mu)">${done}/${total}</span>
+        </div>
+        ${sl.items.map((item,ii)=>`
+        <div class="study-item">
+          <button class="study-check${item.done?' done':''}" onclick="toggleStudyItem(${li},${ii})" aria-label="${item.label}">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+          <span style="flex:1;font-size:13px;${item.done?'text-decoration:line-through;color:var(--mu)':''}">${item.label}</span>
+          ${!timerRunning?`<button onclick="startTimer(${li},${ii})" style="padding:4px 8px;border-radius:6px;background:${sl.color}22;border:1px solid ${sl.color};color:${sl.color};font-size:11px;cursor:pointer">▶ 開始</button>`:''}
+        </div>`).join('')}
+      </div>`;
+    });
+  }
+
+  document.getElementById('view-study').innerHTML=html;
+}
+
+function toggleStudyItem(li,ii){
+  studyLists[li].items[ii].done=!studyLists[li].items[ii].done;
+  saveStudy();
+  renderStudy();
+}
+
+function addStudyItem(li){
+  const inp=document.getElementById('new-item-'+li);
+  if(!inp||!inp.value.trim())return;
+  studyLists[li].items.push({id:'i'+Date.now(),label:inp.value.trim(),done:false});
+  saveStudy();
+  renderStudy();
+}
+
+function addStudyList(){
+  const inp=document.getElementById('new-list-name');
+  if(!inp||!inp.value.trim())return;
+  const colors=['#2D6A8F','#6A3A8F','#1A2E3A','#9B6AD4','#E8856A','#5A8A6A'];
+  studyLists.push({id:'sl'+Date.now(),name:inp.value.trim(),color:colors[studyLists.length%colors.length],items:[]});
+  saveStudy();
+  renderStudy();
+}
+
+checkWeeklyReset();
+
 render();
 </script>
 </body>
