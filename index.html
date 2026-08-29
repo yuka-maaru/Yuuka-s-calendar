@@ -897,14 +897,30 @@ function render(){
 let memoOpenIndex=null;
 
 function getMemoPages(){
-  return JSON.parse(localStorage.getItem('yp_memo_pages')||'null')||[
+  let pages=JSON.parse(localStorage.getItem('yp_memo_pages')||'null');
+  if(!pages){
+    pages=[
     {id:'p1',title:'🖨️ コピー作業まとめ',content:'【火曜日午後】水曜日のHW × 85枚\n【木曜日午前】金曜日のHW × 85枚\n【木曜日午前】月曜日のHW × 85枚\n\n📦 ボックスへの配布\n・石田先生: 27枚\n・Andrew: 32枚\n・Alexandra: 26枚'},
     {id:'p2',title:'📋 SSN申請メモ',content:'日時: 9月2日（水）1:30pm\n場所: 300 Ala Moana Blvd, Room 1-114\n\n持参するもの:\n・パスポート\n・I-20\n・I-94（印刷）\n・GAオファーレター\n・ISS Certification Letter\n・EIN: 99-6000354'},
     {id:'p3',title:'📝 フリーメモ',content:''},
     {id:'p4',title:'📅 年間スケジュール 2026-2027',content:'_YEARLY_CALENDAR_'},
     {id:'p5',title:'✅ やることリスト',content:'_TODO_LIST_'},
     {id:'p6',title:'🛒 ショッピングリスト',content:'_SHOPPING_LIST_'},
+    ];
+  }
+  // Auto-add special pages if missing
+  const specialPages=[
+    {id:'p5',title:'✅ やることリスト',content:'_TODO_LIST_'},
+    {id:'p6',title:'🛒 ショッピングリスト',content:'_SHOPPING_LIST_'},
+    {id:'p4',title:'📅 年間スケジュール 2026-2027',content:'_YEARLY_CALENDAR_'},
   ];
+  specialPages.forEach(sp=>{
+    if(!pages.find(p=>p.id===sp.id)){
+      pages.push(sp);
+      localStorage.setItem('yp_memo_pages',JSON.stringify(pages));
+    }
+  });
+  return pages;
 }
 
 function saveMemoPages(pages){
@@ -1092,6 +1108,12 @@ function saveTodos(){
   localStorage.setItem('yp_todos',JSON.stringify(todoLists));
 }
 
+function getTodayTasks(){
+  // Get today's tasks from main task store
+  const key=dk(new Date());
+  return (tasks[key]||[]).map((t,i)=>({...t,_taskKey:key,_taskIdx:i}));
+}
+
 function renderTodoList(){
   const cats=[
     {key:'today',label:'📅 今日',color:'#E8856A'},
@@ -1102,7 +1124,8 @@ function renderTodoList(){
   
   let html='';
   cats.forEach(cat=>{
-    const items=todoLists[cat.key]||[];
+    // 今日カテゴリーはtasksから取得
+    const items=cat.key==='today'?getTodayTasks():(todoLists[cat.key]||[]);
     const done=items.filter(t=>t.done).length;
     html+=`<div style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -1136,15 +1159,22 @@ function renderTodoList(){
     }
     
     items.forEach((t,ti)=>{
+      const isToday=cat.key==='today';
+      const _tk=t._taskKey||'';
+      const _tid=t.id||'';
+      const checkFn=isToday?('toggleT(\''+_tk+'\',\''+_tid+'\')'):'toggleTodo(\''+cat.key+'\','+ti+')';
+      const delFn=isToday?('delT(\''+_tk+'\',\''+_tid+'\')'):'deleteTodo(\''+cat.key+'\','+ti+')';
       html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bd);${t.done?'opacity:0.5':''}">
-        <button onclick="toggleTodo('${cat.key}',${ti})" style="width:20px;height:20px;border-radius:50%;border:2px solid ${t.done?cat.color:'var(--bd)'};background:${t.done?cat.color:'none'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+        <button onclick="${checkFn};renderMemo()" style="width:20px;height:20px;border-radius:50%;border:2px solid ${t.done?cat.color:'var(--bd)'};background:${t.done?cat.color:'none'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">
           ${t.done?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}
         </button>
         <span style="flex:1;font-size:13px;${t.done?'text-decoration:line-through':''}">${t.label}</span>
         ${t.movedFrom?`<span style="font-size:9px;padding:1px 5px;border-radius:8px;background:${cat.color}22;color:${cat.color}">${t.movedFrom}</span>`:''}
-        <div style="display:flex;gap:4px">
-          ${cat.key!=='today'?`<button onclick="moveTodo('${cat.key}',${ti},'today')" title="今日に移動" style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--bg);border:1px solid var(--bd);cursor:pointer;color:var(--ac)">→今日</button>`:''}
-          <button onclick="deleteTodo('${cat.key}',${ti})" style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--bg);border:1px solid var(--bd);cursor:pointer;color:#DC2626">×</button>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${isToday?'':buildTodoMoveBtns(cat.key,ti)}
+          ${isToday?('<button onclick="moveTodayToWeek(this)" data-id="'+t.id+'" style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--bg);border:1px solid var(--bd);cursor:pointer;color:#2D6A8F">→今週</button>'):''}
+          ${isToday?('<button onclick="moveTodayToMonth(this)" data-id="'+t.id+'" style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--bg);border:1px solid var(--bd);cursor:pointer;color:#9B6AD4">→今月</button>'):''}
+          <button onclick="${delFn};renderMemo()" style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--bg);border:1px solid var(--bd);cursor:pointer;color:#DC2626">×</button>
         </div>
       </div>`;
     });
@@ -1165,11 +1195,42 @@ function renderTodoList(){
 function addTodo(cat){
   const inp=document.getElementById('todo-inp-'+cat);
   if(!inp||!inp.value.trim())return;
-  if(!todoLists[cat])todoLists[cat]=[];
-  todoLists[cat].push({id:'td'+Date.now(),label:inp.value.trim(),done:false});
-  saveTodos();
-  memoOpenIndex=memoOpenIndex; // keep open
+  if(cat==='today'){
+    // Sync with main task store
+    const key=dk(new Date());
+    if(!tasks[key])tasks[key]=[];
+    tasks[key].push({id:'td'+Date.now(),label:inp.value.trim(),done:false});
+    save();
+  } else {
+    if(!todoLists[cat])todoLists[cat]=[];
+    todoLists[cat].push({id:'td'+Date.now(),label:inp.value.trim(),done:false});
+    saveTodos();
+  }
   renderMemo();
+}
+
+function moveTodayToWeek(elOrId){
+  const taskId=typeof elOrId==='string'?elOrId:elOrId.getAttribute('data-id');
+  const key=dk(new Date());
+  const t=(tasks[key]||[]).find(x=>x.id===taskId);
+  if(!t)return;
+  if(!todoLists.week)todoLists.week=[];
+  todoLists.week.push({id:'td'+Date.now(),label:t.label,done:false,movedFrom:'今日'});
+  saveTodos();
+  renderMemo();
+  toast('→今週に追加しました！');
+}
+
+function moveTodayToMonth(elOrId){
+  const taskId=typeof elOrId==='string'?elOrId:elOrId.getAttribute('data-id');
+  const key=dk(new Date());
+  const t=(tasks[key]||[]).find(x=>x.id===taskId);
+  if(!t)return;
+  if(!todoLists.month)todoLists.month=[];
+  todoLists.month.push({id:'td'+Date.now(),label:t.label,done:false,movedFrom:'今日'});
+  saveTodos();
+  renderMemo();
+  toast('→今月に追加しました！');
 }
 
 function addTodoFromDream(cat,label){
@@ -1177,6 +1238,19 @@ function addTodoFromDream(cat,label){
   todoLists[cat].push({id:'td'+Date.now(),label,done:false,movedFrom:'夢'});
   saveTodos();
   renderMemo();
+}
+
+function buildTodoMoveBtns(fromCat,idx){
+  const cats=[
+    {key:'today',label:'今日',color:'#E8856A'},
+    {key:'week',label:'今週',color:'#2D6A8F'},
+    {key:'month',label:'今月',color:'#9B6AD4'},
+    {key:'dream',label:'夢',color:'#5A8A6A'},
+  ];
+  return cats
+    .filter(c=>c.key!==fromCat)
+    .map(c=>'<button onclick="moveTodo(this)" data-from="'+fromCat+'" data-idx="'+idx+'" data-to="'+c.key+'" style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--bg);border:1px solid var(--bd);cursor:pointer;color:'+c.color+'">→'+c.label+'</button>')
+    .join('');
 }
 
 function toggleTodo(cat,idx){
@@ -1193,15 +1267,31 @@ function deleteTodo(cat,idx){
   renderMemo();
 }
 
-function moveTodo(fromCat,idx,toCat){
+function moveTodo(elOrFrom,idx,toCat){
+  let fromCat=elOrFrom;
+  if(typeof elOrFrom==='object'){
+    fromCat=elOrFrom.getAttribute('data-from');
+    idx=parseInt(elOrFrom.getAttribute('data-idx'));
+    toCat=elOrFrom.getAttribute('data-to');
+  }
+  const labels={today:'今日',week:'今週',month:'今月',dream:'夢'};
   if(!todoLists[fromCat])return;
   const [item]=todoLists[fromCat].splice(idx,1);
-  item.movedFrom=fromCat==='week'?'今週':fromCat==='month'?'今月':'夢';
+  item.movedFrom=labels[fromCat]||fromCat;
   item.done=false;
-  if(!todoLists[toCat])todoLists[toCat]=[];
-  todoLists[toCat].push(item);
+  if(toCat==='today'){
+    // Move to main task store
+    const key=dk(new Date());
+    if(!tasks[key])tasks[key]=[];
+    tasks[key].push({id:'td'+Date.now(),label:item.label,done:false,movedFrom:item.movedFrom});
+    save();
+  } else {
+    if(!todoLists[toCat])todoLists[toCat]=[];
+    todoLists[toCat].push(item);
+  }
   saveTodos();
   renderMemo();
+  toast('→ '+labels[toCat]+'に移動しました！');
 }
 
 // ===== ショッピングリスト =====
