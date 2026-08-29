@@ -450,6 +450,58 @@ function addTask(key){
   inp.value='';save();toast('タスクを追加しました！');render();
 }
 
+function openFreeTimeFromToday(key){
+  // Find current free time based on schedule and current time
+  const now=new Date();
+  const t=now.getHours()+(now.getMinutes()/60);
+  openTimeSlot(key,Math.round(t*2)/2);
+}
+
+function switchModalTab(tab){
+  ['task','study','memo'].forEach(t=>{
+    const panel=document.getElementById('modal-tab-'+t);
+    const btn=document.getElementById('mtab-'+t);
+    if(panel)panel.style.display=t===tab?'block':'none';
+    if(btn){
+      btn.style.background=t===tab?'var(--ac)':'transparent';
+      btn.style.color=t===tab?'white':'var(--mu)';
+      btn.style.fontWeight=t===tab?'600':'400';
+    }
+  });
+}
+
+function buildStudyAddList(key){
+  let html='';
+  studyLists.forEach((sl,li)=>{
+    const pending=sl.items.filter(it=>!it.done);
+    if(pending.length===0)return;
+    html+='<div style="margin-bottom:8px">';
+    html+='<div style="font-size:11px;font-weight:600;color:'+sl.color+';margin-bottom:4px">'+sl.name+'</div>';
+    pending.forEach((it,ii)=>{
+      html+='<button onclick="addStudyAsTask(this)" data-key="'+key+'" data-label="'+it.label.replace(/"/g,'&quot;')+'" data-color="'+sl.color+'" data-li="'+li+'" data-ii="'+sl.items.indexOf(it)+'" style="width:100%;padding:7px 10px;border-radius:8px;background:'+sl.color+'18;border:1px solid var(--bd);text-align:left;font-size:12px;cursor:pointer;margin-bottom:4px;color:var(--tx);display:flex;align-items:center;gap:8px">'+
+        '<span style="width:8px;height:8px;border-radius:50%;background:'+sl.color+';flex-shrink:0;display:inline-block"></span>'+it.label+
+        '</button>';
+    });
+    html+='</div>';
+  });
+  return html||'<div style="color:var(--mu);font-size:13px">学習リストが空です</div>';
+}
+
+function addStudyAsTask(btn){
+  const key=btn.getAttribute('data-key');
+  const label=btn.getAttribute('data-label');
+  const color=btn.getAttribute('data-color');
+  if(!tasks[key])tasks[key]=[];
+  tasks[key].push({id:'t'+Date.now(),label,done:false,color,studyRef:true});
+  save();
+  openDayModal(key);
+  toast('📚 '+label+' をタスクに追加！');
+}
+
+function saveDayMemo(key,val){
+  localStorage.setItem('yp_day_memo_'+key,val);
+}
+
 function toggleT(key,tid){
   if(!tasks[key])return;
   const t=tasks[key].find(x=>x.id===tid);
@@ -622,6 +674,14 @@ function saveWeekMemo(wk){
   localStorage.setItem('yp_week_memo_'+wk,val);
   toast('💾 保存しました！');
   closeModal();
+}
+
+function openTimeSlotFromClick(e,key,startH,hourH){
+  const rect=e.currentTarget.getBoundingClientRect();
+  const y=e.clientY-rect.top;
+  const t=Math.floor((y/hourH)*2)/2+startH; // round to nearest 30min
+  const tClamped=Math.max(startH,Math.min(22,t));
+  openTimeSlot(key,tClamped);
 }
 
 function openTimeSlot(key,t){
@@ -1978,7 +2038,7 @@ function renderToday(){
     <div style="font-size:15px;font-style:italic;color:white;line-height:1.6;font-weight:300">${todayGoal||defaultGoalTxt}</div>
     <div style="font-size:9px;color:rgba(255,255,255,0.25);margin-top:6px;text-align:right">${d.getMonth()+1}/${d.getDate()} ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dow]}</div>
   </div>
-  <div class="sec"><span>⚡ 今やるべきこと</span><span class="sec-edit" onclick="openUrgentEdit('${key}')">編集</span><span class="sec-edit" onclick="startFocusMode('${key}')" style="margin-left:8px;color:#9B6AD4">🎯 集中</span></div>
+  <div class="sec"><span>⚡ 今やるべきこと</span><span class="sec-edit" onclick="openUrgentEdit('${key}')">編集</span><span class="sec-edit" onclick="openFreeTimeFromToday('${key}')" style="margin-left:6px;color:#2D6A8F">🕐 空き時間</span><span class="sec-edit" onclick="startFocusMode('${key}')" style="margin-left:6px;color:#9B6AD4">🎯 集中</span></div>
   <div class="card" style="margin-bottom:8px">`;
   {
     const now=new Date();
@@ -2124,6 +2184,13 @@ function renderToday(){
     </div>`;
   });
   h+='</div>';
+  // Day memo display
+  const dayMemo=localStorage.getItem('yp_day_memo_'+key)||'';
+  if(dayMemo){
+    h+=`<div class="sec">🗒️ 今日のメモ</div>
+    <div class="card" style="padding:10px 14px;font-size:13px;color:var(--sub);white-space:pre-wrap;cursor:pointer" onclick="openDayModal('${key}');setTimeout(()=>switchModalTab('memo'),200)">${dayMemo.replace(/</g,'&lt;')}</div>`;
+  }
+
   document.getElementById('view-today').innerHTML=h;
 }
 
@@ -2295,7 +2362,7 @@ function renderWeek(){
     const dayTasks=(tasks[k]||[]).filter(t=>!t.done&&t.startTime);
     const dayStudy=(studyBlocks[k]||[]);
 
-    h+=`<div onclick="openTimeSlot('${k}',12)" style="flex:1;position:relative;height:${TOTAL_H*HOUR_H}px;border-left:1px solid var(--bd);cursor:pointer;background:${isT?'rgba(45,106,143,0.03)':'transparent'}">`;
+    h+=`<div onclick="openTimeSlotFromClick(event,'${k}',${START_H},${HOUR_H})" style="flex:1;position:relative;height:${TOTAL_H*HOUR_H}px;border-left:1px solid var(--bd);cursor:pointer;background:${isT?'rgba(45,106,143,0.03)':'transparent'}">`;
 
     // Hour grid lines
     for(let hr=START_H;hr<END_H;hr++){
