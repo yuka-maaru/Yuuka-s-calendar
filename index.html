@@ -908,55 +908,12 @@ function saveHabitNote(hid){
   closeModal();
 }
 
-// Touch drag for mobile
-let touchHabitIdx=null;
-let touchHabitStartY=0;
-let touchHabitClone=null;
-
-function touchHabitStart(e,i){
-  touchHabitIdx=i;
-  touchHabitStartY=e.touches[0].clientY;
-  // Long press detection - highlight after 300ms
-  const el=document.getElementById('set-hrow-'+i);
-  if(el)el.style.background='var(--bg)';
-}
-
-function touchHabitMove(e){
-  if(touchHabitIdx===null)return;
-  e.preventDefault();
-  const touch=e.touches[0];
-  const y=touch.clientY;
-  // Find which row we're over
-  document.querySelectorAll('[id^=set-hrow-]').forEach((el,idx)=>{
-    const rect=el.getBoundingClientRect();
-    if(y>=rect.top&&y<=rect.bottom){
-      document.querySelectorAll('[id^=set-hrow-]').forEach(r=>r.style.background='');
-      el.style.background='var(--bg)';
-      el.setAttribute('data-drop-target','true');
-    } else {
-      el.removeAttribute('data-drop-target');
-    }
-  });
-}
-
-function touchHabitEnd(e){
-  if(touchHabitIdx===null)return;
-  // Find drop target
-  let dropIdx=null;
-  document.querySelectorAll('[id^=set-hrow-]').forEach((el,idx)=>{
-    if(el.getAttribute('data-drop-target')==='true'){
-      dropIdx=idx;
-      el.removeAttribute('data-drop-target');
-    }
-    el.style.background='';
-  });
-  if(dropIdx!==null&&dropIdx!==touchHabitIdx){
-    const [moved]=habits.splice(touchHabitIdx,1);
-    habits.splice(dropIdx,0,moved);
-    save();
-    render();
-  }
-  touchHabitIdx=null;
+function moveHabit(i,dir){
+  const j=i+dir;
+  if(j<0||j>=habits.length)return;
+  [habits[i],habits[j]]=[habits[j],habits[i]];
+  save();
+  render();
 }
 
 function buildHabitTimerBtn(hb,key){
@@ -1388,16 +1345,11 @@ function renderSettings(){
   let h='<div style="padding-top:8px"></div><div class="sec">習慣をカスタマイズ</div><div class="card">';
   habits.forEach((hb,i)=>{
     const modeLabel=hb.timerMins?('⏱ '+hb.timerMins+'分タイマー'):'✅ チェック';
-    h+=`<div class="set-row" draggable="true" id="set-hrow-${i}"
-      ondragstart="setHabitDragStart(${i})"
-      ondragover="setHabitDragOver(event,${i})"
-      ondrop="setHabitDrop(${i})"
-      ondragend="setHabitDragEnd()"
-      ontouchstart="touchHabitStart(event,${i})"
-      ontouchmove="touchHabitMove(event)"
-      ontouchend="touchHabitEnd(event)"
-      style="touch-action:none;position:relative">
-      <div style="color:var(--mu);font-size:18px;cursor:grab;padding:0 4px;flex-shrink:0;user-select:none">⠿</div>
+    h+=`<div class="set-row" id="set-hrow-${i}">
+      <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
+        <button onclick="moveHabit(${i},-1)" style="width:24px;height:18px;border-radius:4px;background:var(--sur);border:1px solid var(--bd);cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center" ${i===0?'disabled':''}>▲</button>
+        <button onclick="moveHabit(${i},1)" style="width:24px;height:18px;border-radius:4px;background:var(--sur);border:1px solid var(--bd);cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center" ${i===habits.length-1?'disabled':''}>▼</button>
+      </div>
       <div class="hic" style="background:${hb.color}22">${hb.icon}</div>
       <div class="sri">
         <input value="${hb.name}" onchange="habits[${i}].name=this.value;save()" placeholder="習慣名">
