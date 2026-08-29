@@ -165,17 +165,29 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
 </style>
 </head>
 <body>
-<div id="focus-overlay" style="position:fixed;inset:0;z-index:9998;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.95)">
-  <div style="color:white;text-align:center;padding:20px;max-width:340px">
-    <div style="font-size:48px;margin-bottom:12px">🎯</div>
-    <div style="font-size:20px;font-weight:700;margin-bottom:8px" id="focus-label">集中モード</div>
-    <div style="font-size:14px;opacity:0.7;margin-bottom:24px">今やることに集中してください</div>
-    <div id="focus-timer-display" style="font-size:56px;font-weight:200;letter-spacing:4px;margin-bottom:24px">25:00</div>
-    <div style="display:flex;gap:12px;justify-content:center">
-      <button onclick="toggleFocusPause()" id="focus-pause-btn" style="padding:12px 24px;border-radius:20px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;font-size:15px;cursor:pointer">⏸ 一時停止</button>
-      <button onclick="exitFocusMode()" style="padding:12px 24px;border-radius:20px;background:rgba(220,38,38,0.5);border:1px solid rgba(220,38,38,0.6);color:white;font-size:15px;cursor:pointer">✕ 終了</button>
+<div id="focus-overlay" style="position:fixed;inset:0;z-index:9998;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,15,30,0.97)">
+  <div style="color:white;text-align:center;padding:24px;max-width:360px;width:100%">
+    <div style="font-size:40px;margin-bottom:8px">🎯</div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:4px" id="focus-label">集中モード</div>
+    <div id="focus-task-list" style="margin:10px 0 16px;text-align:left"></div>
+    <div id="focus-timer-display" style="font-size:60px;font-weight:200;letter-spacing:6px;margin-bottom:8px;font-variant-numeric:tabular-nums">25:00</div>
+    <div id="focus-mode-label" style="font-size:12px;opacity:0.5;margin-bottom:20px">集中中</div>
+    
+    <!-- Noise selector -->
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:20px" id="noise-btns">
+      <button onclick="toggleNoise('none')" id="noise-none" style="padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.2);border:none;color:white;font-size:11px;cursor:pointer">🔇 なし</button>
+      <button onclick="toggleNoise('rain')" id="noise-rain" style="padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.1);border:none;color:white;font-size:11px;cursor:pointer">🌧️ 雨</button>
+      <button onclick="toggleNoise('cafe')" id="noise-cafe" style="padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.1);border:none;color:white;font-size:11px;cursor:pointer">☕ カフェ</button>
+      <button onclick="toggleNoise('wave')" id="noise-wave" style="padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.1);border:none;color:white;font-size:11px;cursor:pointer">🌊 波</button>
+      <button onclick="toggleNoise('white')" id="noise-white" style="padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.1);border:none;color:white;font-size:11px;cursor:pointer">〰️ WN</button>
     </div>
-    <div style="margin-top:20px;font-size:12px;opacity:0.5">他のアプリへの切り替えを最小化してください</div>
+    
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button onclick="toggleFocusPause()" id="focus-pause-btn" style="padding:10px 18px;border-radius:20px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;font-size:14px;cursor:pointer">⏸ 一時停止</button>
+      <button onclick="startFocusBreak()" style="padding:10px 18px;border-radius:20px;background:rgba(16,185,129,0.3);border:1px solid rgba(16,185,129,0.5);color:white;font-size:14px;cursor:pointer">☕ 休憩</button>
+      <button onclick="exitFocusMode()" style="padding:10px 18px;border-radius:20px;background:rgba(220,38,38,0.4);border:1px solid rgba(220,38,38,0.5);color:white;font-size:14px;cursor:pointer">✕ 終了</button>
+    </div>
+    <div style="margin-top:16px;font-size:11px;opacity:0.3">Strict Mode: 他のタブはロックされています</div>
   </div>
 </div>
 <div id="timer-overlay">
@@ -1513,11 +1525,17 @@ let focusSeconds=0;
 let focusTotal=25*60;
 let focusPaused=false;
 let focusKey=null;
+let focusIsBreak=false;
+let noiseNode=null;
+let noiseCtx=null;
+let currentNoise='none';
+let strictMode=false;
 
 function startFocusMode(key){
   focusKey=key;
   const urgentTasks=(tasks[key]||[]).filter(t=>t.urgent&&!t.done);
-  const label=urgentTasks.length>0?urgentTasks[0].label:'集中モード';
+  const pendingAll=(tasks[key]||[]).filter(t=>!t.done);
+  const label=urgentTasks.length>0?urgentTasks[0].label:(pendingAll.length>0?pendingAll[0].label:'集中モード');
   
   // Ask duration
   const mins=parseInt(prompt('集中時間（分）:', '25'))||25;
@@ -1525,8 +1543,22 @@ function startFocusMode(key){
   focusSeconds=0;
   focusPaused=false;
   
+  // Build task list display
+  const urgentList=urgentTasks.length>0?urgentTasks:pendingAll.slice(0,3);
+  let taskListHtml='';
+  urgentList.forEach(t=>{
+    taskListHtml+='<div style="padding:6px 12px;border-radius:8px;background:rgba(255,255,255,0.1);margin-bottom:6px;font-size:13px;display:flex;align-items:center;gap:8px">'+
+      '<div style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.6);flex-shrink:0"></div>'+t.label+'</div>';
+  });
   document.getElementById('focus-label').textContent=label;
+  document.getElementById('focus-task-list').innerHTML=taskListHtml;
   document.getElementById('focus-overlay').style.display='flex';
+  document.getElementById('focus-mode-label').textContent='集中中';
+  document.getElementById('focus-timer-display').style.color='white';
+  // Reset noise buttons
+  document.querySelectorAll('[id^=noise-]').forEach(b=>b.style.background='rgba(255,255,255,0.1)');
+  document.getElementById('noise-none').style.background='rgba(255,255,255,0.35)';
+  applyStrictMode(true);
   updateFocusDisplay();
   
   focusInterval=setInterval(()=>{
@@ -1559,8 +1591,126 @@ function toggleFocusPause(){
 function exitFocusMode(){
   clearInterval(focusInterval);
   focusInterval=null;
+  stopNoise();
+  currentNoise='none';
+  applyStrictMode(false);
   document.getElementById('focus-overlay').style.display='none';
   render();
+}
+
+// ===== White Noise =====
+function toggleNoise(type){
+  currentNoise=type;
+  document.querySelectorAll('[id^=noise-]').forEach(b=>{
+    b.style.background=b.id==='noise-'+type?'rgba(255,255,255,0.35)':'rgba(255,255,255,0.1)';
+  });
+  stopNoise();
+  if(type==='none')return;
+  startNoise(type);
+}
+
+function stopNoise(){
+  if(noiseNode){try{noiseNode.stop();}catch(e){}noiseNode=null;}
+  if(noiseCtx){try{noiseCtx.close();}catch(e){}noiseCtx=null;}
+}
+
+function startNoise(type){
+  try{
+    noiseCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const bufferSize=noiseCtx.sampleRate*4;
+    const buffer=noiseCtx.createBuffer(1,bufferSize,noiseCtx.sampleRate);
+    const data=buffer.getChannelData(0);
+    
+    if(type==='white'){
+      for(let i=0;i<bufferSize;i++)data[i]=(Math.random()*2-1)*0.15;
+    } else if(type==='rain'){
+      // Rain: filtered white noise with low frequency bursts
+      for(let i=0;i<bufferSize;i++){
+        data[i]=(Math.random()*2-1)*0.1;
+        if(Math.random()<0.003)data[i]+=Math.random()*0.3;
+      }
+    } else if(type==='wave'){
+      // Ocean waves: sine wave modulated noise
+      for(let i=0;i<bufferSize;i++){
+        const wave=Math.sin(i*0.0001)*0.5+0.5;
+        data[i]=(Math.random()*2-1)*wave*0.15;
+      }
+    } else if(type==='cafe'){
+      // Cafe: mid-frequency rumble
+      for(let i=0;i<bufferSize;i++){
+        data[i]=(Math.random()*2-1)*0.08;
+        if(i>0)data[i]=data[i]*0.3+data[i-1]*0.7;
+      }
+    }
+    
+    noiseNode=noiseCtx.createBufferSource();
+    noiseNode.buffer=buffer;
+    noiseNode.loop=true;
+    const gain=noiseCtx.createGain();
+    gain.gain.value=0.4;
+    noiseNode.connect(gain);
+    gain.connect(noiseCtx.destination);
+    noiseNode.start();
+  }catch(e){console.log('Noise error:',e);}
+}
+
+// ===== 休憩モード =====
+function startFocusBreak(){
+  const mins=parseInt(prompt('休憩時間（分）:','5'))||5;
+  focusPaused=false;
+  focusIsBreak=true;
+  focusSeconds=0;
+  focusTotal=mins*60;
+  clearInterval(focusInterval);
+  const modeLabel=document.getElementById('focus-mode-label');
+  if(modeLabel)modeLabel.textContent='☕ 休憩中 '+mins+'分';
+  const pauseBtn=document.getElementById('focus-pause-btn');
+  if(pauseBtn)pauseBtn.style.display='none';
+  document.getElementById('focus-timer-display').style.color='#10B981';
+  focusInterval=setInterval(()=>{
+    focusSeconds++;
+    updateFocusDisplay();
+    if(focusSeconds>=focusTotal){
+      clearInterval(focusInterval);
+      focusIsBreak=false;
+      playTimerEnd();
+      // Restart focus
+      const modeEl=document.getElementById('focus-mode-label');
+      if(modeEl)modeEl.textContent='集中中';
+      const timerEl=document.getElementById('focus-timer-display');
+      if(timerEl)timerEl.style.color='white';
+      const pb=document.getElementById('focus-pause-btn');
+      if(pb)pb.style.display='';
+      toast('☕ 休憩終了！集中再開🎯');
+      // Restart focus timer
+      focusSeconds=0;
+      focusTotal=25*60;
+      focusPaused=false;
+      focusInterval=setInterval(()=>{
+        if(!focusPaused)focusSeconds++;
+        updateFocusDisplay();
+        if(focusSeconds>=focusTotal){
+          clearInterval(focusInterval);
+          exitFocusMode();
+          playTimerEnd();
+          toast('🎯 集中セッション完了！お疲れ様でした！');
+        }
+      },1000);
+    }
+  },1000);
+}
+
+// ===== Strict Mode =====
+function applyStrictMode(active){
+  strictMode=active;
+  const navBtns=document.querySelectorAll('.nav button');
+  navBtns.forEach(btn=>{
+    const t=btn.getAttribute('onclick')?.match(/sw\('(\w+)'\)/)?.[1];
+    if(t&&t!=='today'){
+      btn.style.opacity=active?'0.2':'';
+      btn.style.pointerEvents=active?'none':'';
+    }
+  });
 }
 
 function toggleUrgent(key,id){
