@@ -165,6 +165,19 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
 </style>
 </head>
 <body>
+<div id="focus-overlay" style="position:fixed;inset:0;z-index:9998;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.95)">
+  <div style="color:white;text-align:center;padding:20px;max-width:340px">
+    <div style="font-size:48px;margin-bottom:12px">🎯</div>
+    <div style="font-size:20px;font-weight:700;margin-bottom:8px" id="focus-label">集中モード</div>
+    <div style="font-size:14px;opacity:0.7;margin-bottom:24px">今やることに集中してください</div>
+    <div id="focus-timer-display" style="font-size:56px;font-weight:200;letter-spacing:4px;margin-bottom:24px">25:00</div>
+    <div style="display:flex;gap:12px;justify-content:center">
+      <button onclick="toggleFocusPause()" id="focus-pause-btn" style="padding:12px 24px;border-radius:20px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;font-size:15px;cursor:pointer">⏸ 一時停止</button>
+      <button onclick="exitFocusMode()" style="padding:12px 24px;border-radius:20px;background:rgba(220,38,38,0.5);border:1px solid rgba(220,38,38,0.6);color:white;font-size:15px;cursor:pointer">✕ 終了</button>
+    </div>
+    <div style="margin-top:20px;font-size:12px;opacity:0.5">他のアプリへの切り替えを最小化してください</div>
+  </div>
+</div>
 <div id="timer-overlay">
   <div id="timer-bg"></div>
   <div id="timer-overlay-content">
@@ -320,7 +333,7 @@ function applyRecurringTasks(){
 
 let data=JSON.parse(localStorage.getItem('yp_d')||'{}');
 let tasks=JSON.parse(localStorage.getItem('yp_t')||'{}');
-let dayOff=0,monOff=0,tab='today',selDate=null;
+let dayOff=0,monOff=0,weekOff=0,tab='today',selDate=null;
 let saveTimer=null;
 
 function save(){
@@ -346,7 +359,7 @@ function dk(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),
 function getD(o){const d=new Date();d.setDate(d.getDate()+o);return d}
 function getWk(){
   const n=new Date(),dow=n.getDay(),m=new Date(n);
-  m.setDate(n.getDate()-(dow===0?6:dow-1));
+  m.setDate(n.getDate()-(dow===0?6:dow-1)+weekOff*7);
   return Array.from({length:7},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d});
 }
 function streak(hid){
@@ -442,11 +455,12 @@ function openDayModal(key){
           ${eventTemplates.map(t=>'<button onclick="addEventFromTemplate(\'' + key + '\',\''+t.id+'\')" style="padding:5px 10px;border-radius:20px;background:'+t.color+'22;border:1px solid '+t.color+';color:'+t.color+';font-size:11px;cursor:pointer">'+t.name+'</button>').join('')}
         </div>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:8px">
-        <input id="modal-start" type="time" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
-        <span style="align-self:center;color:var(--mu);font-size:12px">〜</span>
-        <input id="modal-end" type="time" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
+      <div style="display:flex;gap:6px;margin-bottom:4px;align-items:center">
+        <input id="modal-start" type="time" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)" placeholder="開始">
+        <span style="color:var(--mu);font-size:12px">〜</span>
+        <input id="modal-end" type="time" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)" placeholder="終了（任意）">
       </div>
+      <div style="font-size:11px;color:var(--mu);margin-bottom:8px">終了時間は未定でもOK</div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
         <input id="modal-color" type="color" value="#2D6A8F" style="width:36px;height:36px;border-radius:8px;border:1px solid var(--bd);cursor:pointer;padding:2px;flex-shrink:0">
         <input id="modal-inp" placeholder="タスク・予定を追加..." style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter')addModalTask('${key}')">
@@ -539,30 +553,259 @@ function saveWeekMemo(wk){
 }
 
 function openTimeSlot(key,t){
-  // Pre-fill time and open day modal
-  openDayModal(key);
-  // Set the time fields after modal opens
-  setTimeout(()=>{
-    const startEl=document.getElementById('modal-start');
-    const endEl=document.getElementById('modal-end');
-    if(startEl){
-      const hr=Math.floor(t);
-      const min=t%1===0.5?'30':'00';
-      startEl.value=`${String(hr).padStart(2,'0')}:${min}`;
-    }
-    if(endEl){
-      const endT=t+0.5;
-      const hr=Math.floor(endT);
-      const min=endT%1===0.5?'30':'00';
-      endEl.value=`${String(hr).padStart(2,'0')}:${min}`;
-    }
-    // Focus task input
-    const inp=document.getElementById('modal-inp');
-    if(inp)inp.focus();
-  },100);
+  // Detect free time around this slot
+  const [ky,km,kd]=key.split('-').map(Number);
+  const d=new Date(ky,km-1,kd);
+  const dow=d.getDay();
+  
+  // Find what's scheduled around this time
+  const dayEvs=schedule.filter(e=>e.days.includes(dow));
+  
+  // Find free block: next event after t
+  const nextEv=dayEvs.filter(e=>e.start>t).sort((a,b)=>a.start-b.start)[0];
+  const freeUntil=nextEv?nextEv.start:22; // free until next event or 10pm
+  const freeHours=Math.round((freeUntil-t)*10)/10;
+  
+  // Is this slot already busy?
+  const busyNow=dayEvs.some(e=>e.start<=t&&e.end>t);
+  if(busyNow){
+    // Just open normal day modal
+    openDayModal(key);
+    return;
+  }
+  
+  const timeStr=timeToStr(t);
+  const untilStr=timeToStr(freeUntil);
+  
+  // Build all suggestions
+  const studySuggestions=[];
+  studyLists.forEach(sl=>{
+    sl.items.filter(it=>!it.done).forEach(it=>{
+      studySuggestions.push({label:sl.name+' — '+it.label,listIdx:studyLists.indexOf(sl),itemIdx:sl.items.indexOf(it),color:sl.color,type:'study'});
+    });
+  });
+  
+  const taskSuggestions=(tasks[key]||[]).filter(t2=>!t2.done).map(t2=>({
+    label:t2.label,id:t2.id,color:t2.color||'#10B981',type:'task'
+  }));
+  
+  const dreamSuggestions=[];
+  (dreamData.dreams||[]).forEach(d=>{
+    (d.cats||[]).forEach(cat=>{
+      (cat.items||[]).filter(it=>!it.doneToday).forEach(it=>{
+        dreamSuggestions.push({label:d.icon+' '+it.label+' ('+d.text+')',color:d.color||'#9B6AD4',type:'dream',dreamLabel:it.label});
+      });
+    });
+  });
+
+  // End time options
+  const endOptions=[];
+  for(let h=t+0.5;h<=freeUntil+0.01;h+=0.5){
+    endOptions.push(Math.round(h*2)/2);
+  }
+
+  const wrap=document.getElementById('modal-wrap');
+  let html='<div class="modal-bg" onclick="closeModal(event)">';
+  html+='<div class="modal" style="max-height:85vh;overflow-y:auto">';
+  html+='<button class="modal-close" onclick="closeModal()">×</button>';
+  html+='<div style="text-align:center;margin-bottom:14px">';
+  html+='<div style="font-size:24px">🕐</div>';
+  html+='<div style="font-size:16px;font-weight:700;margin-top:4px">'+timeStr+' 〜 '+untilStr+'</div>';
+  html+='<div style="font-size:12px;color:var(--mu);margin-top:2px">空き時間 約'+freeHours+'時間</div>';
+  html+='</div>';
+
+  // Tab switcher
+  html+='<div style="display:flex;gap:4px;margin-bottom:12px;background:var(--bg);border-radius:10px;padding:4px" id="free-tabs">';
+  html+='<button onclick="switchFreeTab(this.dataset.tab)" data-tab="study" id="ftab-study" style="flex:1;padding:7px;border-radius:8px;border:none;font-size:12px;cursor:pointer;background:var(--ac);color:white;font-weight:600">📚 学習</button>';
+  html+='<button onclick="switchFreeTab(this.dataset.tab)" data-tab="task" id="ftab-task" style="flex:1;padding:7px;border-radius:8px;border:none;font-size:12px;cursor:pointer;background:transparent;color:var(--mu)">📝 タスク</button>';
+  html+='<button onclick="switchFreeTab(this.dataset.tab)" data-tab="dream" id="ftab-dream" style="flex:1;padding:7px;border-radius:8px;border:none;font-size:12px;cursor:pointer;background:transparent;color:var(--mu)">🌟 夢</button>';
+  html+='</div>';
+
+  // Study tab
+  html+='<div id="free-tab-study" style="display:block">';
+  studySuggestions.forEach((s,i)=>{
+    html+='<button onclick="selectFreeItem(this)" data-label="'+s.label.replace(/"/g,'&quot;')+'" data-li="'+s.listIdx+'" data-ii="'+s.itemIdx+'" data-color="'+s.color+'" data-type="study" style="width:100%;padding:9px 12px;border-radius:10px;background:'+s.color+'18;border:1.5px solid var(--bd);text-align:left;font-size:13px;cursor:pointer;color:var(--tx);margin-bottom:6px;display:flex;align-items:center;gap:8px">'+
+      '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+s.color+';flex-shrink:0"></span>'+s.label+'</button>';
+  });
+  html+='<button onclick="selectFreeItem(this)" data-label="" data-li="-1" data-ii="-1" data-color="#888" data-type="custom" style="width:100%;padding:9px 12px;border-radius:10px;background:var(--sur);border:1.5px solid var(--bd);text-align:left;font-size:13px;cursor:pointer;color:var(--mu);margin-bottom:6px">✏️ 自由に入力...</button>';
+  html+='</div>';
+
+  // Task tab
+  html+='<div id="free-tab-task" style="display:none">';
+  if(taskSuggestions.length>0){
+    taskSuggestions.forEach((s,i)=>{
+      html+='<button onclick="selectFreeItem(this)" data-label="'+s.label.replace(/"/g,'&quot;')+'" data-li="-1" data-ii="-1" data-color="'+s.color+'" data-type="task" style="width:100%;padding:9px 12px;border-radius:10px;background:'+s.color+'18;border:1.5px solid var(--bd);text-align:left;font-size:13px;cursor:pointer;color:var(--tx);margin-bottom:6px;display:flex;align-items:center;gap:8px">'+
+        '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+s.color+';flex-shrink:0"></span>'+s.label+'</button>';
+    });
+  } else {
+    html+='<div style="padding:16px;text-align:center;color:var(--mu);font-size:13px">今日のタスクはありません</div>';
+  }
+  html+='<button onclick="selectFreeItem(this)" data-label="" data-li="-1" data-ii="-1" data-color="#888" data-type="custom" style="width:100%;padding:9px 12px;border-radius:10px;background:var(--sur);border:1.5px solid var(--bd);text-align:left;font-size:13px;cursor:pointer;color:var(--mu);margin-bottom:6px">✏️ 自由に入力...</button>';
+  html+='</div>';
+
+  // Dream tab
+  html+='<div id="free-tab-dream" style="display:none">';
+  if(dreamSuggestions.length>0){
+    dreamSuggestions.forEach((s,i)=>{
+      html+='<button onclick="selectFreeItem(this)" data-label="'+s.label.replace(/"/g,'&quot;')+'" data-li="-1" data-ii="-1" data-color="'+s.color+'" data-type="dream" style="width:100%;padding:9px 12px;border-radius:10px;background:'+s.color+'18;border:1.5px solid var(--bd);text-align:left;font-size:13px;cursor:pointer;color:var(--tx);margin-bottom:6px;display:flex;align-items:center;gap:8px">'+
+        '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+s.color+';flex-shrink:0"></span>'+s.label+'</button>';
+    });
+  } else {
+    html+='<div style="padding:16px;text-align:center;color:var(--mu);font-size:13px">夢のタスクがありません</div>';
+  }
+  html+='<button onclick="selectFreeItem(this)" data-label="" data-li="-1" data-ii="-1" data-color="#888" data-type="custom" style="width:100%;padding:9px 12px;border-radius:10px;background:var(--sur);border:1.5px solid var(--bd);text-align:left;font-size:13px;cursor:pointer;color:var(--mu);margin-bottom:6px">✏️ 自由に入力...</button>';
+  html+='</div>';
+
+  html+='<div id="custom-input-area" style="display:none;margin-bottom:12px">';
+  html+='<input id="free-study-label" placeholder="何をしますか？" oninput="checkSessionReady()" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg);box-sizing:border-box">';
+  html+='</div>';
+  
+  // End time selector
+  html+='<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:8px">⏰ 何時まで？</div>';
+  html+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px" id="end-time-opts">';
+  endOptions.forEach(h=>{
+    html+='<button onclick="selectEndTime('+h+')" id="et-'+h+'" style="padding:6px 12px;border-radius:20px;background:var(--sur);border:1.5px solid var(--bd);font-size:13px;cursor:pointer;color:var(--tx)">〜'+timeToStr(h)+'</button>';
+  });
+  html+='</div>';
+  
+  html+='<button onclick="startFreeTimeSession(this,'+t+')" id="session-start-btn" style="width:100%;padding:12px;border-radius:12px;background:var(--ac);color:white;border:none;font-size:15px;font-weight:700;cursor:pointer;opacity:0.5" disabled>🎯 タイマースタート</button>';
+  
+  html+='<div style="margin-top:10px;border-top:1px solid var(--bd);padding-top:10px">';
+  html+='<button onclick="openDayModal(this.dataset.key)\" data-key="'+key+'\" style="width:100%;padding:8px;background:none;border:none;color:var(--mu);font-size:12px;cursor:pointer">📝 通常のタスク追加はこちら</button>';
+  html+='</div>';
+  
+  html+='</div></div>';
+  wrap.innerHTML=html;
 }
 
-// Custom event templates (like MiniCal)
+let freeSessionLabel='';
+let freeSessionEndTime=null;
+let freeSessionStudyIdx={li:-1,ii:-1};
+
+function switchFreeTab(tabOrEl){
+  const tab=typeof tabOrEl==='string'?tabOrEl:tabOrEl.dataset?.tab||tabOrEl;
+  ['study','task','dream'].forEach(t2=>{
+    const panel=document.getElementById('free-tab-'+t2);
+    const btn=document.getElementById('ftab-'+t2);
+    if(panel)panel.style.display=t2===tab?'block':'none';
+    if(btn){btn.style.background=t2===tab?'var(--ac)':'transparent';btn.style.color=t2===tab?'white':'var(--mu)';}
+  });
+  // Reset selection
+  document.querySelectorAll('[id^=free-tab-] button').forEach(b=>{
+    const c=b.getAttribute('data-color')||'#888';
+    b.style.border='1.5px solid var(--bd)';
+    b.style.background=b.getAttribute('data-type')==='custom'?'var(--sur)':c+'18';
+  });
+  document.getElementById('custom-input-area').style.display='none';
+  freeSessionLabel='';freeSessionStudyIdx={li:-1,ii:-1};
+  checkSessionReady();
+}
+
+function selectFreeItem(btn){
+  // Deselect all in current tab
+  const tabPanels=btn.closest('[id^=free-tab-]');
+  if(tabPanels){
+    tabPanels.querySelectorAll('button').forEach(b=>{
+      const c=b.getAttribute('data-color')||'#888';
+      b.style.border='1.5px solid var(--bd)';
+      b.style.background=b.getAttribute('data-type')==='custom'?'var(--sur)':c+'18';
+    });
+  }
+  btn.style.border='1.5px solid var(--ac)';
+  btn.style.background=(btn.getAttribute('data-color')||'#2D6A8F')+'33';
+  
+  const type=btn.getAttribute('data-type');
+  const customArea=document.getElementById('custom-input-area');
+  if(type==='custom'){
+    customArea.style.display='block';
+    freeSessionLabel='';
+    freeSessionStudyIdx={li:-1,ii:-1};
+    setTimeout(()=>document.getElementById('free-study-label')?.focus(),100);
+  } else {
+    customArea.style.display='none';
+    freeSessionLabel=btn.getAttribute('data-label');
+    freeSessionStudyIdx={
+      li:parseInt(btn.getAttribute('data-li')),
+      ii:parseInt(btn.getAttribute('data-ii'))
+    };
+  }
+  checkSessionReady();
+}
+
+function selectStudySession(i){} // legacy stub
+
+function selectEndTime(h){
+  freeSessionEndTime=h;
+  document.querySelectorAll('[id^=et-]').forEach(b=>{
+    b.style.background='var(--sur)';
+    b.style.border='1.5px solid var(--bd)';
+    b.style.color='var(--tx)';
+  });
+  const btn=document.getElementById('et-'+h);
+  if(btn){
+    btn.style.background='var(--ac)';
+    btn.style.border='1.5px solid var(--ac)';
+    btn.style.color='white';
+  }
+  checkSessionReady();
+}
+
+function checkSessionReady(){
+  const label=freeSessionLabel||(document.getElementById('free-study-label')?.value.trim()||'');
+  const ready=label&&freeSessionEndTime;
+  const btn=document.getElementById('session-start-btn');
+  if(btn){btn.disabled=!ready;btn.style.opacity=ready?'1':'0.5';}
+}
+
+function startFreeTimeSession(elOrKey,startT){
+  const key=typeof elOrKey==='object'?elOrKey.getAttribute('data-key'):elOrKey;
+  const customInp=document.getElementById('free-study-label');
+  const label=freeSessionLabel||(customInp?.value.trim()||'勉強');
+  if(!label||!freeSessionEndTime)return;
+  
+  const durationMins=Math.round((freeSessionEndTime-startT)*60);
+  
+  closeModal();
+  
+  // Add to study timer
+  if(freeSessionStudyIdx.li>=0){
+    timerActiveItem={
+      listIdx:freeSessionStudyIdx.li,
+      itemIdx:freeSessionStudyIdx.ii,
+      isBreak:false,pomoCycle:1,breakMins:5,
+      studyStartTime:new Date(),
+      studyLabel:label,
+      studyMins:durationMins
+    };
+  } else {
+    timerActiveItem={
+      listIdx:null,itemIdx:null,isBreak:false,pomoCycle:1,breakMins:5,
+      studyStartTime:new Date(),
+      studyLabel:label,studyMins:durationMins
+    };
+  }
+  
+  timerRunning=true;
+  timerPaused=false;
+  timerSeconds=0;
+  timerTotal=durationMins*60;
+  timerInterval=setInterval(timerTick,1000);
+  showOverlay('📚 '+label);
+  
+  // Also add task to day
+  const startStr=timeToStr(startT);
+  const endStr=timeToStr(freeSessionEndTime);
+  if(!tasks[key])tasks[key]=[];
+  tasks[key].push({id:'ft'+Date.now(),label,done:false,startTime:startStr,endTime:endStr,color:'#3A5FA0'});
+  save();
+  if(tab==='week')renderWeek();
+  
+  toast('🎯 '+label+' '+startStr+'〜'+endStr+' スタート！');
+  freeSessionLabel='';freeSessionEndTime=null;freeSessionStudyIdx={li:-1,ii:-1};
+}
+
+
+// Custom calendar events and templates
 let eventTemplates=JSON.parse(localStorage.getItem('yp_ev_templates')||'null')||[
   {id:'et1',name:'授業',color:'#2D6A8F'},
   {id:'et2',name:'病院・健康',color:'#10B981'},
@@ -659,6 +902,8 @@ function getMemoPages(){
     {id:'p2',title:'📋 SSN申請メモ',content:'日時: 9月2日（水）1:30pm\n場所: 300 Ala Moana Blvd, Room 1-114\n\n持参するもの:\n・パスポート\n・I-20\n・I-94（印刷）\n・GAオファーレター\n・ISS Certification Letter\n・EIN: 99-6000354'},
     {id:'p3',title:'📝 フリーメモ',content:''},
     {id:'p4',title:'📅 年間スケジュール 2026-2027',content:'_YEARLY_CALENDAR_'},
+    {id:'p5',title:'✅ やることリスト',content:'_TODO_LIST_'},
+    {id:'p6',title:'🛒 ショッピングリスト',content:'_SHOPPING_LIST_'},
   ];
 }
 
@@ -675,6 +920,30 @@ function renderMemo(){
   if(memoOpenIndex!==null&&pages[memoOpenIndex]){
     const p=pages[memoOpenIndex];
     const i=memoOpenIndex;
+    // Special: todo list
+    if(p.content==='_TODO_LIST_'){
+      const html2=`<div style="padding-top:8px"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <button onclick="memoOpenIndex=null;renderMemo()" style="padding:6px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">← 戻る</button>
+        <span style="font-size:16px;font-weight:700">✅ やることリスト</span>
+      </div>
+      ${renderTodoList()}`;
+      document.getElementById('view-memo').innerHTML=html2;
+      return;
+    }
+
+    // Special: shopping list
+    if(p.content==='_SHOPPING_LIST_'){
+      const html2=`<div style="padding-top:8px"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <button onclick="memoOpenIndex=null;renderMemo()" style="padding:6px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">← 戻る</button>
+        <span style="font-size:16px;font-weight:700">🛒 ショッピングリスト</span>
+      </div>
+      ${renderShoppingList()}`;
+      document.getElementById('view-memo').innerHTML=html2;
+      return;
+    }
+
     // Special: yearly calendar
     if(p.content==='_YEARLY_CALENDAR_'){
       const html=`<div style="padding-top:8px"></div>
@@ -811,6 +1080,190 @@ function renderYearlyCalendar(){
 
 function saveMemo(id,val){}
 
+// ===== やることリスト =====
+let todoLists=JSON.parse(localStorage.getItem('yp_todos')||'null')||{
+  today:[],
+  week:[],
+  month:[],
+  dream:[]
+};
+
+function saveTodos(){
+  localStorage.setItem('yp_todos',JSON.stringify(todoLists));
+}
+
+function renderTodoList(){
+  const cats=[
+    {key:'today',label:'📅 今日',color:'#E8856A'},
+    {key:'week',label:'📆 今週',color:'#2D6A8F'},
+    {key:'month',label:'🗓️ 今月',color:'#9B6AD4'},
+    {key:'dream',label:'🌟 夢への一歩',color:'#5A8A6A'},
+  ];
+  
+  let html='';
+  cats.forEach(cat=>{
+    const items=todoLists[cat.key]||[];
+    const done=items.filter(t=>t.done).length;
+    html+=`<div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:14px;font-weight:700;color:${cat.color}">${cat.label}</span>
+        <span style="font-size:11px;color:var(--mu)">${done}/${items.length}</span>
+        <div style="flex:1;height:4px;background:var(--bd);border-radius:2px;margin:0 4px">
+          <div style="width:${items.length>0?Math.round(done/items.length*100):0}%;height:100%;background:${cat.color};border-radius:2px;transition:width .3s"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:4px">`;
+    
+    // Show mandala cats as suggestions for dream
+    if(cat.key==='dream'){
+      const dreamSuggestions=[];
+      (dreamData.dreams||[]).forEach(d=>{
+        (d.cats||[]).forEach(c=>{
+          (c.items||[]).filter(it=>!it.doneToday).forEach(it=>{
+            dreamSuggestions.push({label:d.icon+' '+it.label,dreamId:d.id});
+          });
+        });
+      });
+      if(dreamSuggestions.length>0&&items.length===0){
+        html+=`<div style="padding:8px 12px;font-size:11px;color:var(--mu)">曼陀羅チャートから追加できます：</div>`;
+        dreamSuggestions.slice(0,4).forEach((s,si)=>{
+          html+=`<div style="display:flex;align-items:center;padding:6px 12px;border-bottom:1px solid var(--bd)">
+            <span style="flex:1;font-size:12px;color:var(--mu)">${s.label}</span>
+            <button onclick="addTodoFromDream('${cat.key}','${s.label.replace(/'/g,"\'")}')" style="font-size:10px;padding:2px 8px;border-radius:6px;background:${cat.color}22;border:1px solid ${cat.color};color:${cat.color};cursor:pointer">追加</button>
+          </div>`;
+        });
+      }
+    }
+    
+    items.forEach((t,ti)=>{
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bd);${t.done?'opacity:0.5':''}">
+        <button onclick="toggleTodo('${cat.key}',${ti})" style="width:20px;height:20px;border-radius:50%;border:2px solid ${t.done?cat.color:'var(--bd)'};background:${t.done?cat.color:'none'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+          ${t.done?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}
+        </button>
+        <span style="flex:1;font-size:13px;${t.done?'text-decoration:line-through':''}">${t.label}</span>
+        ${t.movedFrom?`<span style="font-size:9px;padding:1px 5px;border-radius:8px;background:${cat.color}22;color:${cat.color}">${t.movedFrom}</span>`:''}
+        <div style="display:flex;gap:4px">
+          ${cat.key!=='today'?`<button onclick="moveTodo('${cat.key}',${ti},'today')" title="今日に移動" style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--bg);border:1px solid var(--bd);cursor:pointer;color:var(--ac)">→今日</button>`:''}
+          <button onclick="deleteTodo('${cat.key}',${ti})" style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--bg);border:1px solid var(--bd);cursor:pointer;color:#DC2626">×</button>
+        </div>
+      </div>`;
+    });
+    
+    if(items.filter(t=>!t.done).length===0&&items.length>0){
+      html+=`<div style="padding:8px 12px;font-size:12px;color:#10B981;text-align:center">🎉 全部完了！</div>`;
+    }
+    
+    html+=`<div style="padding:8px 12px;display:flex;gap:6px;border-top:1px solid var(--bd)">
+      <input id="todo-inp-${cat.key}" placeholder="${cat.label}に追加..." style="flex:1;padding:6px 8px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter')addTodo('${cat.key}')">
+      <button onclick="addTodo('${cat.key}')" class="abtn" style="padding:6px 10px;font-size:12px">追加</button>
+    </div>`;
+    html+=`</div></div>`;
+  });
+  return html;
+}
+
+function addTodo(cat){
+  const inp=document.getElementById('todo-inp-'+cat);
+  if(!inp||!inp.value.trim())return;
+  if(!todoLists[cat])todoLists[cat]=[];
+  todoLists[cat].push({id:'td'+Date.now(),label:inp.value.trim(),done:false});
+  saveTodos();
+  memoOpenIndex=memoOpenIndex; // keep open
+  renderMemo();
+}
+
+function addTodoFromDream(cat,label){
+  if(!todoLists[cat])todoLists[cat]=[];
+  todoLists[cat].push({id:'td'+Date.now(),label,done:false,movedFrom:'夢'});
+  saveTodos();
+  renderMemo();
+}
+
+function toggleTodo(cat,idx){
+  if(!todoLists[cat])return;
+  todoLists[cat][idx].done=!todoLists[cat][idx].done;
+  saveTodos();
+  renderMemo();
+}
+
+function deleteTodo(cat,idx){
+  if(!todoLists[cat])return;
+  todoLists[cat].splice(idx,1);
+  saveTodos();
+  renderMemo();
+}
+
+function moveTodo(fromCat,idx,toCat){
+  if(!todoLists[fromCat])return;
+  const [item]=todoLists[fromCat].splice(idx,1);
+  item.movedFrom=fromCat==='week'?'今週':fromCat==='month'?'今月':'夢';
+  item.done=false;
+  if(!todoLists[toCat])todoLists[toCat]=[];
+  todoLists[toCat].push(item);
+  saveTodos();
+  renderMemo();
+}
+
+// ===== ショッピングリスト =====
+let shoppingItems=JSON.parse(localStorage.getItem('yp_shopping')||'[]');
+
+function saveShop(){
+  localStorage.setItem('yp_shopping',JSON.stringify(shoppingItems));
+}
+
+function renderShoppingList(){
+  const pending=shoppingItems.filter(s=>!s.done);
+  const done=shoppingItems.filter(s=>s.done);
+  let html=`<div class="card">`;
+  if(pending.length===0&&done.length===0){
+    html+=`<div style="padding:16px;text-align:center;color:var(--mu);font-size:13px">リストは空です</div>`;
+  }
+  pending.forEach((s,i)=>{
+    html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--bd)">
+      <button onclick="toggleShop(${shoppingItems.indexOf(s)})" style="width:22px;height:22px;border-radius:4px;border:2px solid var(--bd);background:none;cursor:pointer;flex-shrink:0"></button>
+      <span style="flex:1;font-size:14px">${s.label}</span>
+      <button onclick="deleteShop(${shoppingItems.indexOf(s)})" style="color:var(--mu);background:none;border:none;font-size:16px;cursor:pointer">×</button>
+    </div>`;
+  });
+  if(done.length>0){
+    html+=`<div style="padding:6px 12px;font-size:11px;color:var(--mu);border-top:1px solid var(--bd)">購入済み</div>`;
+    done.forEach((s,i)=>{
+      html+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--bd);opacity:0.5">
+        <button onclick="toggleShop(${shoppingItems.indexOf(s)})" style="width:22px;height:22px;border-radius:4px;border:2px solid #10B981;background:#10B981;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+        <span style="flex:1;font-size:14px;text-decoration:line-through">${s.label}</span>
+        <button onclick="deleteShop(${shoppingItems.indexOf(s)})" style="color:var(--mu);background:none;border:none;font-size:16px;cursor:pointer">×</button>
+      </div>`;
+    });
+    html+=`<button onclick="clearDoneShop()" style="width:100%;padding:8px;background:none;border:none;color:var(--mu);font-size:12px;cursor:pointer;border-top:1px solid var(--bd)">購入済みをクリア</button>`;
+  }
+  html+=`<div style="padding:8px 12px;display:flex;gap:6px">
+    <input id="shop-inp" placeholder="アイテムを追加..." style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter')addShop()">
+    <button onclick="addShop()" class="abtn">追加</button>
+  </div></div>`;
+  return html;
+}
+
+function addShop(){
+  const inp=document.getElementById('shop-inp');
+  if(!inp||!inp.value.trim())return;
+  shoppingItems.unshift({id:'s'+Date.now(),label:inp.value.trim(),done:false});
+  saveShop();renderMemo();
+}
+function toggleShop(i){
+  shoppingItems[i].done=!shoppingItems[i].done;
+  saveShop();renderMemo();
+}
+function deleteShop(i){
+  shoppingItems.splice(i,1);
+  saveShop();renderMemo();
+}
+function clearDoneShop(){
+  shoppingItems=shoppingItems.filter(s=>!s.done);
+  saveShop();renderMemo();
+}
+
 let schNotes=JSON.parse(localStorage.getItem('yp_sch_notes')||'{}');
 function openSchItemModal(eid,key){
   const e=schedule.find(s=>s.id===eid);
@@ -908,14 +1361,6 @@ function saveHabitNote(hid){
   closeModal();
 }
 
-function moveHabit(i,dir){
-  const j=i+dir;
-  if(j<0||j>=habits.length)return;
-  [habits[i],habits[j]]=[habits[j],habits[i]];
-  save();
-  render();
-}
-
 function buildHabitTimerBtn(hb,key){
   return '<button style="padding:5px 10px;border-radius:8px;background:'+hb.color+'22;border:1px solid '+hb.color+';color:'+hb.color+';font-size:11px;cursor:pointer;margin-right:6px" onclick="startHabitTimer(\''+hb.id+'\',\''+key+'\','+hb.timerMins+')">▶'+hb.timerMins+'分</button>';
 }
@@ -972,6 +1417,62 @@ function addUrgentTask(key){
   render();
 }
 
+// ===== 集中モード =====
+let focusInterval=null;
+let focusSeconds=0;
+let focusTotal=25*60;
+let focusPaused=false;
+let focusKey=null;
+
+function startFocusMode(key){
+  focusKey=key;
+  const urgentTasks=(tasks[key]||[]).filter(t=>t.urgent&&!t.done);
+  const label=urgentTasks.length>0?urgentTasks[0].label:'集中モード';
+  
+  // Ask duration
+  const mins=parseInt(prompt('集中時間（分）:', '25'))||25;
+  focusTotal=mins*60;
+  focusSeconds=0;
+  focusPaused=false;
+  
+  document.getElementById('focus-label').textContent=label;
+  document.getElementById('focus-overlay').style.display='flex';
+  updateFocusDisplay();
+  
+  focusInterval=setInterval(()=>{
+    if(focusPaused)return;
+    focusSeconds++;
+    updateFocusDisplay();
+    if(focusSeconds>=focusTotal){
+      clearInterval(focusInterval);
+      exitFocusMode();
+      playTimerEnd();
+      toast('🎯 集中セッション完了！お疲れ様でした！');
+    }
+  },1000);
+}
+
+function updateFocusDisplay(){
+  const remaining=focusTotal-focusSeconds;
+  const m=Math.floor(remaining/60);
+  const s=remaining%60;
+  const el=document.getElementById('focus-timer-display');
+  if(el)el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+
+function toggleFocusPause(){
+  focusPaused=!focusPaused;
+  const btn=document.getElementById('focus-pause-btn');
+  if(btn)btn.textContent=focusPaused?'▶ 再開':'⏸ 一時停止';
+}
+
+function exitFocusMode(){
+  clearInterval(focusInterval);
+  focusInterval=null;
+  document.getElementById('focus-overlay').style.display='none';
+  render();
+}
+
 function toggleUrgent(key,id){
   const t=(tasks[key]||[]).find(x=>x.id===id);
   if(t){t.urgent=!t.urgent;save();render();}
@@ -1012,7 +1513,7 @@ function renderToday(){
     <div class="dtitle">${isT?'今日':DFJ[dow]}<span class="dsub"> — ${d.getMonth()+1}月${d.getDate()}日</span></div>
     <button onclick="dayOff++;render()">›</button>
   </div>
-  <div class="sec"><span>⚡ 今やるべきこと</span><span class="sec-edit" onclick="openUrgentEdit('${key}')">編集</span></div>
+  <div class="sec"><span>⚡ 今やるべきこと</span><span class="sec-edit" onclick="openUrgentEdit('${key}')">編集</span><span class="sec-edit" onclick="startFocusMode('${key}')" style="margin-left:8px;color:#9B6AD4">🎯 集中</span></div>
   <div class="card" style="margin-bottom:8px">`;
   {
     const now=new Date();
@@ -1118,6 +1619,10 @@ function renderToday(){
       h+=`<div class="tlr"><div class="tt">${half===0?hr+':00':''}</div><div class="tc${isHourBorder?' hb':''}">`;
       evs.forEach(e=>{
         const isStart=e.start>=t&&e.start<slotEnd;
+        // Study blocks at this slot
+        (studyBlocks[key]||[]).filter(sb=>sb.startH>=t&&sb.startH<slotEnd).forEach(sb=>{
+          h+=`<div style="background:#EBF3F8;border-left:2px solid #3A5FA0;color:#2D6A8F;font-size:10px;padding:2px 6px;border-radius:4px;margin-bottom:2px">📚 ${sb.label} <span style="font-size:9px;opacity:0.7">${timeToStr(sb.startH)}〜${timeToStr(sb.endH)}</span></div>`;
+        });
         if(isStart){
           h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color};cursor:pointer" onclick="openSchItemModal('${e.id}','${key}')">
             <span style="font-size:10px;opacity:.7">${timeToStr(e.start)}〜${timeToStr(e.end)}</span> ${e.label}
@@ -1243,7 +1748,17 @@ function renderHabits(){
 function renderWeek(){
   const dates=getWk(),today=dk(new Date());
   // Build as single grid - header + all time rows share same column definition
+  const wkDates=dates;
+  const wkStart=wkDates[0];
+  const wkEnd=wkDates[6];
+  const wkLabel=`${wkStart.getMonth()+1}/${wkStart.getDate()} 〜 ${wkEnd.getMonth()+1}/${wkEnd.getDate()}`;
   let h=`<div style="padding-top:8px"></div>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+    <button onclick="weekOff--;render()" style="width:32px;height:32px;border-radius:50%;background:var(--sur);border:1px solid var(--bd);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">‹</button>
+    <div style="flex:1;text-align:center;font-size:13px;font-weight:600;color:var(--tx)">${wkLabel}</div>
+    <button onclick="weekOff++;render()" style="width:32px;height:32px;border-radius:50%;background:var(--sur);border:1px solid var(--bd);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">›</button>
+    ${weekOff!==0?`<button onclick="weekOff=0;render()" style="padding:4px 8px;border-radius:8px;background:var(--ac);color:white;border:none;font-size:11px;cursor:pointer">今週</button>`:''}
+  </div>
   <div class="sec"><span>週間スケジュール</span><span class="sec-edit" onclick="openSchEdit()">スケジュール編集</span><span class="sec-edit" onclick="openWeekMemo()" style="margin-left:8px">📝</span></div>
   <div class="card" style="padding:0;overflow:hidden">
   <div style="display:grid;grid-template-columns:36px repeat(7,1fr);overflow-x:auto">`;
@@ -1270,19 +1785,59 @@ function renderWeek(){
       dates.forEach(d=>{
         const dow=d.getDay(),k=dk(d);
         const evs=schedule.filter(e=>e.days.includes(dow)&&e.start<slotEnd&&e.end>t);
-        const dayT=(tasks[k]||[]).filter(x=>!x.done&&x.startTime&&strToTime(x.startTime)>=t&&strToTime(x.startTime)<slotEnd);
-        h+=`<div onclick="openTimeSlot('${k}',${t})" style="cursor:pointer;padding:1px;min-height:28px;border-top:${borderStyle};border-left:1px solid #F3F0EB">`;
+        // Tasks starting in this slot
+        const tasksStart=(tasks[k]||[]).filter(x=>!x.done&&x.startTime&&strToTime(x.startTime)>=t&&strToTime(x.startTime)<slotEnd);
+        // Tasks spanning this slot (start before, end after)
+        const tasksSpan=(tasks[k]||[]).filter(x=>!x.done&&x.startTime&&x.endTime&&strToTime(x.startTime)<t&&strToTime(x.endTime)>t);
+        
+        // Calculate height for tasks with duration
+        const slotH=28; // px per 30min slot
+        
+        h+=`<div onclick="openTimeSlot('${k}',${t})" style="cursor:pointer;padding:1px;min-height:${slotH}px;border-top:${borderStyle};border-left:1px solid #F3F0EB;position:relative">`;
+        
         evs.forEach(e=>{
           const isStart=e.start>=t&&e.start<slotEnd;
           if(isStart){
-            h+=`<div class="wgev" onclick="event.stopPropagation();openSchItemModal('${e.id}','${k}')" style="background:${e.bg};border-left:2px solid ${e.color};color:${e.color};font-size:9px;padding:2px 3px;border-radius:3px;margin:1px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer">${timeToStr(e.start)} ${e.label}</div>`;
+            const dur=e.end-e.start; // in hours
+            const heightPx=Math.max(dur*slotH*2,24); // 2 slots per hour
+            h+=`<div class="wgev" onclick="event.stopPropagation();openSchItemModal('${e.id}','${k}')" style="background:${e.bg};border-left:2px solid ${e.color};color:${e.color};font-size:9px;padding:2px 3px;border-radius:3px;margin:1px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;height:${heightPx}px;position:relative;z-index:2">${timeToStr(e.start)} ${e.label}</div>`;
           } else if(e.start<t&&e.end>t){
-            h+=`<div style="background:${e.bg};border-left:2px solid ${e.color};height:100%;min-height:26px;opacity:0.4;border-radius:2px;margin:1px 0"></div>`;
+            h+=`<div style="background:${e.bg};border-left:2px solid ${e.color};height:${slotH-2}px;opacity:0.3;border-radius:2px;margin:1px 0"></div>`;
           }
         });
-        dayT.forEach(tk=>{
-          h+=`<div style="background:#F0FDF4;border-left:2px solid #10B981;font-size:9px;padding:2px 3px;border-radius:3px;margin:1px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#065F46">📝${tk.label}</div>`;
+        
+        // Tasks starting here - show with full height if end time given
+        tasksStart.forEach(tk=>{
+          const taskColor=tk.color||'#10B981';
+          const taskBg=tk.color?(tk.color+'18'):'#F0FDF4';
+          const taskText=tk.color||'#065F46';
+          if(tk.endTime){
+            const dur=strToTime(tk.endTime)-strToTime(tk.startTime);
+            const heightPx=Math.max(Math.round(dur*slotH*2),24);
+            h+=`<div onclick="event.stopPropagation();openDayModal('${k}')" style="background:${taskBg};border-left:3px solid ${taskColor};font-size:9px;padding:3px 4px;border-radius:3px;margin:1px 0;color:${taskText};cursor:pointer;height:${heightPx}px;overflow:hidden;position:relative;z-index:2">
+              <div style="font-weight:600">📝 ${tk.label}</div>
+              <div style="opacity:0.7">${tk.startTime}〜${tk.endTime}</div>
+            </div>`;
+          } else {
+            // No end time - small indicator
+            h+=`<div onclick="event.stopPropagation();openDayModal('${k}')" style="background:${taskBg};border-left:3px solid ${taskColor};font-size:9px;padding:2px 4px;border-radius:3px;margin:1px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:${taskText};cursor:pointer">📝 ${tk.label}</div>`;
+          }
         });
+        
+        // Tasks spanning this slot (continuation)
+        tasksSpan.forEach(tk=>{
+          const taskColor=tk.color||'#10B981';
+          const taskBg=tk.color?(tk.color+'10'):'#F0FDF422';
+          h+=`<div style="background:${taskBg};border-left:3px solid ${taskColor};height:${slotH-2}px;opacity:0.4;border-radius:2px;margin:1px 0"></div>`;
+        });
+        
+        // Study blocks
+        (studyBlocks[k]||[]).filter(sb=>sb.startH>=t&&sb.startH<slotEnd).forEach(sb=>{
+          const dur=sb.endH-sb.startH;
+          const heightPx=Math.max(Math.round(dur*slotH*2),20);
+          h+=`<div style="background:#EBF3F8;border-left:2px solid #3A5FA0;color:#2D6A8F;font-size:8px;padding:2px 3px;border-radius:2px;margin:1px 0;overflow:hidden;height:${heightPx}px;position:relative;z-index:2">📚 ${sb.label}<span style="opacity:0.7;float:right">${timeToStr(sb.startH)}</span></div>`;
+        });
+        
         h+=`</div>`;
       });
     }
@@ -1345,11 +1900,16 @@ function renderSettings(){
   let h='<div style="padding-top:8px"></div><div class="sec">習慣をカスタマイズ</div><div class="card">';
   habits.forEach((hb,i)=>{
     const modeLabel=hb.timerMins?('⏱ '+hb.timerMins+'分タイマー'):'✅ チェック';
-    h+=`<div class="set-row" id="set-hrow-${i}">
-      <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
-        <button onclick="moveHabit(${i},-1)" style="width:24px;height:18px;border-radius:4px;background:var(--sur);border:1px solid var(--bd);cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center" ${i===0?'disabled':''}>▲</button>
-        <button onclick="moveHabit(${i},1)" style="width:24px;height:18px;border-radius:4px;background:var(--sur);border:1px solid var(--bd);cursor:pointer;font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center" ${i===habits.length-1?'disabled':''}>▼</button>
-      </div>
+    h+=`<div class="set-row" id="set-hrow-${i}" data-idx="${i}"
+      draggable="true"
+      ondragstart="setHabitDragStart(event,${i})"
+      ondragover="setHabitDragOver(event,${i})"
+      ondrop="setHabitDrop(event,${i})"
+      ondragend="setHabitDragEnd()">
+      <div style="color:var(--mu);font-size:20px;cursor:grab;padding:0 8px 0 4px;flex-shrink:0;-webkit-user-select:none;user-select:none;touch-action:none"
+        ontouchstart="touchSortStart(event,${i})"
+        ontouchmove="touchSortMove(event)"
+        ontouchend="touchSortEnd(event)">⠿</div>
       <div class="hic" style="background:${hb.color}22">${hb.icon}</div>
       <div class="sri">
         <input value="${hb.name}" onchange="habits[${i}].name=this.value;save()" placeholder="習慣名">
@@ -1542,6 +2102,7 @@ let studyLists=JSON.parse(localStorage.getItem('yp_study_lists')||'null')||[
 ];
 
 let studyLog=JSON.parse(localStorage.getItem('yp_study_log')||'{}');
+let studyBlocks=JSON.parse(localStorage.getItem('yp_study_blocks')||'{}');
 let timerInterval=null;
 let timerSeconds=0;
 let timerTotal=25*60;
@@ -2232,32 +2793,83 @@ function checkWeeklyReset(){
 function saveStudy(){
   localStorage.setItem('yp_study_lists',JSON.stringify(studyLists));
   localStorage.setItem('yp_study_log',JSON.stringify(studyLog));
+  localStorage.setItem('yp_study_blocks',JSON.stringify(studyBlocks));
   const el=document.getElementById('si');
   if(el){el.style.opacity='1';setTimeout(()=>el.style.opacity='0',2000);}
 }
 
 let habitDragIdx=null;
 let setHabitDragIdx=null;
+let touchSortIdx=null;
+let touchSortEl=null;
+let touchSortClone=null;
 
-function setHabitDragStart(i){
+function setHabitDragStart(e,i){
   setHabitDragIdx=i;
+  e.dataTransfer.effectAllowed='move';
 }
 function setHabitDragOver(e,i){
   e.preventDefault();
-  document.querySelectorAll('[id^=set-hrow-]').forEach(r=>r.style.background='');
+  e.dataTransfer.dropEffect='move';
+  document.querySelectorAll('[id^=set-hrow-]').forEach(r=>r.style.outline='');
   const el=document.getElementById('set-hrow-'+i);
-  if(el)el.style.background='var(--bg)';
+  if(el)el.style.outline='2px solid var(--ac)';
 }
-function setHabitDrop(i){
+function setHabitDrop(e,i){
+  e.preventDefault();
   if(setHabitDragIdx===null||setHabitDragIdx===i)return;
   const [moved]=habits.splice(setHabitDragIdx,1);
   habits.splice(i,0,moved);
-  save();
-  render();
+  save();render();
 }
 function setHabitDragEnd(){
   setHabitDragIdx=null;
-  document.querySelectorAll('[id^=set-hrow-]').forEach(r=>r.style.background='');
+  document.querySelectorAll('[id^=set-hrow-]').forEach(r=>r.style.outline='');
+}
+
+function touchSortStart(e,i){
+  e.stopPropagation();
+  touchSortIdx=i;
+  touchSortEl=document.getElementById('set-hrow-'+i);
+  if(touchSortEl){
+    touchSortEl.style.opacity='0.5';
+    touchSortEl.style.outline='2px solid var(--ac)';
+  }
+}
+function touchSortMove(e){
+  if(touchSortIdx===null)return;
+  e.preventDefault();
+  const touch=e.touches[0];
+  document.querySelectorAll('[id^=set-hrow-]').forEach(el=>{
+    const rect=el.getBoundingClientRect();
+    const idx=parseInt(el.getAttribute('data-idx'));
+    if(touch.clientY>=rect.top&&touch.clientY<=rect.bottom&&idx!==touchSortIdx){
+      document.querySelectorAll('[id^=set-hrow-]').forEach(r=>{
+        if(r!==touchSortEl)r.style.outline='';
+      });
+      el.style.outline='2px solid var(--ac)';
+    }
+  });
+}
+function touchSortEnd(e){
+  if(touchSortIdx===null)return;
+  const touch=e.changedTouches[0];
+  let dropIdx=null;
+  document.querySelectorAll('[id^=set-hrow-]').forEach(el=>{
+    const rect=el.getBoundingClientRect();
+    const idx=parseInt(el.getAttribute('data-idx'));
+    if(touch.clientY>=rect.top&&touch.clientY<=rect.bottom&&idx!==touchSortIdx){
+      dropIdx=idx;
+    }
+    el.style.outline='';
+    el.style.opacity='';
+  });
+  if(dropIdx!==null){
+    const [moved]=habits.splice(touchSortIdx,1);
+    habits.splice(dropIdx,0,moved);
+    save();render();
+  }
+  touchSortIdx=null;touchSortEl=null;
 }
 function habitDragStart(i){habitDragIdx=i;}
 function habitDragOver(e,i){e.preventDefault();document.querySelectorAll('.hrow').forEach(r=>r.style.background='');const el=document.getElementById('hrow-'+i);if(el)el.style.background='var(--bg)';}
@@ -2342,23 +2954,63 @@ function timerTick(){
   updateTimerDisplay();
   updateOverlay();
   if(timerSeconds>=timerTotal){
-    stopTimerOverlay();
-    playTimerEnd();toast('⏰ お疲れ様でした！');
-    if(timerActiveItem){
-      studyLists[timerActiveItem.listIdx].items[timerActiveItem.itemIdx].done=true;
+    playTimerEnd();
+    const wasBreak=timerActiveItem&&timerActiveItem.isBreak;
+    const cycle=(timerActiveItem&&timerActiveItem.pomoCycle)||1;
+    if(wasBreak){
+      // Break finished → start next focus session
+      stopTimer();
+      toast('☕ 休憩終了！次のセッションを始めましょう');
+      renderStudy();
+    } else if(timerActiveItem&&timerActiveItem.listIdx!==undefined){
+      // Focus finished → ask if done, offer break
+      stopTimer();
+      const li=timerActiveItem.listIdx;
+      const ii=timerActiveItem.itemIdx;
+      const item=studyLists[li]?.items[ii];
+      const focusMins=Math.round(timerTotal/60);
+      const breakMins=parseInt(document.getElementById('break-mins')?.value||'5');
+      if(item){
+        setTimeout(()=>{
+          const wrap=document.getElementById('modal-wrap');
+          wrap.innerHTML='<div class="modal-bg"><div class="modal" style="text-align:center">'+
+            '<div style="font-size:36px;margin-bottom:8px">⏰</div>'+
+            '<div style="font-size:15px;font-weight:700;margin-bottom:6px">'+item.label+'</div>'+
+            '<div style="font-size:12px;color:var(--mu);margin-bottom:16px">セッション #'+cycle+' 完了！</div>'+
+            '<div style="display:flex;flex-direction:column;gap:8px">'+
+            '<button onclick="studyLists['+li+'].items['+ii+'].done=true;saveStudy();closeModal();renderStudy()" style="padding:10px;border-radius:10px;background:#10B981;color:white;border:none;font-size:14px;cursor:pointer;font-weight:600">✅ 完了してやめる</button>'+
+            '<button onclick="closeModal();startPomoBreak('+li+','+ii+','+cycle+','+focusMins+','+breakMins+')" style="padding:10px;border-radius:10px;background:#2D6A8F;color:white;border:none;font-size:14px;cursor:pointer">☕ '+breakMins+'分休憩してから続ける</button>'+
+            '<button onclick="closeModal();startTimer('+li+','+ii+')" style="padding:10px;border-radius:10px;background:var(--sur);border:1px solid var(--bd);font-size:14px;cursor:pointer">▶ 休憩なしで続ける</button>'+
+            '</div></div></div>';
+        },300);
+      }
       saveStudy();
       renderStudy();
     }
   }
 }
 
-function startTimer(listIdx,itemIdx){
-  if(timerRunning)stopTimer();
-  timerActiveItem={listIdx,itemIdx};
+function startPomoBreak(li,ii,cycle,focusMins,breakMins){
+  timerActiveItem={listIdx:li,itemIdx:ii,isBreak:true,pomoCycle:cycle+1,focusMins,breakMins};
   timerRunning=true;
   timerPaused=false;
   timerSeconds=0;
+  timerTotal=breakMins*60;
+  timerInterval=setInterval(timerTick,1000);
+  showOverlay('☕ 休憩中... #'+cycle);
+  renderStudy();
+}
+
+function startTimer(listIdx,itemIdx){
+  if(timerRunning)stopTimer();
+  const breakMins=parseInt(document.getElementById('break-mins')?.value||'5');
   const customMins=parseInt(document.getElementById('timer-mins')?.value||'25');
+  const studyStartTime=new Date();
+  const studyLabel=studyLists[listIdx]?.name+' - '+(studyLists[listIdx]?.items[itemIdx]?.label||'');
+  timerActiveItem={listIdx,itemIdx,isBreak:false,pomoCycle:1,breakMins,studyStartTime,studyLabel,studyMins:customMins};
+  timerRunning=true;
+  timerPaused=false;
+  timerSeconds=0;
   timerTotal=customMins*60;
   timerInterval=setInterval(timerTick,1000);
   const label=studyLists[listIdx]?.items[itemIdx]?.label||'集中中';
@@ -2368,11 +3020,27 @@ function startTimer(listIdx,itemIdx){
 
 function stopTimer(){
   clearInterval(timerInterval);
+  // Record study block to timeline
+  if(timerActiveItem&&timerActiveItem.studyStartTime&&!timerActiveItem.isBreak&&timerSeconds>60){
+    const startT=timerActiveItem.studyStartTime;
+    const endT=new Date();
+    const key=dk(startT);
+    if(!studyBlocks[key])studyBlocks[key]=[];
+    studyBlocks[key].push({
+      id:'sb'+Date.now(),
+      label:timerActiveItem.studyLabel||'学習',
+      startH:startT.getHours()+(startT.getMinutes()/60),
+      endH:endT.getHours()+(endT.getMinutes()/60),
+      color:'#3A5FA0',
+    });
+    saveStudy();
+  }
   timerRunning=false;
   timerPaused=false;
   timerInterval=null;
   hideOverlay();
   renderStudy();
+  if(tab==='today')renderToday();
 }
 
 function stopTimerOverlay(){
@@ -2415,21 +3083,27 @@ function renderStudy(){
   const pctDeg=timerRunning?(timerSeconds/timerTotal)*360:0;
   const activeLabel=timerRunning&&timerActiveItem?studyLists[timerActiveItem.listIdx]?.items[timerActiveItem.itemIdx]?.label:'';
 
+  const isBreak=timerActiveItem&&timerActiveItem.isBreak;
+  const pomoCycle=(timerActiveItem&&timerActiveItem.pomoCycle)||1;
   html+=`<div class="card" style="padding:20px;text-align:center;margin-bottom:12px">
-    <div style="font-size:12px;color:var(--mu);margin-bottom:12px">${timerRunning?'⏱ '+activeLabel:'タイマー'}</div>
-    <div class="timer-circle" id="timer-circle" style="background:conic-gradient(var(--ac) ${pctDeg}deg,var(--bd) ${pctDeg}deg)">
+    <div style="font-size:12px;color:var(--mu);margin-bottom:4px">${timerRunning?(isBreak?'☕ 休憩中':'⏱ '+activeLabel):'ポモドーロタイマー'}</div>
+    ${timerRunning?`<div style="font-size:10px;color:var(--mu);margin-bottom:8px">${isBreak?'休憩':'集中'} #${pomoCycle}</div>`:''}
+    <div class="timer-circle" id="timer-circle" style="background:conic-gradient(${isBreak?'#10B981':'var(--ac)'} ${pctDeg}deg,var(--bd) ${pctDeg}deg)">
       <div class="timer-inner">
         <div class="timer-time" id="timer-display">${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</div>
-        <div class="timer-label">${timerRunning?'集中中':'準備OK'}</div>
+        <div class="timer-label" style="color:${isBreak?'#10B981':'var(--sub)'}">${timerRunning?(isBreak?'☕ 休憩':'集中中'):'準備OK'}</div>
       </div>
     </div>
     <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:16px">
       ${timerRunning
-        ?`<button class="stop-btn" onclick="stopTimer()">⏹ ストップ</button>`
-        :`<div style="display:flex;align-items:center;gap:8px">
-          <input id="timer-mins" type="number" value="25" min="1" max="120" style="width:56px;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:14px;text-align:center;outline:none">
-          <span style="font-size:13px;color:var(--mu)">分</span>
-        </div>`
+        ?'<button class="stop-btn" onclick="stopTimer()">⏹ ストップ</button>'
+        :'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center">'+
+          '<label style="font-size:12px;color:var(--mu)">集中</label>'+
+          '<input id="timer-mins" type="number" value="25" min="1" max="120" style="width:50px;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:14px;text-align:center;outline:none">'+
+          '<label style="font-size:12px;color:var(--mu)">分　休憩</label>'+
+          '<input id="break-mins" type="number" value="5" min="1" max="30" style="width:50px;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:14px;text-align:center;outline:none">'+
+          '<label style="font-size:12px;color:var(--mu)">分</label>'+
+          '</div>'
       }
     </div>
   </div>`;
