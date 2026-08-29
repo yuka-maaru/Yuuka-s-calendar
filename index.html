@@ -304,7 +304,10 @@ let recurringTasks=JSON.parse(localStorage.getItem('yp_recurring')||'null')||[
 ];
 
 
-function applyRecurringTasks(){
+let recurringApplied=false;
+function applyRecurringTasks(force=false){
+  if(recurringApplied&&!force)return;
+  recurringApplied=true;
   // Generate from Aug 24 2026 to Dec 18 2026 (entire semester)
   const semStart=new Date(2026,7,24); // Aug 24
   const semEnd=new Date(2026,11,18); // Dec 18
@@ -1470,27 +1473,46 @@ function buildHabitTimerBtn(hb,key){
 function openUrgentEdit(key){
   const wrap=document.getElementById('modal-wrap');
   const pending=(tasks[key]||[]).filter(t=>!t.done);
-  
+  const today=dk(new Date());
+
+  // Task options
   let taskOpts='';
-  pending.forEach(t=>{
-    const checked=t.urgent?'checked':'';
-    const cb=document.createElement('label');
-    cb.setAttribute('data-task-id',t.id);
-    cb.setAttribute('data-key',key);
-    taskOpts+='<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bd);cursor:pointer" data-id="'+t.id+'" data-key="'+key+'" onclick="urgentCheckClick(this)">'+
-      '<input type="checkbox" '+(t.urgent?'checked':'')+' style="width:16px;height:16px;accent-color:var(--ac);pointer-events:none">'+
-      '<span style="font-size:13px">'+t.label+'</span>'+
-      '</label>';
-  });
-  
+  if(pending.length>0){
+    taskOpts+='<div style="font-size:11px;font-weight:600;color:var(--mu);padding:8px 12px 4px">📝 タスク</div>';
+    pending.forEach(t=>{
+      const checked=t.urgent?'checked':'';
+      taskOpts+='<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bd);cursor:pointer" data-id="'+t.id+'" data-key="'+key+'" onclick="urgentCheckClick(this)">'+
+        '<input type="checkbox" '+checked+' style="width:16px;height:16px;accent-color:var(--ac);pointer-events:none">'+
+        '<span style="font-size:13px">'+t.label+'</span>'+
+        '</label>';
+    });
+  }
+
+  // Habit options - today's unchecked habits
+  let habitOpts='';
+  const uncheckedHabits=habits.filter(h=>!(data[today]&&data[today][h.id]));
+  if(uncheckedHabits.length>0){
+    habitOpts+='<div style="font-size:11px;font-weight:600;color:var(--mu);padding:8px 12px 4px">🧘 習慣</div>';
+    uncheckedHabits.forEach(h=>{
+      // Check if habit already added as urgent task
+      const alreadyAdded=(tasks[key]||[]).some(t=>t.habitId===h.id&&t.urgent&&!t.done);
+      habitOpts+='<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bd);cursor:pointer" data-habit-id="'+h.id+'" data-key="'+key+'" onclick="urgentHabitClick(this)">'+
+        '<input type="checkbox" '+(alreadyAdded?'checked':'')+' style="width:16px;height:16px;accent-color:'+h.color+';pointer-events:none">'+
+        '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+h.color+'"></span>'+
+        '<span style="font-size:13px">'+h.icon+' '+h.name+'</span>'+
+        (h.timerMins?'<span style="font-size:10px;color:var(--mu);margin-left:auto">⏱'+h.timerMins+'分</span>':'')+
+        '</label>';
+    });
+  }
+
   wrap.innerHTML=
     '<div class="modal-bg" onclick="closeModal(event)">'+
-    '<div class="modal">'+
+    '<div class="modal" style="max-height:80vh;overflow-y:auto">'+
     '<button class="modal-close" onclick="closeModal()">×</button>'+
     '<h3>⚡ 今やるべきこと</h3>'+
-    '<p style="font-size:12px;color:var(--mu)">チェックで選択、または直接入力</p>'+
+    '<p style="font-size:12px;color:var(--mu)">タスク・習慣から選択、または直接入力</p>'+
     '<div class="card" style="margin-bottom:12px">'+
-    (taskOpts||'<div style="padding:12px;color:var(--mu);font-size:13px">今日のタスクがありません</div>')+
+    (taskOpts+habitOpts||'<div style="padding:12px;color:var(--mu);font-size:13px">今日のタスク・習慣がありません</div>')+
     '</div>'+
     '<div style="display:flex;gap:8px">'+
     '<input id="urgent-inp" placeholder="今やることを直接入力..." style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">'+
@@ -1507,6 +1529,38 @@ function urgentCheckClick(el){
   // Update checkbox visual
   const cb=el.querySelector('input[type=checkbox]');
   if(cb)cb.checked=!cb.checked;
+}
+
+function urgentHabitClick(el){
+  const hid=el.getAttribute('data-habit-id');
+  const key=el.getAttribute('data-key');
+  const h=habits.find(x=>x.id===hid);
+  if(!h)return;
+  const cb=el.querySelector('input[type=checkbox]');
+  
+  // Check if already in tasks
+  const existing=(tasks[key]||[]).find(t=>t.habitId===hid&&!t.done);
+  if(existing){
+    // Toggle urgent off → remove from tasks
+    tasks[key]=(tasks[key]||[]).filter(t=>t.habitId!==hid||t.done);
+    if(cb)cb.checked=false;
+  } else {
+    // Add habit as urgent task
+    if(!tasks[key])tasks[key]=[];
+    tasks[key].push({
+      id:'h'+Date.now(),
+      label:h.icon+' '+h.name+(h.timerMins?' ('+h.timerMins+'分)':''),
+      done:false,
+      urgent:true,
+      habitId:hid,
+      timerMins:h.timerMins||null,
+      color:h.color,
+    });
+    if(cb)cb.checked=true;
+    playPing();
+  }
+  save();
+  if(tab==='today')renderToday();
 }
 
 function addUrgentTask(key){
@@ -1835,11 +1889,11 @@ function renderToday(){
     return a.startTime.localeCompare(b.startTime);
   }).forEach(t=>{
     const timeStr=t.startTime?(t.endTime?`${t.startTime}〜${t.endTime} `:`${t.startTime} `):'';
-    h+=`<div class="trow${t.done?' dt':''}">
+    h+=`<div class="trow${t.done?' dt':''}" style="flex-wrap:wrap">
       <button class="tck${t.done?' done':''}" style="${t.color&&!t.done?'border-color:'+t.color+';background:'+t.color+'22':''}" onclick="toggleT('${key}','${t.id}')" aria-label="${t.label}">
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       </button>
-      <span class="tlb">${t.color?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+t.color+';margin-right:4px;vertical-align:middle"></span>':''}<span style="font-size:11px;color:var(--sub)">${timeStr}</span>${t.label}</span>
+      <span class="tlb" onclick="openTaskMemo('${key}','${t.id}')" style="cursor:pointer">${t.color?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+t.color+';margin-right:4px;vertical-align:middle"></span>':''}<span style="font-size:11px;color:var(--sub)">${timeStr}</span>${t.label}${t.memo?'<span style="font-size:9px;color:var(--mu);margin-left:4px">📝</span>':''}</span>
       <button class="tdl" onclick="delT('${key}','${t.id}')">×</button>
     </div>`;
   });
@@ -2236,7 +2290,7 @@ function renderRecurring(){
     ).join('');
     h+=`<div style="padding:12px;border-bottom:1px solid var(--bd)">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <input value="${rt.label}" onchange="recurringTasks[${i}].label=this.value;save();applyRecurringTasks()" style="flex:1;font-size:13px;border:none;background:transparent;outline:none;color:var(--tx)">
+        <input value="${rt.label}" onchange="recurringTasks[${i}].label=this.value;save();recurringApplied=false;applyRecurringTasks()" style="flex:1;font-size:13px;border:none;background:transparent;outline:none;color:var(--tx)">
         <button class="delbtn" onclick="deleteRecurring(${i})">×</button>
       </div>
       <div style="display:flex;gap:8px">${dayChecks}</div>
@@ -2252,7 +2306,7 @@ function renderRecurring(){
 function toggleRecurringDay(i,d,checked){
   if(checked){if(!recurringTasks[i].days.includes(d))recurringTasks[i].days.push(d);recurringTasks[i].days.sort();}
   else recurringTasks[i].days=recurringTasks[i].days.filter(x=>x!==d);
-  save();applyRecurringTasks();render();
+  save();recurringApplied=false;applyRecurringTasks();render();
 }
 
 function deleteRecurring(i){
