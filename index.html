@@ -815,7 +815,7 @@ let schNotes=JSON.parse(localStorage.getItem('yp_sch_notes')||'{}');
 function openSchItemModal(eid,key){
   const e=schedule.find(s=>s.id===eid);
   if(!e)return;
-  const note=schNotes[eid+'_'+key]||'';
+  const note=schNotes[eid]||''; // same note for all days
   const wrap=document.getElementById('modal-wrap');
   let html='<div class="modal-bg" onclick="closeModal(event)"><div class="modal">';
   html+='<button class="modal-close" onclick="closeModal()">×</button>';
@@ -841,7 +841,7 @@ function saveSchNoteFromBtn(btn){
 
 function saveSchNoteModal(eid,key){
   const val=document.getElementById('sch-note-modal')?.value||'';
-  schNotes[eid+'_'+key]=val;
+  schNotes[eid]=val; // sync across all days
   localStorage.setItem('yp_sch_notes',JSON.stringify(schNotes));
   toast('💾 保存しました！');
   closeModal();
@@ -853,7 +853,7 @@ function toggleSchNote(id){
   if(el)el.style.display=el.style.display==='none'?'block':'none';
 }
 function saveSchNote(eid,key,val){
-  schNotes[eid+'_'+key]=val;
+  schNotes[eid]=val;
   localStorage.setItem('yp_sch_notes',JSON.stringify(schNotes));
 }
 
@@ -1113,7 +1113,7 @@ function renderToday(){
         if(isStart){
           h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color};cursor:pointer" onclick="openSchItemModal('${e.id}','${key}')">
             <span style="font-size:10px;opacity:.7">${timeToStr(e.start)}〜${timeToStr(e.end)}</span> ${e.label}
-            ${schNotes[e.id+'_'+key]?'<span style="font-size:9px;opacity:0.7"> 📝</span>':''}
+            ${schNotes[e.id]?'<span style="font-size:9px;opacity:0.7"> 📝</span>':''}
           </div>`;
         } else {
           h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color};opacity:.6">↳ ${e.label}</div>`;
