@@ -445,16 +445,122 @@ function addTask(key){
   const inp=document.getElementById('ti-'+key);
   if(!inp)return;
   const v=inp.value.trim();if(!v)return;
+  const startTime=document.getElementById('ti-start-'+key)?.value||'';
+  const endTime=document.getElementById('ti-end-'+key)?.value||'';
+  const color=document.getElementById('ti-color-'+key)?.value||'';
   if(!tasks[key])tasks[key]=[];
-  tasks[key].push({id:'t'+Date.now(),label:v,done:false});
-  inp.value='';save();toast('タスクを追加しました！');render();
+  tasks[key].push({
+    id:'t'+Date.now(),
+    label:v,
+    done:false,
+    startTime:startTime||undefined,
+    endTime:endTime||undefined,
+    color:color&&color!=='#2D6A8F'?color:undefined,
+  });
+  inp.value='';
+  const s=document.getElementById('ti-start-'+key);
+  const e=document.getElementById('ti-end-'+key);
+  if(s)s.value='';if(e)e.value='';
+  save();render();
+  if(tab==='week')renderWeek();
 }
 
+function addTaskWithTime(key){addTask(key);}
+
+function switchTodayAddTab(tab){
+  ['task','study','habit'].forEach(t=>{
+    const panel=document.getElementById('tadd-panel-'+t);
+    const btn=document.getElementById('tadd-'+t);
+    if(panel)panel.style.display=t===tab?'block':'none';
+    if(btn){
+      btn.style.background=t===tab?'var(--ac)':'transparent';
+      btn.style.color=t===tab?'white':'var(--mu)';
+      btn.style.fontWeight=t===tab?'600':'400';
+    }
+  });
+}
+
+function buildHabitAddList(key){
+  const today=dk(new Date());
+  const unchecked=habits.filter(h=>!(data[today]&&data[today][h.id]));
+  if(unchecked.length===0)return '<div style="padding:8px;color:var(--mu);font-size:13px">全ての習慣が完了しています🎉</div>';
+  
+  // Group by habitGroupConfig
+  let html='';
+  habitGroupConfig.forEach(grp=>{
+    const grpHabits=unchecked.filter(h=>(h.group||'other')===grp.key);
+    if(grpHabits.length===0)return;
+    html+='<div style="font-size:10px;font-weight:700;color:'+grp.color+';padding:4px 0 2px">'+grp.icon+' '+grp.label+'</div>';
+    grpHabits.forEach(h=>{
+      const alreadyUrgent=(tasks[key]||[]).some(t=>t.habitId===h.id&&t.urgent&&!t.done);
+      html+='<button onclick="addHabitToUrgent(this)" data-hid="'+h.id+'" data-key="'+key+'" style="width:100%;padding:7px 10px;border-radius:8px;background:'+(alreadyUrgent?h.color+'33':h.color+'18')+';border:1.5px solid '+(alreadyUrgent?h.color:'var(--bd)')+';text-align:left;font-size:12px;cursor:pointer;margin-bottom:4px;display:flex;align-items:center;gap:8px;color:var(--tx)">'+
+        '<span>'+h.icon+'</span>'+
+        '<span style="flex:1">'+h.name+'</span>'+
+        (h.timerMins?'<span style="font-size:10px;color:var(--mu)">⏱'+h.timerMins+'分</span>':'')+
+        (alreadyUrgent?'<span style="font-size:10px;color:'+h.color+'">✓追加済</span>':'')+
+        '</button>';
+    });
+  });
+  return html;
+}
+
+function addHabitToUrgent(btn){
+  const hid=btn.getAttribute('data-hid');
+  const key=btn.getAttribute('data-key');
+  const h=habits.find(x=>x.id===hid);
+  if(!h)return;
+  const existing=(tasks[key]||[]).find(t=>t.habitId===hid&&!t.done);
+  if(existing){
+    // Remove
+    tasks[key]=(tasks[key]||[]).filter(t=>t.habitId!==hid||t.done);
+    btn.style.background=h.color+'18';
+    btn.style.border='1.5px solid var(--bd)';
+    toast('習慣を外しました');
+  } else {
+    if(!tasks[key])tasks[key]=[];
+    tasks[key].push({
+      id:'h'+Date.now(),label:h.icon+' '+h.name+(h.timerMins?' ('+h.timerMins+'分)':''),
+      done:false,urgent:true,habitId:hid,timerMins:h.timerMins||null,color:h.color,
+    });
+    btn.style.background=h.color+'33';
+    btn.style.border='1.5px solid '+h.color;
+    playPing();
+    toast('⚡ 今やるべきことに追加！');
+  }
+  save();
+  renderToday();
+}
+
+function renderIntentionCard(key,dow,d,todayGoal,defaultGoalTxt){
+  const dayOfYear=Math.floor((d-new Date(d.getFullYear(),0,0))/(1000*60*60*24));
+  const themes=[
+    {bg:'linear-gradient(135deg,#0F2027,#203A43,#2C5364)',emoji:'🌌',name:'Universe'},
+    {bg:'linear-gradient(135deg,#134E5E,#71B280)',emoji:'🌊',name:'Ocean'},
+    {bg:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)',emoji:'🌙',name:'Night Sky'},
+    {bg:'linear-gradient(135deg,#373B44,#4286f4)',emoji:'🌅',name:'Dawn'},
+    {bg:'linear-gradient(135deg,#1D4350,#A43931)',emoji:'🌄',name:'Dusk'},
+    {bg:'linear-gradient(135deg,#0B486B,#F56217)',emoji:'🌸',name:'Spring'},
+    {bg:'linear-gradient(135deg,#0f0c29,#302b63,#24243e)',emoji:'✨',name:'Stars'},
+  ];
+  const theme=themes[dayOfYear%themes.length];
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const txt=todayGoal||defaultGoalTxt;
+  return '<div onclick="editTodayGoal(\''+key+'\')" style="background:'+theme.bg+';border-radius:14px;padding:16px;margin-bottom:12px;cursor:pointer;position:relative;overflow:hidden;min-height:90px">'+
+    '<div style="position:absolute;top:-20px;right:-20px;font-size:80px;opacity:0.12;line-height:1">'+theme.emoji+'</div>'+
+    '<div style="font-size:8px;letter-spacing:3px;color:rgba(255,255,255,0.45);margin-bottom:8px;text-transform:uppercase">Today&#39;s Intention</div>'+
+    '<div style="font-size:15px;font-style:italic;color:white;line-height:1.7;font-weight:300">'+txt+'</div>'+
+    '<div style="font-size:9px;color:rgba(255,255,255,0.3);margin-top:8px;display:flex;justify-content:space-between">'+
+      '<span>'+theme.emoji+' '+theme.name+'</span>'+
+      '<span>'+(d.getMonth()+1)+'/'+d.getDate()+' '+days[dow]+'</span>'+
+    '</div>'+
+  '</div>';
+}
+
+
 function openFreeTimeFromToday(key){
-  // Find current free time based on schedule and current time
   const now=new Date();
-  const t=now.getHours()+(now.getMinutes()/60);
-  openTimeSlot(key,Math.round(t*2)/2);
+  const t=Math.round((now.getHours()+(now.getMinutes()/60))*2)/2;
+  openTimeSlot(key,t);
 }
 
 function switchModalTab(tab){
@@ -1986,9 +2092,38 @@ function toggleUrgent(key,id){
   if(t){t.urgent=!t.urgent;save();render();}
 }
 
+// Sound settings
+let soundStyle=localStorage.getItem('yp_sound')||'ping';
+function setSoundStyle(s){soundStyle=s;localStorage.setItem('yp_sound',s);toast('🔔 サウンド変更: '+s);}
+
 function playPing(){
   try{
     const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    if(soundStyle==='none')return;
+    if(soundStyle==='soft'){
+      // Soft sine
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=660;o.type='sine';
+      g.gain.setValueAtTime(0,ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0.15,ctx.currentTime+0.05);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.5);
+      o.start();o.stop(ctx.currentTime+0.5);
+      return;
+    }
+    if(soundStyle==='pop'){
+      // Pop sound
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.setValueAtTime(300,ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(100,ctx.currentTime+0.1);
+      o.type='sine';
+      g.gain.setValueAtTime(0.3,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.1);
+      o.start();o.stop(ctx.currentTime+0.15);
+      return;
+    }
+    // Default: cute two-tone ping
     // Cute completion sound: two tones
     [[880,0,0.15],[1108,0.1,0.2]].forEach(([freq,delay,dur])=>{
       const o=ctx.createOscillator(),g=ctx.createGain();
@@ -2032,12 +2167,7 @@ function renderToday(){
     <div class="dtitle">${isT?'今日':DFJ[dow]}<span class="dsub"> — ${d.getMonth()+1}月${d.getDate()}日</span></div>
     <button onclick="dayOff++;render()">›</button>
   </div>
-  <div onclick="editTodayGoal('${key}')" style="background:linear-gradient(135deg,#1A2E3A,#2D3A4A);border-radius:14px;padding:14px 16px;margin-bottom:12px;cursor:pointer;position:relative;overflow:hidden">
-    <div style="position:absolute;top:0;right:0;width:60px;height:60px;background:rgba(255,255,255,0.04);border-radius:50%;transform:translate(15px,-15px)"></div>
-    <div style="font-size:9px;letter-spacing:2.5px;color:rgba(255,255,255,0.4);margin-bottom:6px;text-transform:uppercase">Today's Intention</div>
-    <div style="font-size:15px;font-style:italic;color:white;line-height:1.6;font-weight:300">${todayGoal||defaultGoalTxt}</div>
-    <div style="font-size:9px;color:rgba(255,255,255,0.25);margin-top:6px;text-align:right">${d.getMonth()+1}/${d.getDate()} ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dow]}</div>
-  </div>
+  ${renderIntentionCard(key,dow,d,todayGoal,defaultGoalTxt)}
   <div class="sec"><span>⚡ 今やるべきこと</span><span class="sec-edit" onclick="openUrgentEdit('${key}')">編集</span><span class="sec-edit" onclick="openFreeTimeFromToday('${key}')" style="margin-left:6px;color:#2D6A8F">🕐 空き時間</span><span class="sec-edit" onclick="startFocusMode('${key}')" style="margin-left:6px;color:#9B6AD4">🎯 集中</span></div>
   <div class="card" style="margin-bottom:8px">`;
   {
@@ -2133,9 +2263,35 @@ function renderToday(){
       <button class="tdl" onclick="delT('${key}','${t.id}')">×</button>
     </div>`;
   });
-  h+=`<div class="af">
-    <input id="ti-${key}" placeholder="タスクを追加..." onkeydown="tkEnter(event,'${key}')">
-    <button class="abtn" onclick="addTask('${key}')">追加</button>
+  h+=`<div style="padding:8px 10px;border-top:1px solid var(--bd)">
+    <!-- Tabs -->
+    <div style="display:flex;gap:3px;margin-bottom:8px;background:var(--bg);border-radius:8px;padding:3px">
+      <button onclick="switchTodayAddTab('task')" id="tadd-task" style="flex:1;padding:5px;border-radius:6px;border:none;font-size:11px;cursor:pointer;background:var(--ac);color:white;font-weight:600">📝 タスク</button>
+      <button onclick="switchTodayAddTab('study')" id="tadd-study" style="flex:1;padding:5px;border-radius:6px;border:none;font-size:11px;cursor:pointer;background:transparent;color:var(--mu)">📚 学習</button>
+      <button onclick="switchTodayAddTab('habit')" id="tadd-habit" style="flex:1;padding:5px;border-radius:6px;border:none;font-size:11px;cursor:pointer;background:transparent;color:var(--mu)">🧘 習慣</button>
+    </div>
+    <!-- タスクタブ -->
+    <div id="tadd-panel-task">
+      <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
+        <input id="ti-color-${key}" type="color" value="#2D6A8F" style="width:30px;height:30px;border-radius:6px;border:1px solid var(--bd);cursor:pointer;padding:1px;flex-shrink:0">
+        <input id="ti-${key}" placeholder="タスクを追加..." onkeydown="tkEnter(event,'${key}')" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg)">
+        <button class="abtn" onclick="addTaskWithTime('${key}')">追加</button>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input id="ti-start-${key}" type="time" style="flex:1;padding:6px 8px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)">
+        <span style="color:var(--mu);font-size:12px">〜</span>
+        <input id="ti-end-${key}" type="time" style="flex:1;padding:6px 8px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)">
+        <span style="font-size:10px;color:var(--mu)">任意</span>
+      </div>
+    </div>
+    <!-- 学習タブ -->
+    <div id="tadd-panel-study" style="display:none;max-height:200px;overflow-y:auto">
+      ${buildStudyAddList('${key}')}
+    </div>
+    <!-- 習慣タブ -->
+    <div id="tadd-panel-habit" style="display:none">
+      ${buildHabitAddList('${key}')}
+    </div>
   </div></div>
   <div class="sec"><span>スケジュール</span><span class="sec-edit" onclick="openSchEdit()">編集</span></div>
   <div class="card">`;
@@ -2525,6 +2681,16 @@ function renderSettings(){
   });
   h+='</div>';
   h+=renderRecurring();
+  // Sound settings
+  h+=`<div class="sec">🔔 サウンド設定</div>
+  <div class="card" style="padding:12px">
+    <div style="font-size:12px;color:var(--mu);margin-bottom:10px">チェック・完了音のスタイル</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${[['ping','🎵 Ping（デフォルト）'],['soft','🎶 Soft'],['pop','💧 Pop'],['none','🔇 なし']].map(([v,l])=>
+        '<button onclick="setSoundStyle(\''+v+'\');render()" style="padding:8px 14px;border-radius:20px;background:'+(soundStyle===v?'var(--ac)':'var(--sur)')+';border:1px solid '+(soundStyle===v?'var(--ac)':'var(--bd)')+';color:'+(soundStyle===v?'white':'var(--tx)')+';font-size:12px;cursor:pointer">'+l+'</button>'
+      ).join('')}
+    </div>
+  </div>`;
   document.getElementById('view-settings').innerHTML=h;
 }
 
