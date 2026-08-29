@@ -54,10 +54,11 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
 .wgt td{padding:2px;border-bottom:1px solid #F3F0EB;vertical-align:top;height:34px}
 .wgt td:first-child{font-size:10px;color:var(--mu);text-align:right;padding-right:5px;background:var(--bg);width:34px}
 .wgev{font-size:9px;padding:2px 3px;border-left:2px solid;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cnav{display:flex;align-items:center;gap:10px;padding:10px 0}
-.cnav button{width:32px;height:32px;border-radius:50%;background:var(--sur);border:1px solid var(--bd);font-size:18px;cursor:pointer}
-.ctitle{flex:1;font-size:16px;font-weight:700}
-.cgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cnav{display:flex;align-items:center;gap:10px;padding:16px 0 8px}
+.cnav button{width:36px;height:36px;border-radius:50%;background:var(--sur);border:1px solid var(--bd);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.cnav button:hover{background:var(--bg)}
+.ctitle{flex:1;font-size:20px;font-weight:700;text-align:center}
+.cgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0}
 .chdr{text-align:center;font-size:11px;color:var(--sub);font-weight:500;padding:5px 0}
 .ccell{background:var(--sur);border-radius:6px;padding:4px 3px;min-height:56px;border:1px solid transparent;cursor:pointer;transition:border-color .15s}
 .ccell:active{border-color:var(--ac)}
@@ -106,6 +107,36 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
 .memo-box{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);resize:vertical;min-height:80px;font-family:inherit;line-height:1.5}
 .memo-box:focus{border-color:var(--ac)}
 .memo-saved{font-size:11px;color:var(--mu);margin-top:4px;transition:opacity .3s}
+.mandala-wrap{width:100%;position:relative;margin:12px 0}
+.mandala-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:340px;margin:0 auto}
+.mandala-center{grid-column:2;grid-row:2;background:linear-gradient(135deg,var(--ac),#7A4FA0);color:white;border-radius:12px;padding:10px 6px;text-align:center;font-size:11px;font-weight:700;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(45,106,143,.3)}
+.mandala-cat{background:var(--sur);border:1.5px solid var(--bd);border-radius:12px;padding:6px 4px;text-align:center;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+.mandala-cat:hover{border-color:var(--ac);transform:scale(1.02)}
+.mandala-cat.active{border-color:var(--ac)}
+.mandala-water{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,rgba(45,106,143,.15),rgba(45,106,143,.35));transition:height .5s ease;border-radius:0 0 10px 10px}
+.mandala-cat-icon{font-size:18px;position:relative;z-index:1}
+.mandala-cat-name{font-size:10px;font-weight:600;color:var(--tx);position:relative;z-index:1;line-height:1.2}
+.mandala-cat-pct{font-size:9px;color:var(--ac);font-weight:600;position:relative;z-index:1}
+.mandala-sync{font-size:8px;color:var(--mu);position:relative;z-index:1;line-height:1.2}
+.mandala-detail{background:var(--sur);border-radius:12px;border:1px solid var(--bd);padding:12px;margin:8px 0}
+.mandala-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd)}
+.mandala-item:last-child{border-bottom:none}
+.mandala-item-label{flex:1;font-size:13px}
+.mandala-timer-btn{padding:5px 10px;border-radius:8px;background:var(--ac)22;border:1px solid var(--ac);color:var(--ac);font-size:11px;cursor:pointer}
+.mandala-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--bd);background:none;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.mandala-check.done{background:#10B981;border-color:#10B981}
+.mandala-check svg{width:11px;height:11px;stroke:white;stroke-width:2.8;fill:none}
+.dream-tree-wrap{width:100%;text-align:center;margin:8px 0;position:relative;overflow:hidden;border-radius:var(--r);background:linear-gradient(180deg,#87CEEB 0%,#98D8C8 60%,#7CBA6E 60%,#5A8A5A 100%);min-height:280px}
+.tree-svg{width:100%;max-width:320px;height:280px}
+.dream-section{margin-bottom:16px}
+.dream-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bd)}
+.dream-item:last-child{border-bottom:none}
+.dream-input{flex:1;border:none;background:transparent;outline:none;font-size:13px;color:var(--tx);font-family:inherit;resize:none;min-height:20px}
+.goal-card{background:var(--sur);border-radius:8px;border:1px solid var(--bd);padding:10px 12px;margin-bottom:6px}
+.goal-month{font-size:11px;font-weight:600;color:var(--sub);margin-bottom:4px}
+.goal-inp{width:100%;border:none;background:transparent;outline:none;font-size:13px;color:var(--tx);font-family:inherit}
+.reverse-card{background:linear-gradient(135deg,#EBF3F8,#F5F0FF);border-radius:8px;border:1px solid var(--bd);padding:12px;margin-bottom:8px}
+.reverse-arrow{text-align:center;color:var(--mu);font-size:18px;margin:4px 0}
 .timer-circle{width:140px;height:140px;border-radius:50%;background:conic-gradient(var(--ac) 0deg,var(--bd) 0deg);display:flex;align-items:center;justify-content:center;margin:0 auto;position:relative;transition:background 0.5s}
 .timer-inner{width:110px;height:110px;border-radius:50%;background:var(--sur);display:flex;flex-direction:column;align-items:center;justify-content:center}
 .timer-time{font-size:24px;font-weight:700;color:var(--tx)}
@@ -164,6 +195,7 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
   <div id="view-week" class="view"></div>
   <div id="view-month" class="view"></div>
   <div id="view-settings" class="view"></div>
+  <div id="view-dream" class="view"></div>
   <div id="view-memo" class="view"></div>
   <div id="view-study" class="view"></div>
 
@@ -182,6 +214,9 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
     </button>
     <button onclick="sw('study')">
       <div class="ni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>学習
+    </button>
+    <button onclick="sw('dream')">
+      <div class="ni"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>夢
     </button>
     <button onclick="sw('memo')">
       <div class="ni"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>メモ
@@ -305,7 +340,7 @@ function streak(hid){
 
 function sw(t){
   tab=t;
-  document.querySelectorAll('.nav button').forEach((b,i)=>b.classList.toggle('active',['today','habits','week','month','study','memo','settings'][i]===t));
+  document.querySelectorAll('.nav button').forEach((b,i)=>b.classList.toggle('active',['today','habits','week','month','study','dream','memo','settings'][i]===t));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+t).classList.add('active');
   render();
@@ -371,16 +406,28 @@ function openDayModal(key){
     });
   }
   const wrap=document.getElementById('modal-wrap');
+  const uhEv2=UH_CALENDAR[key]||'';
+  const customEvs2=(customEvents[key]||[]);
   wrap.innerHTML=`<div class="modal-bg" onclick="closeModal(event)">
     <div class="modal" style="position:relative">
       <button class="modal-close" onclick="closeModal()">×</button>
       <h3>${d.getMonth()+1}月${d.getDate()}日 ${DJ[d.getDay()]}曜日</h3>
-      <p>タスクを追加・管理できます</p>
+      ${uhEv2?`<div style="display:inline-block;padding:3px 8px;border-radius:20px;background:#EBF3F8;color:#2D6A8F;font-size:11px;margin-bottom:6px">📌 ${uhEv2}</div>`:''}
+      ${customEvs2.map(e=>`<div style="display:inline-block;padding:3px 8px;border-radius:20px;background:${e.color}22;color:${e.color};font-size:11px;margin-bottom:6px;margin-right:4px">● ${e.name}</div>`).join('')}
       <div class="card" id="modal-tasks">${taskHtml}</div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
+          <span>イベントを追加</span>
+          <span onclick="renderTemplateSettings()" style="color:var(--ac);cursor:pointer;font-size:11px">テンプレート編集</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${eventTemplates.map(t=>`<button onclick="addEventFromTemplate('${key}','${t.id}')" style="padding:5px 10px;border-radius:20px;background:${t.color}22;border:1px solid ${t.color};color:${t.color};font-size:11px;cursor:pointer">${t.name}</button>`).join('')}
+        </div>
+      </div>
       <div style="display:flex;gap:6px;margin-bottom:8px">
-        <input id="modal-start" type="time" placeholder="開始時間" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
+        <input id="modal-start" type="time" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
         <span style="align-self:center;color:var(--mu);font-size:12px">〜</span>
-        <input id="modal-end" type="time" placeholder="終了時間" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
+        <input id="modal-end" type="time" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
       </div>
       <div style="display:flex;gap:8px">
         <input id="modal-inp" placeholder="タスク・予定を追加..." style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter')addModalTask('${key}')">
@@ -445,6 +492,73 @@ function closeModal(e){
   render();
 }
 
+// Custom event templates (like MiniCal)
+let eventTemplates=JSON.parse(localStorage.getItem('yp_ev_templates')||'null')||[
+  {id:'et1',name:'授業',color:'#2D6A8F'},
+  {id:'et2',name:'病院・健康',color:'#10B981'},
+  {id:'et3',name:'外出',color:'#E8856A'},
+  {id:'et4',name:'大事な締め切り',color:'#DC2626'},
+  {id:'et5',name:'楽しいイベント',color:'#9B6AD4'},
+];
+let customEvents=JSON.parse(localStorage.getItem('yp_custom_ev')||'{}');
+
+function saveCustomEvents(){
+  localStorage.setItem('yp_custom_ev',JSON.stringify(customEvents));
+  localStorage.setItem('yp_ev_templates',JSON.stringify(eventTemplates));
+}
+
+function addEventFromTemplate(key,templateId){
+  const tmpl=eventTemplates.find(t=>t.id===templateId);
+  if(!tmpl)return;
+  if(!customEvents[key])customEvents[key]=[];
+  customEvents[key].push({id:'ce'+Date.now(),name:tmpl.name,color:tmpl.color,templateId});
+  saveCustomEvents();
+  openDayModal(key);
+  render();
+}
+
+function removeCustomEvent(key,evId){
+  if(!customEvents[key])return;
+  customEvents[key]=customEvents[key].filter(e=>e.id!==evId);
+  saveCustomEvents();
+  openDayModal(key);
+  render();
+}
+
+function addCustomTemplate(){
+  const name=document.getElementById('new-tmpl-name')?.value.trim();
+  const color=document.getElementById('new-tmpl-color')?.value||'#888888';
+  if(!name)return;
+  eventTemplates.push({id:'et'+Date.now(),name,color});
+  saveCustomEvents();
+  renderTemplateSettings();
+}
+
+function renderTemplateSettings(){
+  const wrap=document.getElementById('modal-wrap');
+  let html=`<div class="modal-bg" onclick="closeModal(event)">
+    <div class="modal" style="position:relative;max-height:85vh;overflow-y:auto">
+      <button class="modal-close" onclick="closeModal()">×</button>
+      <h3>イベントテンプレート管理</h3>
+      <p>よく使うイベントを登録できます</p>
+      <div class="card" style="margin-bottom:12px">`;
+  eventTemplates.forEach((t,i)=>{
+    html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bd)">
+      <div style="width:12px;height:12px;border-radius:50%;background:${t.color};flex-shrink:0"></div>
+      <span style="flex:1;font-size:13px">${t.name}</span>
+      <button class="delbtn" onclick="eventTemplates.splice(${i},1);saveCustomEvents();renderTemplateSettings()">×</button>
+    </div>`;
+  });
+  html+=`</div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <input id="new-tmpl-name" placeholder="新しいテンプレート名" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
+    <input type="color" id="new-tmpl-color" value="#2D6A8F" style="width:36px;height:36px;border-radius:8px;border:1px solid var(--bd);cursor:pointer;padding:2px">
+    <button class="abtn" onclick="addCustomTemplate()">追加</button>
+  </div>
+  </div></div>`;
+  wrap.innerHTML=html;
+}
+
 function toggleTaskNote(tid){
   const el=document.getElementById('tnote-'+tid);
   if(el)el.style.display=el.style.display==='none'?'block':'none';
@@ -462,6 +576,7 @@ function render(){
   else if(tab==='week')renderWeek();
   else if(tab==='month')renderMonth();
   else if(tab==='study')renderStudy();
+  else if(tab==='dream')renderDream();
   else if(tab==='memo')renderMemo();
   else renderSettings();
 }
@@ -473,6 +588,7 @@ function getMemoPages(){
     {id:'p1',title:'🖨️ コピー作業まとめ',content:'【火曜日午後】水曜日のHW × 85枚\n【木曜日午前】金曜日のHW × 85枚\n【木曜日午前】月曜日のHW × 85枚\n\n📦 ボックスへの配布\n・石田先生: 27枚\n・Andrew: 32枚\n・Alexandra: 26枚'},
     {id:'p2',title:'📋 SSN申請メモ',content:'日時: 9月2日（水）1:30pm\n場所: 300 Ala Moana Blvd, Room 1-114\n\n持参するもの:\n・パスポート\n・I-20\n・I-94（印刷）\n・GAオファーレター\n・ISS Certification Letter\n・EIN: 99-6000354'},
     {id:'p3',title:'📝 フリーメモ',content:''},
+    {id:'p4',title:'📅 年間スケジュール 2026-2027',content:'_YEARLY_CALENDAR_'},
   ];
 }
 
@@ -489,6 +605,18 @@ function renderMemo(){
   if(memoOpenIndex!==null&&pages[memoOpenIndex]){
     const p=pages[memoOpenIndex];
     const i=memoOpenIndex;
+    // Special: yearly calendar
+    if(p.content==='_YEARLY_CALENDAR_'){
+      const html=`<div style="padding-top:8px"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <button onclick="memoOpenIndex=null;renderMemo()" style="padding:6px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">← 戻る</button>
+      </div>
+      <div class="sec" style="margin-top:0">${p.title}</div>
+      ${renderYearlyCalendar()}`;
+      document.getElementById('view-memo').innerHTML=html;
+      return;
+    }
+
     const html=`<div style="padding-top:8px"></div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
       <button onclick="memoOpenIndex=null;renderMemo()" style="padding:6px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">← 戻る</button>
@@ -561,6 +689,54 @@ function deleteMemoPage(i){
   saveMemoPages(pages);
   memoOpenIndex=null;
   renderMemo();
+}
+
+function renderYearlyCalendar(){
+  const months=[
+    {y:2026,m:7,label:'2026年8月'},{y:2026,m:8,label:'2026年9月'},
+    {y:2026,m:9,label:'2026年10月'},{y:2026,m:10,label:'2026年11月'},
+    {y:2026,m:11,label:'2026年12月'},{y:2027,m:0,label:'2027年1月'},
+    {y:2027,m:1,label:'2027年2月'},{y:2027,m:2,label:'2027年3月'},
+    {y:2027,m:3,label:'2027年4月'},{y:2027,m:4,label:'2027年5月'},
+  ];
+  const DJ2=['日','月','火','水','木','金','土'];
+  let html='';
+  months.forEach(({y,m,label})=>{
+    const first=new Date(y,m,1);
+    const last=new Date(y,m+1,0);
+    const today=dk(new Date());
+    html+=`<div class="card" style="margin-bottom:12px;padding:10px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--ac)">${label}</div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;font-size:10px">`;
+    DJ2.forEach(d=>html+=`<div style="text-align:center;color:var(--mu);padding:2px;font-weight:600">${d}</div>`);
+    const startDow=first.getDay();
+    for(let i=0;i<startDow;i++)html+=`<div></div>`;
+    for(let day=1;day<=last.getDate();day++){
+      const d=new Date(y,m,day);
+      const k=dk(d);
+      const isT=k===today;
+      const uhEv=UH_CALENDAR[k]||'';
+      const hasTasks=(tasks[k]||[]).length>0;
+      html+=`<div style="text-align:center;padding:2px 1px;border-radius:4px;${isT?'background:var(--ac);color:white;font-weight:700':''}${uhEv?';background:#EBF3F8;color:#2D6A8F;font-weight:600':''}" title="${uhEv}">
+        ${day}${uhEv?'<div style="font-size:7px;line-height:1;overflow:hidden">'+uhEv.slice(0,3)+'</div>':''}
+      </div>`;
+    }
+    html+='</div>';
+
+    // UH events this month
+    const monthKey=`${y}-${String(m+1).padStart(2,'0')}`;
+    const eventsThisMonth=Object.entries(UH_CALENDAR).filter(([k])=>k.startsWith(monthKey));
+    if(eventsThisMonth.length>0){
+      html+=`<div style="margin-top:8px;border-top:1px solid var(--bd);padding-top:6px">`;
+      eventsThisMonth.forEach(([k,v])=>{
+        const d=new Date(k);
+        html+=`<div style="font-size:11px;color:var(--sub);margin-bottom:2px">${d.getMonth()+1}/${d.getDate()} ${v}</div>`;
+      });
+      html+='</div>';
+    }
+    html+='</div>';
+  });
+  return html;
 }
 
 function saveMemo(id,val){}
@@ -802,27 +978,36 @@ function renderMonth(){
   const first=new Date(yr,mo,1),last=new Date(yr,mo+1,0),today=dk(new Date());
   let h=`<div class="cnav">
     <button onclick="monOff--;render()">‹</button>
-    <div class="ctitle">${yr}年 ${MJ[((mo%12)+12)%12]}</div>
+    <div class="ctitle">${yr}<span style="font-size:14px;font-weight:500;color:var(--sub);margin-left:6px">${MJ[((mo%12)+12)%12]}</span></div>
     <button onclick="monOff++;render()">›</button>
-  </div><p style="font-size:11px;color:var(--mu);margin-bottom:8px">日付をタップしてタスクを追加</p>
+  </div>
   <div class="cgrid">`;
-  DJ.forEach(d=>h+=`<div class="chdr">${d}</div>`);
+  DJ.forEach((d,i)=>h+=`<div class="chdr" style="${i===0?'color:#E85555':i===6?'color:#5577E8':''}">${d}</div>`);
   const startDow=first.getDay();
-  for(let i=0;i<startDow;i++){const d=new Date(first);d.setDate(d.getDate()-(startDow-i));h+=`<div class="ccell om"><div class="cdt">${d.getDate()}</div></div>`;}
+  for(let i=0;i<startDow;i++){const d=new Date(first);d.setDate(d.getDate()-(startDow-i));h+=`<div class="ccell om"><div class="cdt"><div class="cdt-inner">${d.getDate()}</div></div></div>`;}
   for(let day=1;day<=last.getDate();day++){
     const d=new Date(yr,mo<0?mo+12:mo,day),k=dk(d),isT=k===today;
     const doneH=habits.filter(hb=>(data[k]||{})[hb.id]);
     const dayT=tasks[k]||[];
     const pendT=dayT.filter(t=>!t.done).length;
     const doneT=dayT.filter(t=>t.done).length;
-    h+=`<div class="ccell${isT?' td':''}" onclick="openDayModal('${k}')">
-      <div class="cdt">${day}</div>
-      <div class="cdots">${doneH.slice(0,5).map(hb=>`<div class="cdot" style="background:${hb.color}"></div>`).join('')}</div>`;
-    if(dayT.length>0)h+=`<div class="ctc">${doneT>0?`✅${doneT}`:''} ${pendT>0?`📝${pendT}`:''}</div>`;
-    h+='</div>';
+    const uhEv=UH_CALENDAR[k]||'';
+    const isSun=d.getDay()===0;
+    const isSat=d.getDay()===6;
+    // Get custom events for this day
+    const customEvs=(customEvents[k]||[]);
+    h+=`<div class="ccell${isT?' td':''}" onclick="openDayModal('${k}')" style="${isSun?'color:#E85555':isSat?'color:#5577E8':''}">
+      <div class="cdt"><div class="cdt-inner">${day}</div></div>
+      <div class="cdots">
+        ${uhEv?`<div class="cdot" style="background:#2D6A8F" title="${uhEv}"></div>`:''}
+        ${doneH.slice(0,3).map(hb=>`<div class="cdot" style="background:${hb.color}"></div>`).join('')}
+        ${customEvs.slice(0,2).map(e=>`<div class="cdot" style="background:${e.color||'#E8856A'}"></div>`).join('')}
+      </div>
+      ${pendT>0?`<div class="ctc">·${pendT}</div>`:''}
+    </div>`;
   }
   const rem=(7-((startDow+last.getDate())%7))%7;
-  for(let i=1;i<=rem;i++)h+=`<div class="ccell om"><div class="cdt">${i}</div></div>`;
+  for(let i=1;i<=rem;i++)h+=`<div class="ccell om"><div class="cdt"><div class="cdt-inner">${i}</div></div></div>`;
   h+='</div>';
   // Monthly memo
   const monthKey=`month_${yr}_${((mo%12)+12)%12}`;
@@ -955,6 +1140,16 @@ function addRecurring(){
   save();toast('繰り返しタスクを追加しました！');render();
 }
 
+// Force clear old recurring task data (version update)
+const recurringVersion = '2';
+if(localStorage.getItem('yp_recurring_ver') !== recurringVersion){
+  // Clear all recurring tasks from all dates
+  Object.keys(tasks).forEach(k=>{
+    tasks[k]=(tasks[k]||[]).filter(t=>!t.recurringId&&!t.weekly);
+  });
+  localStorage.setItem('yp_t', JSON.stringify(tasks));
+  localStorage.setItem('yp_recurring_ver', recurringVersion);
+}
 applyRecurringTasks();
 
 // Study data
@@ -991,6 +1186,528 @@ let timerTotal=25*60;
 let timerRunning=false;
 let timerActiveItem=null;
 let studyOpenList=null;
+
+// UH Manoa Academic Calendar
+const UH_CALENDAR={
+  '2026-08-24':'🎓 秋学期開始',
+  '2026-09-02':'📋 SSN申請',
+  '2026-09-07':'🏖️ Labor Day',
+  '2026-09-18':'💉 MMR2回目',
+  '2026-09-30':'📝 Midterm 1',
+  '2026-10-05':'📝 Midterm 1',
+  '2026-10-28':'📝 Midterm 2',
+  '2026-11-04':'🇺🇸 Veterans Day前',
+  '2026-11-11':'🇺🇸 Veterans Day',
+  '2026-11-06':'📝 Midterm 3',
+  '2026-11-25':'🦃 Thanksgiving',
+  '2026-11-26':'🦃 Thanksgiving休み',
+  '2026-11-27':'🦃 Thanksgiving休み',
+  '2026-12-02':'📚 Finals準備',
+  '2026-12-18':'🎓 Final Exam',
+  '2026-12-19':'🎉 冬休み開始',
+  '2027-01-12':'🎓 春学期開始',
+  '2027-03-15':'🌊 Spring Break',
+  '2027-03-16':'🌊 Spring Break',
+  '2027-03-17':'🌊 Spring Break',
+  '2027-03-18':'🌊 Spring Break',
+  '2027-03-19':'🌊 Spring Break',
+  '2027-05-09':'📚 Spring Finals',
+  '2027-05-16':'🎓 春学期終了',
+  '2027-05-31':'✅ GA契約終了',
+};
+
+// Dream data
+let dreamData=JSON.parse(localStorage.getItem('yp_dream')||'null')||{
+  dreams:[
+    {id:'d1',text:'哲学書・小説・詩を書く作家になる'},
+    {id:'d2',text:'英語と日本語で世界に発信する'},
+    {id:'d3',text:'自分の哲学で人々の心を動かす'},
+  ],
+  yearGoal:'UHマノアで哲学MAを修了し、英語・日本語両方で論文・詩を書く',
+  monthGoals:{},
+  reverseYear:'修士論文を書き上げ、英語での発表ができるレベルになる',
+  reverseSem:'毎週リフレクションを書き、英語100語ライティングを習慣化する',
+  reverseMonth:'',
+  reverseWeek:'',
+  reverseToday:'',
+  treeHabits:[],
+  treeStudy:[],
+  mandalaCenter:'作家になる',
+  mandalaCats:[
+    {id:'mc1',icon:'✍️',name:'書く',syncType:'recurring',syncLabel:'ライティング',color:'#E8856A',
+      items:[
+        {id:'mi1',label:'詩を書く',type:'timer',mins:20,doneToday:false},
+        {id:'mi2',label:'小説・物語を書く',type:'timer',mins:30,doneToday:false},
+        {id:'mi3',label:'哲学考察を書く',type:'timer',mins:25,doneToday:false},
+        {id:'mi4',label:'日記を書く',type:'timer',mins:10,doneToday:false},
+      ]},
+    {id:'mc2',icon:'📚',name:'哲学を学ぶ',syncType:'study',syncIds:['sl1','sl2','sl3'],color:'#2D6A8F',
+      items:[
+        {id:'mi5',label:'PHIL 770 荘子を読む',type:'check',doneToday:false},
+        {id:'mi6',label:'PHIL 414B テキスト読む',type:'check',doneToday:false},
+        {id:'mi7',label:'授業コメント準備',type:'check',doneToday:false},
+      ]},
+    {id:'mc3',icon:'🧘',name:'心身を整える',syncType:'habit',color:'#5A8A6A',
+      items:[
+        {id:'mi8',label:'朝ヨガ',type:'timer',mins:45,doneToday:false},
+        {id:'mi9',label:'朝瞑想',type:'timer',mins:20,doneToday:false},
+      ]},
+    {id:'mc4',icon:'🗣️',name:'英語を伸ばす',syncType:'study',syncIds:['sl5'],color:'#9B6AD4',
+      items:[
+        {id:'mi10',label:'英語で100語書く',type:'timer',mins:15,doneToday:false},
+        {id:'mi11',label:'Geminiと英語会話',type:'timer',mins:15,doneToday:false},
+        {id:'mi12',label:'ELI 111 授業',type:'check',doneToday:false},
+      ]},
+    {id:'mc5',icon:'📖',name:'数学・論理',syncType:'study',syncIds:['sl4'],color:'#C4882A',
+      items:[
+        {id:'mi13',label:'PHIL 111 HW解く',type:'check',doneToday:false},
+        {id:'mi14',label:'解答を確認する',type:'check',doneToday:false},
+      ]},
+    {id:'mc6',icon:'💪',name:'継続する',syncType:'habit',color:'#1A2E3A',
+      items:[
+        {id:'mi15',label:'リフレクション提出',type:'check',doneToday:false},
+        {id:'mi16',label:'授業に出席する',type:'check',doneToday:false},
+      ]},
+  ],
+};
+
+let mandalaOpenCat=null;
+let mandalaTimerActive=null;
+
+function saveDream(){
+  localStorage.setItem('yp_dream',JSON.stringify(dreamData));
+  const el=document.getElementById('si');
+  if(el){el.style.opacity='1';setTimeout(()=>el.style.opacity='0',2000);}
+}
+
+const MONTHS_JA=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+const UH_EVENTS={
+  '2026-08':'秋学期開始（8/24）',
+  '2026-09':'SSN申請（9/2）・MMR2回目（9/18）',
+  '2026-10':'Midterm 1',
+  '2026-11':'Veterans Day・Thanksgiving Break・Midterm 3',
+  '2026-12':'Final Exam（12/18）・冬休み',
+  '2027-01':'春学期開始',
+  '2027-03':'Spring Break',
+  '2027-05':'春学期終了（5/31）',
+};
+
+const FLOWERS=['🌸','🌺','🍎','🌻','🌹','🍊','🌷','🍇','🌼','🍑','🫧','🌿'];
+const ANIMALS=['🐦','🦋','🐿️','🦜','🐇','🦔','🐝','🦚'];
+
+function getTreeProgress(){
+  const dates=getWk();
+  let score=0;
+
+  // Mandala overall progress (main driver)
+  let mandalaTotal=0;
+  (dreamData.mandalaCats||[]).forEach(cat=>{
+    const pct=getMandalaProgress(cat);
+    score+=Math.round(pct*10);
+    mandalaTotal+=10;
+  });
+
+  // Habits this week (bonus)
+  dates.forEach(d=>{
+    const k=dk(d);
+    habits.forEach(h=>{if(data[k]&&data[k][h.id])score+=0.5;});
+  });
+
+  return Math.min(Math.round(score),60);
+}
+
+function drawTree(progress){
+  const pct=progress/60;
+  const now=new Date();
+  const monthIdx=now.getMonth();
+  const flower=FLOWERS[monthIdx%FLOWERS.length];
+  const animal=ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
+  const leafCount=Math.floor(pct*12);
+  const trunkH=60+pct*40;
+  const branches=pct>0.2;
+  const hasFlowers=pct>0.5;
+  const hasAnimal=pct>0.3;
+  const hasApples=pct>0.8;
+
+  // Generate leaf positions
+  const leaves=[];
+  for(let i=0;i<leafCount;i++){
+    const angle=(i/leafCount)*Math.PI*2;
+    const r=30+Math.random()*25;
+    const x=160+Math.cos(angle)*r;
+    const y=120-Math.sin(angle)*r*0.7;
+    leaves.push({x,y,r:8+Math.random()*6});
+  }
+
+  let svg=`<svg class="tree-svg" viewBox="0 0 320 280" xmlns="http://www.w3.org/2000/svg">
+    <!-- Sky background -->
+    <defs>
+      <radialGradient id="sunGrad" cx="80%" cy="20%">
+        <stop offset="0%" stop-color="#FFE066" stop-opacity="0.8"/>
+        <stop offset="100%" stop-color="#FFE066" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="320" height="280" fill="transparent"/>
+    <!-- Sun -->
+    <circle cx="260" cy="40" r="25" fill="url(#sunGrad)"/>
+    <circle cx="260" cy="40" r="16" fill="#FFE066" opacity="0.9"/>
+    <!-- Ground -->
+    <ellipse cx="160" cy="260" rx="80" ry="12" fill="#5A8A5A" opacity="0.5"/>
+    <!-- Trunk -->
+    <rect x="152" y="${220-trunkH}" width="16" height="${trunkH}" rx="4" fill="#8B6914"/>`;
+
+  if(branches&&pct>0.2){
+    const bh=220-trunkH+20;
+    svg+=`<line x1="160" y1="${bh}" x2="${120+pct*20}" y2="${bh-30}" stroke="#8B6914" stroke-width="6" stroke-linecap="round"/>
+    <line x1="160" y1="${bh+10}" x2="${195-pct*10}" y2="${bh-20}" stroke="#8B6914" stroke-width="5" stroke-linecap="round"/>`;
+  }
+
+  // Leaves (canopy)
+  if(pct>0.1){
+    const canopyY=155-pct*30;
+    const canopyR=40+pct*35;
+    svg+=`<ellipse cx="160" cy="${canopyY}" rx="${canopyR}" ry="${canopyR*0.8}" fill="#4CAF50" opacity="0.85"/>`;
+    svg+=`<ellipse cx="${140-pct*5}" cy="${canopyY+10}" rx="${canopyR*0.7}" ry="${canopyR*0.6}" fill="#66BB6A" opacity="0.6"/>`;
+    svg+=`<ellipse cx="${175+pct*5}" cy="${canopyY+15}" rx="${canopyR*0.65}" ry="${canopyR*0.55}" fill="#388E3C" opacity="0.5"/>`;
+  }
+
+  // Flowers/fruits
+  if(hasFlowers){
+    const positions=[[140,130],[175,125],[155,115],[185,140],[130,145]];
+    positions.slice(0,Math.floor(pct*5)).forEach(([x,y])=>{
+      svg+=`<text x="${x}" y="${y}" font-size="14" text-anchor="middle">${flower}</text>`;
+    });
+  }
+
+  // Apples/fruits
+  if(hasApples){
+    svg+=`<text x="145" y="155" font-size="12">🍎</text>`;
+    svg+=`<text x="170" y="160" font-size="12">🍎</text>`;
+  }
+
+  // Animal
+  if(hasAnimal){
+    svg+=`<text x="220" y="180" font-size="20">${animal}</text>`;
+  }
+
+  // Progress label
+  svg+=`<text x="160" y="272" text-anchor="middle" font-size="10" fill="#fff" opacity="0.8">成長スコア: ${progress}/60 🌱</text>`;
+
+  svg+='</svg>';
+  return svg;
+}
+
+function renderDream(){
+  const progress=getTreeProgress();
+  const now=new Date();
+
+  let html=`<div style="padding-top:8px"></div>`;
+
+  // Tree
+  html+=`<div class="dream-tree-wrap">${drawTree(progress)}</div>`;
+  html+=`<p style="font-size:11px;color:var(--mu);text-align:center;margin-bottom:12px">習慣・学習をするたびに木が育ちます🌱 月ごとに違う花が咲きます${FLOWERS[now.getMonth()%FLOWERS.length]}</p>`;
+
+  // Mandala chart
+  html+=`<div class="sec">🔮 曼陀羅チャート <span class="sec-edit" onclick="openMandalaEdit()">編集</span></div>
+  <div class="mandala-wrap">
+    <div class="mandala-grid">`;
+
+  const cats=dreamData.mandalaCats||[];
+  const positions=[0,1,2,3,null,4,5,6,7]; // 8 cats around center
+  positions.forEach((catIdx,gridPos)=>{
+    if(catIdx===null){
+      html+=`<div class="mandala-center" onclick="mandalaOpenCat=null;renderDream()">
+        <div style="font-size:24px">🌟</div>
+        <div style="margin-top:4px">${dreamData.mandalaCenter||'夢'}</div>
+      </div>`;
+    } else if(catIdx<cats.length){
+      const cat=cats[catIdx];
+      const pct=getMandalaProgress(cat);
+      const doneCount=(cat.items||[]).filter(i=>i.doneToday).length;
+      const totalCount=(cat.items||[]).length;
+      const isOpen=mandalaOpenCat===catIdx;
+      const waterH=Math.round(pct*80);
+      const syncLabel=getMandalaSync(cat);
+      html+=`<div class="mandala-cat${isOpen?' active':''}" onclick="mandalaOpenCat=${isOpen?'null':catIdx};renderDream()" style="border-color:${pct>0?cat.color||'var(--ac)':'var(--bd)'}">
+        <div class="mandala-water" style="height:${waterH}%;background:linear-gradient(180deg,${cat.color||'#2D6A8F'}22,${cat.color||'#2D6A8F'}44)"></div>
+        <div class="mandala-cat-icon">${cat.icon}</div>
+        <div class="mandala-cat-name">${cat.name}</div>
+        <div class="mandala-cat-pct">${Math.round(pct*100)}%</div>
+        <div class="mandala-sync">${syncLabel}</div>
+      </div>`;
+    } else {
+      html+=`<div class="mandala-cat" onclick="addMandalaCat()" style="border-style:dashed;opacity:.4">
+        <div style="font-size:20px;color:var(--mu)">＋</div>
+        <div style="font-size:10px;color:var(--mu)">追加</div>
+      </div>`;
+    }
+  });
+
+  html+=`</div>`;
+
+  // Detail panel for open category
+  if(mandalaOpenCat!==null&&cats[mandalaOpenCat]){
+    const cat=cats[mandalaOpenCat];
+    html+=`<div class="mandala-detail">
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px">${cat.icon} ${cat.name}</div>`;
+    (cat.items||[]).forEach((item,ii)=>{
+      html+=`<div class="mandala-item">
+        <button class="mandala-check${item.doneToday?' done':''}" onclick="toggleMandalaItem(${mandalaOpenCat},${ii})">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
+        <span class="mandala-item-label${item.doneToday?' ':''}${item.doneToday?'" style="text-decoration:line-through;color:var(--mu)"':'"}'>${item.label}</span>
+        ${item.type==='timer'?`<button class="mandala-timer-btn" onclick="startMandalaTimer(${mandalaOpenCat},${ii})">⏱ ${item.mins}分</button>`:''}
+        ${item.type==='count'?`<button class="mandala-count-btn" onclick="countMandalaItem(${mandalaOpenCat},${ii})">+1 (${item.count||0})</button>`:''}
+      </div>`;
+    });
+    html+=`<div style="display:flex;gap:6px;margin-top:10px">
+      <input id="mandala-item-inp" placeholder="項目を追加..." style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
+      <select id="mandala-item-type" style="padding:7px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)">
+        <option value="check">チェック</option>
+        <option value="timer">タイマー</option>
+        <option value="count">カウント</option>
+      </select>
+      <button class="abtn" onclick="addMandalaItem(${mandalaOpenCat})">追加</button>
+    </div></div>`;
+  }
+
+  html+=`</div>`;
+
+  // Dream list
+  html+=`<div class="sec">🌟 Dreamリスト</div><div class="card">`;
+  dreamData.dreams.forEach((d,i)=>{
+    html+=`<div class="dream-item">
+      <span style="color:#FFB347;font-size:16px">★</span>
+      <textarea class="dream-input" rows="1" oninput="dreamData.dreams[${i}].text=this.value;saveDream();autoResize(this)" onload="autoResize(this)">${d.text}</textarea>
+      <button class="delbtn" onclick="dreamData.dreams.splice(${i},1);saveDream();renderDream()">×</button>
+    </div>`;
+  });
+  html+=`<div class="af">
+    <input id="dream-inp" placeholder="夢を追加..." style="flex:1">
+    <button class="abtn" onclick="addDream()">追加</button>
+  </div></div>`;
+
+  // Year goal
+  html+=`<div class="sec">🎯 年間ゴール（2026-2027）</div>
+  <div class="card" style="padding:12px">
+    <textarea class="memo-box" style="border:none;background:transparent;min-height:60px" oninput="dreamData.yearGoal=this.value;saveDream()" placeholder="今年の大きな目標...">${dreamData.yearGoal}</textarea>
+  </div>`;
+
+  // Monthly goals
+  html+=`<div class="sec">📅 月別ゴール</div><div class="card">`;
+  const months=['2026-08','2026-09','2026-10','2026-11','2026-12','2027-01','2027-02','2027-03','2027-04','2027-05'];
+  months.forEach(m=>{
+    const [y,mo]=m.split('-');
+    const label=`${y}年${parseInt(mo)}月`;
+    const uhEvent=UH_EVENTS[m]||'';
+    html+=`<div class="goal-card">
+      <div class="goal-month">${label}${uhEvent?` · 📌 ${uhEvent}`:''}</div>
+      <input class="goal-inp" value="${(dreamData.monthGoals[m]||'').replace(/"/g,'&quot;')}" placeholder="今月のゴール..." onchange="dreamData.monthGoals['${m}']=this.value;saveDream()">
+    </div>`;
+  });
+  html+='</div>';
+
+  // Reverse plan
+  html+=`<div class="sec">🔄 逆算プラン</div>
+  <div style="margin-bottom:12px">
+    <div class="reverse-card">
+      <div style="font-size:11px;font-weight:600;color:#7A4FA0;margin-bottom:4px">🌟 最終的な夢</div>
+      <div style="font-size:13px;color:var(--tx)">${dreamData.dreams.map(d=>d.text).join(' / ')||'夢を入力してください'}</div>
+    </div>
+    <div class="reverse-arrow">↓</div>
+    <div class="reverse-card">
+      <div style="font-size:11px;font-weight:600;color:#2D6A8F;margin-bottom:4px">🎯 今年やること</div>
+      <textarea class="memo-box" style="border:none;background:transparent;min-height:40px;padding:0" oninput="dreamData.reverseYear=this.value;saveDream()" placeholder="今年の具体的な行動...">${dreamData.reverseYear}</textarea>
+    </div>
+    <div class="reverse-arrow">↓</div>
+    <div class="reverse-card">
+      <div style="font-size:11px;font-weight:600;color:#5A8A6A;margin-bottom:4px">📚 今セメスターやること</div>
+      <textarea class="memo-box" style="border:none;background:transparent;min-height:40px;padding:0" oninput="dreamData.reverseSem=this.value;saveDream()" placeholder="今学期の具体的な行動...">${dreamData.reverseSem}</textarea>
+    </div>
+    <div class="reverse-arrow">↓</div>
+    <div class="reverse-card">
+      <div style="font-size:11px;font-weight:600;color:#C4882A;margin-bottom:4px">📅 今月やること</div>
+      <textarea class="memo-box" style="border:none;background:transparent;min-height:40px;padding:0" oninput="dreamData.reverseMonth=this.value;saveDream()" placeholder="今月の具体的な行動...">${dreamData.reverseMonth}</textarea>
+    </div>
+    <div class="reverse-arrow">↓</div>
+    <div class="reverse-card">
+      <div style="font-size:11px;font-weight:600;color:#E8856A;margin-bottom:4px">📝 今週やること</div>
+      <textarea class="memo-box" style="border:none;background:transparent;min-height:40px;padding:0" oninput="dreamData.reverseWeek=this.value;saveDream()" placeholder="今週の具体的な行動...">${dreamData.reverseWeek}</textarea>
+    </div>
+    <div class="reverse-arrow">↓</div>
+    <div class="reverse-card" style="background:linear-gradient(135deg,#FFF8F0,#FFF3ED);border-color:#E8856A">
+      <div style="font-size:11px;font-weight:600;color:#C4882A;margin-bottom:4px">⭐ 今日やること</div>
+      <textarea class="memo-box" style="border:none;background:transparent;min-height:40px;padding:0" oninput="dreamData.reverseToday=this.value;saveDream()" placeholder="今日できる一つのこと...">${dreamData.reverseToday}</textarea>
+    </div>
+  </div>`;
+
+  document.getElementById('view-dream').innerHTML=html;
+}
+
+function addDream(){
+  const inp=document.getElementById('dream-inp');
+  if(!inp||!inp.value.trim())return;
+  dreamData.dreams.push({id:'d'+Date.now(),text:inp.value.trim()});
+  saveDream();
+  renderDream();
+}
+
+function getMandalaProgress(cat){
+  const items=cat.items||[];
+  if(items.length===0)return 0;
+  // Check items done today
+  const itemDone=items.filter(i=>i.doneToday).length/items.length;
+  // Also check sync
+  let syncScore=0;
+  if(cat.syncType==='habit'){
+    const today=dk(new Date());
+    const total=habits.length;
+    const done=habits.filter(h=>data[today]&&data[today][h.id]).length;
+    syncScore=total>0?done/total:0;
+  } else if(cat.syncType==='study'){
+    const ids=cat.syncIds||[];
+    const lists=ids.length>0?studyLists.filter(sl=>ids.includes(sl.id)):studyLists;
+    let done=0,total=0;
+    lists.forEach(sl=>{total+=sl.items.length;done+=sl.items.filter(i=>i.done).length;});
+    syncScore=total>0?done/total:0;
+  }
+  return Math.min((itemDone+syncScore)/2*1.5,1);
+}
+
+function getMandalaSync(cat){
+  if(cat.syncType==='habit'){
+    const today=dk(new Date());
+    const done=habits.filter(h=>data[today]&&data[today][h.id]).length;
+    return `習慣 ${done}/${habits.length}`;
+  } else if(cat.syncType==='study'){
+    const ids=cat.syncIds||[];
+    const lists=ids.length>0?studyLists.filter(sl=>ids.includes(sl.id)):studyLists;
+    let done=0,total=0;
+    lists.forEach(sl=>{total+=sl.items.length;done+=sl.items.filter(i=>i.done).length;});
+    return `学習 ${done}/${total}`;
+  }
+  return '';
+}
+
+function toggleMandalaItem(catIdx,itemIdx){
+  const item=dreamData.mandalaCats[catIdx].items[itemIdx];
+  item.doneToday=!item.doneToday;
+  saveDream();
+  renderDream();
+  if(item.doneToday)toast('🌱 木が育ちました！');
+}
+
+function startMandalaTimer(catIdx,itemIdx){
+  const item=dreamData.mandalaCats[catIdx].items[itemIdx];
+  timerActiveItem={mandala:{catIdx,itemIdx}};
+  timerRunning=true;
+  timerPaused=false;
+  timerSeconds=0;
+  timerTotal=(item.mins||25)*60;
+  timerInterval=setInterval(timerTick,1000);
+  showOverlay(item.label);
+  // Override completion
+  clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    timerSeconds++;
+    const today=dk(new Date());
+    studyLog[today]=(studyLog[today]||0)+1;
+    saveStudy();
+    updateTimerDisplay();
+    updateOverlay();
+    if(timerSeconds>=timerTotal){
+      clearInterval(timerInterval);
+      timerRunning=false;
+      hideOverlay();
+      dreamData.mandalaCats[catIdx].items[itemIdx].doneToday=true;
+      saveDream();
+      renderDream();
+      toast('⏰ '+item.label+'完了！🌱');
+    }
+  },1000);
+}
+
+function countMandalaItem(catIdx,itemIdx){
+  const item=dreamData.mandalaCats[catIdx].items[itemIdx];
+  item.count=(item.count||0)+1;
+  item.doneToday=true;
+  saveDream();
+  renderDream();
+  toast(`${item.label}: ${item.count}回 🌱`);
+}
+
+function addMandalaItem(catIdx){
+  const inp=document.getElementById('mandala-item-inp');
+  const typeEl=document.getElementById('mandala-item-type');
+  if(!inp||!inp.value.trim())return;
+  const type=typeEl?.value||'check';
+  dreamData.mandalaCats[catIdx].items.push({
+    id:'mi'+Date.now(),
+    label:inp.value.trim(),
+    type,
+    mins:type==='timer'?25:undefined,
+    count:0,
+    doneToday:false
+  });
+  saveDream();
+  renderDream();
+}
+
+function addMandalaCat(){
+  if(dreamData.mandalaCats.length>=8){toast('最大8カテゴリーです');return;}
+  const icons=['🎨','💡','🌍','❤️','🏃','🎵'];
+  dreamData.mandalaCats.push({
+    id:'mc'+Date.now(),
+    icon:icons[dreamData.mandalaCats.length%icons.length],
+    name:'新しいカテゴリー',
+    items:[]
+  });
+  saveDream();
+  renderDream();
+}
+
+function openMandalaEdit(){
+  const wrap=document.getElementById('modal-wrap');
+  let html=`<div class="modal-bg" onclick="closeModal(event)">
+    <div class="modal" style="position:relative;max-height:85vh;overflow-y:auto">
+      <button class="modal-close" onclick="closeModal()">×</button>
+      <h3>曼陀羅チャート編集</h3>
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--mu);margin-bottom:4px">中心の夢</div>
+        <input value="${dreamData.mandalaCenter||''}" onchange="dreamData.mandalaCenter=this.value;saveDream()" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg)">
+      </div>
+      <div class="card">`;
+  dreamData.mandalaCats.forEach((cat,i)=>{
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bd)">
+      <input value="${cat.icon}" onchange="dreamData.mandalaCats[${i}].icon=this.value;saveDream()" style="width:32px;text-align:center;border:none;background:transparent;font-size:18px;outline:none">
+      <input value="${cat.name}" onchange="dreamData.mandalaCats[${i}].name=this.value;saveDream()" style="flex:1;border:none;background:transparent;font-size:13px;outline:none;color:var(--tx)">
+      <button class="delbtn" onclick="dreamData.mandalaCats.splice(${i},1);saveDream();closeModal();renderDream()">×</button>
+    </div>`;
+  });
+  html+=`</div></div></div>`;
+  wrap.innerHTML=html;
+}
+
+function toggleTreeItem(type,id){
+  if(type==='habit'){
+    const arr=dreamData.treeHabits;
+    const idx=arr.indexOf(id);
+    if(idx>=0)arr.splice(idx,1);
+    else arr.push(id);
+  } else {
+    const arr=dreamData.treeStudy;
+    const idx=arr.indexOf(id);
+    if(idx>=0)arr.splice(idx,1);
+    else arr.push(id);
+  }
+  saveDream();
+  renderDream();
+}
+
+function autoResize(el){
+  el.style.height='auto';
+  el.style.height=el.scrollHeight+'px';
+}
 
 // 毎週月曜日に自動リセット
 function checkWeeklyReset(){
