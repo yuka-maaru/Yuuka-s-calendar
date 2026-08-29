@@ -48,7 +48,7 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
 .sn{font-size:24px;font-weight:700}
 .sl{font-size:11px;color:var(--sub);margin-top:2px}
 .wgw{overflow-x:auto}
-.wgt{width:100%;border-collapse:collapse;min-width:300px}
+.wgt{width:100%;border-collapse:collapse;min-width:300px;table-layout:fixed}
 .wgt th{font-size:11px;color:var(--sub);font-weight:500;padding:8px 3px;text-align:center;border-bottom:1px solid var(--bd);background:var(--sur);white-space:nowrap}
 .wgt th.tc2{color:var(--ac)}
 .wgt td{padding:2px;border-bottom:1px solid #F3F0EB;vertical-align:top;height:34px}
@@ -266,32 +266,36 @@ let schedule=JSON.parse(localStorage.getItem('yp_sch')||'null')||[
 let recurringTasks=JSON.parse(localStorage.getItem('yp_recurring')||'null')||[
   {id:'r1',label:'📝 PHIL 770 リフレクション提出',days:[2],icon:'📝'},
   {id:'r2',label:'🍱 作り置き料理',days:[0],icon:'🍱'},
+  {id:'r3',label:'🖨️ コピー作業（水曜HW × 85枚）',days:[2],icon:'🖨️'},
+  {id:'r4',label:'🖨️ コピー作業（金・月HW × 85枚×2）',days:[4],icon:'🖨️'},
 ];
 
+let recurringApplied=false;
 function applyRecurringTasks(){
+  if(recurringApplied)return;
+  recurringApplied=true;
+  
   const n=new Date(),dow=n.getDay();
   const monday=new Date(n);
-  // Monday of current week
   monday.setDate(n.getDate()-(dow===0?6:dow-1));
   monday.setHours(0,0,0,0);
 
-  // First: remove ALL existing recurring task instances
-  const validIds=recurringTasks.map(r=>r.id);
+  // Remove ALL existing recurring task instances
   Object.keys(tasks).forEach(k=>{
     tasks[k]=(tasks[k]||[]).filter(t=>!t.recurringId);
   });
 
-  // Then re-add for -1 week to +2 weeks
+  // Re-add for -1 week to +2 weeks
   for(let weekOffset=-1;weekOffset<=2;weekOffset++){
     recurringTasks.forEach(rt=>{
-      rt.days.forEach(d=>{
-        // d=0 means Sunday. In Mon-start week: Sun is day 6 (offset 6 from Monday)
+      (rt.days||[]).forEach(d=>{
+        // JS: 0=Sun,1=Mon...6=Sat
+        // Mon-start offset: Mon=0,Tue=1,...,Sun=6
         const dayOffset=d===0?6:d-1;
         const target=new Date(monday);
         target.setDate(monday.getDate()+weekOffset*7+dayOffset);
         const k=dk(target);
         if(!tasks[k])tasks[k]=[];
-        // Prevent duplicates
         if(!tasks[k].some(t=>t.recurringId===rt.id)){
           tasks[k].push({id:'r'+rt.id+'_'+k,label:rt.label,done:false,recurringId:rt.id});
         }
@@ -377,7 +381,8 @@ function tkEnter(e,key){if(e.key==='Enter')addTask(key);}
 
 function openDayModal(key){
   selDate=key;
-  const d=new Date(key);
+  const [dy,dm,dd]=key.split('-').map(Number);
+  const d=new Date(dy,dm-1,dd);
   const dayTasks=tasks[key]||[];
   let taskHtml='';
   if(dayTasks.length===0){
@@ -412,8 +417,8 @@ function openDayModal(key){
     <div class="modal" style="position:relative">
       <button class="modal-close" onclick="closeModal()">×</button>
       <h3>${d.getMonth()+1}月${d.getDate()}日 ${DJ[d.getDay()]}曜日</h3>
-      ${uhEv2?`<div style="display:inline-block;padding:3px 8px;border-radius:20px;background:#EBF3F8;color:#2D6A8F;font-size:11px;margin-bottom:6px">📌 ${uhEv2}</div>`:''}
-      ${customEvs2.map(e=>`<div style="display:inline-block;padding:3px 8px;border-radius:20px;background:${e.color}22;color:${e.color};font-size:11px;margin-bottom:6px;margin-right:4px">● ${e.name}</div>`).join('')}
+      ${uhEv2?('<div style="display:inline-block;padding:3px 8px;border-radius:20px;background:#EBF3F8;color:#2D6A8F;font-size:11px;margin-bottom:6px">📌 '+uhEv2+'</div>'):''}
+      ${customEvs2.map(e=>'<div style="display:inline-block;padding:3px 8px;border-radius:20px;background:'+e.color+'22;color:'+e.color+';font-size:11px;margin-bottom:6px;margin-right:4px">● '+e.name+'</div>').join('')}
       <div class="card" id="modal-tasks">${taskHtml}</div>
       <div style="margin-bottom:10px">
         <div style="font-size:11px;color:var(--mu);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
@@ -421,7 +426,7 @@ function openDayModal(key){
           <span onclick="renderTemplateSettings()" style="color:var(--ac);cursor:pointer;font-size:11px">テンプレート編集</span>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          ${eventTemplates.map(t=>`<button onclick="addEventFromTemplate('${key}','${t.id}')" style="padding:5px 10px;border-radius:20px;background:${t.color}22;border:1px solid ${t.color};color:${t.color};font-size:11px;cursor:pointer">${t.name}</button>`).join('')}
+          ${eventTemplates.map(t=>'<button onclick="addEventFromTemplate(\'' + key + '\',\''+t.id+'\')" style="padding:5px 10px;border-radius:20px;background:'+t.color+'22;border:1px solid '+t.color+';color:'+t.color+';font-size:11px;cursor:pointer">'+t.name+'</button>').join('')}
         </div>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:8px">
@@ -455,7 +460,8 @@ function addModalTask(key){
 }
 
 function refreshModal(key){
-  const d=new Date(key);
+  const [dy,dm,dd]=key.split('-').map(Number);
+  const d=new Date(dy,dm-1,dd);
   const dayTasks=tasks[key]||[];
   let html='';
   if(dayTasks.length===0){
@@ -490,6 +496,30 @@ function closeModal(e){
   if(e&&e.target!==e.currentTarget)return;
   document.getElementById('modal-wrap').innerHTML='';
   render();
+}
+
+function openTimeSlot(key,t){
+  // Pre-fill time and open day modal
+  openDayModal(key);
+  // Set the time fields after modal opens
+  setTimeout(()=>{
+    const startEl=document.getElementById('modal-start');
+    const endEl=document.getElementById('modal-end');
+    if(startEl){
+      const hr=Math.floor(t);
+      const min=t%1===0.5?'30':'00';
+      startEl.value=`${String(hr).padStart(2,'0')}:${min}`;
+    }
+    if(endEl){
+      const endT=t+0.5;
+      const hr=Math.floor(endT);
+      const min=endT%1===0.5?'30':'00';
+      endEl.value=`${String(hr).padStart(2,'0')}:${min}`;
+    }
+    // Focus task input
+    const inp=document.getElementById('modal-inp');
+    if(inp)inp.focus();
+  },100);
 }
 
 // Custom event templates (like MiniCal)
@@ -729,7 +759,7 @@ function renderYearlyCalendar(){
     if(eventsThisMonth.length>0){
       html+=`<div style="margin-top:8px;border-top:1px solid var(--bd);padding-top:6px">`;
       eventsThisMonth.forEach(([k,v])=>{
-        const d=new Date(k);
+        const [ky,km,kd]=k.split('-').map(Number);const d=new Date(ky,km-1,kd);
         html+=`<div style="font-size:11px;color:var(--sub);margin-bottom:2px">${d.getMonth()+1}/${d.getDate()} ${v}</div>`;
       });
       html+='</div>';
@@ -773,7 +803,7 @@ function renderToday(){
     <div class="dtitle">${isT?'今日':DFJ[dow]}<span class="dsub"> — ${d.getMonth()+1}月${d.getDate()}日</span></div>
     <button onclick="dayOff++;render()">›</button>
   </div>
-  <div class="sec"><span>タスク${dayTasks.length>0?` (${doneT}/${dayTasks.length})`:''}</span></div>
+  <div class="sec"><span>タスク${dayTasks.length>0?(' ('+doneT+'/'+dayTasks.length+')'):''}</span></div>
   <div class="card">`;
   if(dayTasks.length===0)h+='<div class="empty">今日のタスクはまだありません</div>';
   else [...dayTasks].sort((a,b)=>{
@@ -822,13 +852,18 @@ function renderToday(){
     }
   }
   h+=`</div><div class="sec"><span>今日の習慣</span><span class="sec-edit" onclick="sw('settings')">編集</span></div><div class="card">`;
-  habits.forEach(hb=>{
+  habits.forEach((hb,i)=>{
     const done=!!(data[key]&&data[key][hb.id]),s=streak(hb.id);
-    h+=`<div class="hrow">
+    h+=`<div class="hrow" draggable="true" id="hrow-${i}" 
+      ondragstart="habitDragStart(${i})" 
+      ondragover="habitDragOver(event,${i})"
+      ondrop="habitDrop(${i})"
+      ondragend="habitDragEnd()">
+      <div style="color:var(--mu);font-size:16px;cursor:grab;padding:0 6px;flex-shrink:0">⠿</div>
       <div class="hic" style="background:${hb.color}22">${hb.icon}</div>
-      <div class="hin"><div class="hn">${hb.name}</div><div class="hs">${s>0?`🔥 ${s}日連続`:'今日からスタート'}${hb.timerMins?` · ⏱${hb.timerMins}分`:''}</div></div>
-      ${hb.timerMins&&!done?`<button style="padding:6px 10px;border-radius:8px;background:${hb.color}22;border:1px solid ${hb.color};color:${hb.color};font-size:11px;cursor:pointer;margin-right:6px" onclick="startHabitTimer('${hb.id}','${key}',${hb.timerMins})">▶</button>`:''}
-      <button class="hck${done?' done':''}" style="${done?`background:${hb.color};border-color:${hb.color}`:''}" onclick="toggleH('${hb.id}','${key}')" aria-label="${hb.name}">
+      <div class="hin"><div class="hn">${hb.name}</div><div class="hs">${s>0?('🔥 '+s+'日連続'):'今日からスタート'}${hb.timerMins?' · ⏱'+hb.timerMins+'分':''}</div></div>
+      ${hb.timerMins&&!done?buildHabitTimerBtn(hb,key):''}
+      <button class="hck${done?' done':''}" style="${done?('background:'+hb.color+';border-color:'+hb.color):''}" onclick="toggleH('${hb.id}','${key}')" aria-label="${hb.name}">
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       </button>
     </div>`;
@@ -905,7 +940,9 @@ function renderHabits(){
     <div class="stat"><div class="sn">${total}</div><div class="sl">今週のチェック</div></div>
     <div class="stat"><div class="sn">${maxS}日</div><div class="sl">最長連続</div></div>
   </div><div class="sec">今週の習慣</div><div class="card"><div class="wgw">
-  <table class="wgt"><thead><tr><th></th>`;
+  <table class="wgt">
+      <colgroup><col style="width:34px"><col><col><col><col><col><col><col></colgroup>
+      <thead><tr><th style="width:34px"></th>`;
   dates.forEach(d=>{const k=dk(d),isT=k===today;h+=`<th class="${isT?'tc2':''}">${DJ[d.getDay()]}<br>${d.getDate()}</th>`;});
   h+='</tr></thead><tbody>';
   habits.forEach(hb=>{
@@ -913,7 +950,7 @@ function renderHabits(){
     dates.forEach(d=>{
       const k=dk(d),done=!!(data[k]&&data[k][hb.id]);
       h+=`<td style="text-align:center;border-bottom:1px solid #F3F0EB">
-        <button class="hck${done?' done':''}" style="${done?`background:${hb.color};border-color:${hb.color}`:''}" onclick="toggleH('${hb.id}','${k}')" aria-label="${hb.name}">
+        <button class="hck${done?' done':''}" style="${done?('background:'+hb.color+';border-color:'+hb.color):''}" onclick="toggleH('${hb.id}','${k}')" aria-label="${hb.name}">
           <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
         </button></td>`;
     });
@@ -925,51 +962,52 @@ function renderHabits(){
 
 function renderWeek(){
   const dates=getWk(),today=dk(new Date());
+  // Build as single grid - header + all time rows share same column definition
   let h=`<div style="padding-top:8px"></div>
   <div class="sec"><span>週間スケジュール</span><span class="sec-edit" onclick="openSchEdit()">スケジュール編集</span></div>
-  <p style="font-size:11px;color:var(--mu);margin-bottom:8px">曜日の列をタップしてタスクを追加</p>
-  <div class="card"><div class="wgw"><table class="wgt"><thead><tr><th></th>`;
+  <div class="card" style="padding:0;overflow:hidden">
+  <div style="display:grid;grid-template-columns:36px repeat(7,1fr);overflow-x:auto">`;
+
+  // Header row - same grid as body
+  h+=`<div style="background:var(--sur);border-bottom:2px solid var(--bd);padding:4px 2px;font-size:10px;color:var(--mu);grid-column:1;position:sticky;top:0;z-index:10"></div>`;
   dates.forEach(d=>{
-    const k=dk(d),isT=k===today;
-    h+=`<th class="${isT?'tc2':''}" onclick="openDayModal('${k}')" style="cursor:pointer">${DJ[d.getDay()]}<br>${d.getDate()}</th>`;
+    const k=dk(d),isT=k===today,dow=d.getDay();
+    const isSun=dow===0,isSat=dow===6;
+    const color=isT?'white':isSun?'#E85555':isSat?'#5577E8':'var(--tx)';
+    h+=`<div onclick="openDayModal('${k}')" style="background:${isT?'var(--ac)':'var(--sur)'};border-bottom:2px solid var(--bd);padding:6px 2px;text-align:center;cursor:pointer;color:${color};position:sticky;top:0;z-index:10">
+      <div style="font-size:10px;font-weight:600">${DJ[dow]}</div>
+      <div style="font-size:14px;font-weight:700">${d.getDate()}</div>
+    </div>`;
   });
-  h+='</tr></thead><tbody>';
+
+  // Time slot rows
   for(let hr=7;hr<=22;hr++){
     for(let half=0;half<2;half++){
       const t=hr+(half*0.5);
       const slotEnd=t+0.5;
-      h+=`<tr><td style="font-size:10px;color:var(--mu);text-align:right;padding-right:5px;background:var(--bg);width:34px">${half===0?hr+':00':hr+':30'}</td>`;
+      const borderStyle=half===0&&hr>7?'2px solid var(--bd)':'1px solid #F3F0EB';
+      h+=`<div style="font-size:9px;color:var(--mu);text-align:right;padding:0 4px;line-height:28px;background:var(--bg);border-top:${borderStyle};min-height:28px;grid-column:1">${half===0?hr+':00':''}</div>`;
       dates.forEach(d=>{
         const dow=d.getDay(),k=dk(d);
         const evs=schedule.filter(e=>e.days.includes(dow)&&e.start<slotEnd&&e.end>t);
-        const dayT=(tasks[k]||[]).filter(t=>!t.done);
-        h+=`<td onclick="openDayModal('${k}')" style="cursor:pointer;padding:2px;border-bottom:1px solid #F3F0EB;vertical-align:top;height:28px">`;
+        const dayT=(tasks[k]||[]).filter(x=>!x.done&&x.startTime&&strToTime(x.startTime)>=t&&strToTime(x.startTime)<slotEnd);
+        h+=`<div onclick="openTimeSlot('${k}',${t})" style="cursor:pointer;padding:1px;min-height:28px;border-top:${borderStyle};border-left:1px solid #F3F0EB">`;
         evs.forEach(e=>{
           const isStart=e.start>=t&&e.start<slotEnd;
           if(isStart){
-            h+=`<div class="wgev" style="background:${e.bg};border-left-color:${e.color};color:${e.color}">${timeToStr(e.start)} ${e.label}</div>`;
-          } else {
-            h+=`<div class="wgev" style="background:${e.bg};border-left-color:${e.color};color:${e.color};opacity:.5">↳</div>`;
+            h+=`<div class="wgev" style="background:${e.bg};border-left:2px solid ${e.color};color:${e.color};font-size:9px;padding:2px 3px;border-radius:3px;margin:1px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${timeToStr(e.start)} ${e.label}</div>`;
+          } else if(e.start<t&&e.end>t){
+            h+=`<div style="background:${e.bg};border-left:2px solid ${e.color};height:100%;min-height:26px;opacity:0.4;border-radius:2px;margin:1px 0"></div>`;
           }
         });
-        const noTimeTasks=(tasks[k]||[]).filter(t=>!t.done&&!t.startTime);
-        const timedTasks=(tasks[k]||[]).filter(t=>!t.done&&t.startTime);
-        if(t===7&&noTimeTasks.length>0){
-          noTimeTasks.forEach(t=>h+=`<div class="wgev" style="background:#F0FDF4;border-left-color:#10B981;color:#065F46">📝 ${t.label}</div>`);
-        }
-        timedTasks.forEach(tk=>{
-          const tStart=strToTime(tk.startTime);
-          if(tStart>=t&&tStart<slotEnd){
-            const timeStr=tk.endTime?`${tk.startTime}〜${tk.endTime}`:`${tk.startTime}`;
-            h+=`<div class="wgev" style="background:#F0FDF4;border-left-color:#10B981;color:#065F46">📝 ${timeStr} ${tk.label}</div>`;
-          }
+        dayT.forEach(tk=>{
+          h+=`<div style="background:#F0FDF4;border-left:2px solid #10B981;font-size:9px;padding:2px 3px;border-radius:3px;margin:1px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#065F46">📝${tk.label}</div>`;
         });
-        h+='</td>';
+        h+=`</div>`;
       });
-      h+='</tr>';
     }
   }
-  h+='</tbody></table></div></div>';
+  h+=`</div></div>`;
   document.getElementById('view-week').innerHTML=h;
 }
 
@@ -999,11 +1037,11 @@ function renderMonth(){
     h+=`<div class="ccell${isT?' td':''}" onclick="openDayModal('${k}')" style="${isSun?'color:#E85555':isSat?'color:#5577E8':''}">
       <div class="cdt"><div class="cdt-inner">${day}</div></div>
       <div class="cdots">
-        ${uhEv?`<div class="cdot" style="background:#2D6A8F" title="${uhEv}"></div>`:''}
-        ${doneH.slice(0,3).map(hb=>`<div class="cdot" style="background:${hb.color}"></div>`).join('')}
-        ${customEvs.slice(0,2).map(e=>`<div class="cdot" style="background:${e.color||'#E8856A'}"></div>`).join('')}
+        ${uhEv?'<div class="cdot" style="background:#2D6A8F" title="'+uhEv+'"></div>':''}
+        ${doneH.slice(0,3).map(hb=>'<div class="cdot" style="background:'+hb.color+'"></div>').join('')}
+        ${customEvs.slice(0,2).map(e=>'<div class="cdot" style="background:'+(e.color||'#E8856A')+'"></div>').join('')}
       </div>
-      ${pendT>0?`<div class="ctc">·${pendT}</div>`:''}
+      ${pendT>0?('<div class="ctc">·'+pendT+'</div>'):''}
     </div>`;
   }
   const rem=(7-((startDow+last.getDate())%7))%7;
@@ -1026,11 +1064,19 @@ function saveMonthMemo(key,val){
 function renderSettings(){
   let h='<div style="padding-top:8px"></div><div class="sec">習慣をカスタマイズ</div><div class="card">';
   habits.forEach((hb,i)=>{
+    const modeLabel=hb.timerMins?('⏱ '+hb.timerMins+'分タイマー'):'✅ チェック';
     h+=`<div class="set-row">
       <div class="hic" style="background:${hb.color}22">${hb.icon}</div>
       <div class="sri">
         <input value="${hb.name}" onchange="habits[${i}].name=this.value;save()" placeholder="習慣名">
-        <div class="srs">アイコン: <input value="${hb.icon}" onchange="habits[${i}].icon=this.value;save();render()" style="width:28px"> ⏱<input type="number" value="${hb.timerMins||''}" placeholder="分" onchange="habits[${i}].timerMins=parseInt(this.value)||null;save()" style="width:44px"></div>
+        <div class="srs" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span>アイコン:</span><input value="${hb.icon}" onchange="habits[${i}].icon=this.value;save();render()" style="width:28px">
+          <select onchange="habits[${i}].timerMins=this.value==='timer'?20:null;save();render()" style="padding:2px 4px;border-radius:4px;border:1px solid var(--bd);font-size:11px;background:var(--bg)">
+            <option value="check" ${!hb.timerMins?'selected':''}>✅ チェック</option>
+            <option value="timer" ${hb.timerMins?'selected':''}>⏱ タイマー</option>
+          </select>
+          ${hb.timerMins?'<input type="number" value="'+hb.timerMins+'" min="1" max="120" onchange="habits['+i+'].timerMins=parseInt(this.value)||20;save()" style="width:44px;padding:2px 4px;border-radius:4px;border:1px solid var(--bd);font-size:11px">分':''}
+        </div>
       </div>
       <input type="color" class="cpick" value="${hb.color}" oninput="habits[${i}].color=this.value;save();render()" style="background:${hb.color}">
       <button class="delbtn" onclick="if(confirm('削除しますか？')){habits.splice(${i},1);save();render()}">×</button>
@@ -1067,16 +1113,14 @@ function addH(){
 }
 
 function startHabitTimer(hid,key,mins){
-  timerActiveItem={habitId:hid,key};
+  if(timerRunning)stopTimer();
+  timerActiveItem={habitId:hid,habitKey:key};
   timerRunning=true;
   timerPaused=false;
   timerSeconds=0;
   timerTotal=mins*60;
-  timerInterval=setInterval(timerTick,1000);
   const hb=habits.find(h=>h.id===hid);
-  showOverlay(hb?hb.icon+' '+hb.name:'瞑想中');
-  // Override timerTick to mark habit on complete
-  clearInterval(timerInterval);
+  showOverlay((hb?hb.icon+' '+hb.name:'🧘 瞑想中'));
   timerInterval=setInterval(()=>{
     timerSeconds++;
     updateTimerDisplay();
@@ -1085,8 +1129,13 @@ function startHabitTimer(hid,key,mins){
       clearInterval(timerInterval);
       timerRunning=false;
       hideOverlay();
-      toggleH(hid,key);
-      toast('⏰ お疲れ様でした！');
+      // Mark habit as done
+      if(!data[key])data[key]={};
+      data[key][hid]=true;
+      playTimerEnd();
+      toast('⏰ '+(hb?hb.name:'習慣')+'完了！✅');
+      save();
+      render();
     }
   },1000);
 }
@@ -1196,6 +1245,7 @@ let timerActiveItem=null;
 let studyOpenList=null;
 
 // UH Manoa Academic Calendar
+const PHIL111_DAYS={1:'PHIL111',3:'PHIL111',5:'PHIL111セクション'};
 const UH_CALENDAR={
   '2026-08-24':'🎓 秋学期開始',
   '2026-09-02':'📋 SSN申請',
@@ -1461,20 +1511,35 @@ function renderDream(){
 
   // Dream list with water level
   if(mandalaOpenDream===null){
-    html+=`<div class="sec">🌟 Dream List <span class="sec-edit" onclick="addDream()">＋ 追加</span></div>`;
+    html+=`<div class="sec">🌟 Dream List <span class="sec-edit" onclick="dreamEditMode=!dreamEditMode;renderDream()">${typeof dreamEditMode!=='undefined'&&dreamEditMode?'完了':'編集'}</span> <span class="sec-edit" onclick="addDream()" style="margin-left:8px">＋</span></div>`;
     dreamData.dreams.forEach((dream,di)=>{
       const pct=getDreamWater(dream);
       const waterPct=Math.round(pct*100);
       if(!dream.text)return;
-      html+=`<div onclick="mandalaOpenDream=${di};mandalaOpenCat=null;renderDream()" style="background:var(--sur);border-radius:12px;border:1.5px solid ${dream.color||'var(--bd)'};margin-bottom:10px;overflow:hidden;cursor:pointer;position:relative;min-height:64px;display:flex;align-items:center;gap:12px;padding:12px 14px">
-        <div style="position:absolute;left:0;bottom:0;width:${waterPct}%;height:100%;background:${dream.color||'#2D6A8F'}18;transition:width .5s ease;pointer-events:none"></div>
-        <div style="font-size:28px;position:relative;z-index:1">${dream.icon||'🌟'}</div>
-        <div style="flex:1;position:relative;z-index:1">
-          <div style="font-size:14px;font-weight:600;color:var(--tx)">${dream.text}</div>
-          <div style="font-size:11px;color:var(--mu);margin-top:2px">達成度 ${waterPct}% 💧</div>
-        </div>
-        <div style="position:relative;z-index:1;color:var(--mu)">›</div>
-      </div>`;
+      if(typeof dreamEditMode!=='undefined'&&dreamEditMode){
+        // Edit mode
+        html+=`<div style="background:var(--sur);border-radius:12px;border:1.5px solid ${dream.color||'var(--bd)'};margin-bottom:10px;padding:12px 14px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <input value="${dream.icon||'🌟'}" onchange="dreamData.dreams[${di}].icon=this.value;saveDream()" style="width:36px;text-align:center;font-size:20px;border:none;background:transparent;outline:none">
+            <input value="${dream.text}" onchange="dreamData.dreams[${di}].text=this.value;saveDream()" style="flex:1;font-size:13px;font-weight:600;border:none;border-bottom:1px solid var(--bd);background:transparent;outline:none;padding-bottom:2px;color:var(--tx)">
+            <input type="color" value="${dream.color||'#2D6A8F'}" onchange="dreamData.dreams[${di}].color=this.value;saveDream()" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--bd);cursor:pointer;padding:1px">
+            <button class="delbtn" onclick="if(confirm('削除しますか？')){dreamData.dreams.splice(${di},1);saveDream();renderDream()}">×</button>
+          </div>
+          <div style="font-size:11px;color:var(--mu);margin-bottom:4px">習慣・学習との紐づけ：</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">${buildDreamLinks(di,dream)}</div>
+        </div>`;
+      } else {
+        // View mode
+        html+=`<div onclick="mandalaOpenDream=${di};mandalaOpenCat=null;renderDream()" style="background:var(--sur);border-radius:12px;border:1.5px solid ${dream.color||'var(--bd)'};margin-bottom:10px;overflow:hidden;cursor:pointer;position:relative;min-height:64px;display:flex;align-items:center;gap:12px;padding:12px 14px">
+          <div style="position:absolute;left:0;bottom:0;width:${waterPct}%;height:100%;background:${dream.color||'#2D6A8F'}18;transition:width .5s ease;pointer-events:none"></div>
+          <div style="font-size:28px;position:relative;z-index:1">${dream.icon||'🌟'}</div>
+          <div style="flex:1;position:relative;z-index:1">
+            <div style="font-size:14px;font-weight:600;color:var(--tx)">${dream.text}</div>
+            <div style="font-size:11px;color:var(--mu);margin-top:2px">達成度 ${waterPct}% 💧</div>
+          </div>
+          <div style="position:relative;z-index:1;color:var(--mu)">›</div>
+        </div>`;
+      }
     });
   } else {
     // Show specific dream's mandala
@@ -1575,7 +1640,7 @@ function renderDream(){
     const label=`${y}年${parseInt(mo)}月`;
     const uhEvent=UH_EVENTS[m]||'';
     html+=`<div class="goal-card">
-      <div class="goal-month">${label}${uhEvent?` · 📌 ${uhEvent}`:''}</div>
+      <div class="goal-month">${label}${uhEvent?(' · 📌 '+uhEvent):''}</div>
       <input class="goal-inp" value="${(dreamData.monthGoals[m]||'').replace(/"/g,'&quot;')}" placeholder="今月のゴール..." onchange="dreamData.monthGoals['${m}']=this.value;saveDream()">
     </div>`;
   });
@@ -1596,12 +1661,61 @@ function editBeMyself(){
   renderDream();
 }
 
+let dreamEditMode=false;
+
+function buildDreamLinks(di,dream){
+  let html='';
+  habits.forEach(h=>{
+    const sel=(dream.linkedHabits||[]).includes(h.id);
+    html+='<button onclick="toggleDreamLink('+di+',\'habit\',\''+h.id+'\')" style="padding:3px 8px;border-radius:12px;background:'+(sel?h.color:h.color+'22')+';border:1px solid '+h.color+';color:'+(sel?'white':h.color)+';font-size:10px;cursor:pointer">'+h.icon+h.name+'</button>';
+  });
+  studyLists.forEach(sl=>{
+    const sel=(dream.linkedStudy||[]).includes(sl.id);
+    html+='<button onclick="toggleDreamLink('+di+',\'study\',\''+sl.id+'\')" style="padding:3px 8px;border-radius:12px;background:'+(sel?sl.color:sl.color+'22')+';border:1px solid '+sl.color+';color:'+(sel?'white':sl.color)+';font-size:10px;cursor:pointer">📚'+sl.name+'</button>';
+  });
+  return html;
+}
+
+function toggleDreamLink(dreamIdx,type,id){
+  const dream=dreamData.dreams[dreamIdx];
+  if(type==='habit'){
+    if(!dream.linkedHabits)dream.linkedHabits=[];
+    const idx=dream.linkedHabits.indexOf(id);
+    if(idx>=0)dream.linkedHabits.splice(idx,1);
+    else dream.linkedHabits.push(id);
+  } else {
+    if(!dream.linkedStudy)dream.linkedStudy=[];
+    const idx=dream.linkedStudy.indexOf(id);
+    if(idx>=0)dream.linkedStudy.splice(idx,1);
+    else dream.linkedStudy.push(id);
+  }
+  saveDream();
+  renderDream();
+}
+
 function getDreamWater(dream){
   try {
+    let score=0;
+    let total=0;
+    // Mandala cats
     const cats=dream.cats||[];
-    if(cats.length===0)return 0;
-    const total=cats.reduce((sum,cat)=>sum+getMandalaProgress(cat),0);
-    return Math.min(total/cats.length,1);
+    cats.forEach(cat=>{score+=getMandalaProgress(cat);total++;});
+    // Linked habits
+    const today=dk(new Date());
+    (dream.linkedHabits||[]).forEach(hid=>{
+      total++;
+      if(data[today]&&data[today][hid])score++;
+    });
+    // Linked study
+    (dream.linkedStudy||[]).forEach(sid=>{
+      const sl=studyLists.find(s=>s.id===sid);
+      if(sl){
+        const done=sl.items.filter(i=>i.done).length;
+        const tot=sl.items.length;
+        if(tot>0){score+=done/tot;total++;}
+      }
+    });
+    return total>0?Math.min(score/total,1):0;
   } catch(e){return 0;}
 }
 
@@ -1672,6 +1786,7 @@ function toggleMandalaItem(dreamIdx,catIdx,itemIdx){
   try{
     const item=dreamData.dreams[dreamIdx].cats[catIdx].items[itemIdx];
     item.doneToday=!item.doneToday;
+    if(item.doneToday)playPing();
     saveDream();
     renderDream();
     if(item.doneToday)toast('💧 水が増えました！木が育ちます🌱');
@@ -1816,6 +1931,17 @@ function saveStudy(){
   if(el){el.style.opacity='1';setTimeout(()=>el.style.opacity='0',2000);}
 }
 
+let habitDragIdx=null;
+function habitDragStart(i){habitDragIdx=i;}
+function habitDragOver(e,i){e.preventDefault();document.querySelectorAll('.hrow').forEach(r=>r.style.background='');const el=document.getElementById('hrow-'+i);if(el)el.style.background='var(--bg)';}
+function habitDrop(i){
+  if(habitDragIdx===null||habitDragIdx===i)return;
+  const [moved]=habits.splice(habitDragIdx,1);
+  habits.splice(i,0,moved);
+  save();render();
+}
+function habitDragEnd(){habitDragIdx=null;document.querySelectorAll('.hrow').forEach(r=>r.style.background='');}
+
 function getTodayStudyTime(){
   const today=dk(new Date());
   return studyLog[today]||0;
@@ -1890,7 +2016,7 @@ function timerTick(){
   updateOverlay();
   if(timerSeconds>=timerTotal){
     stopTimerOverlay();
-    toast('⏰ お疲れ様でした！');
+    playTimerEnd();toast('⏰ お疲れ様でした！');
     if(timerActiveItem){
       studyLists[timerActiveItem.listIdx].items[timerActiveItem.itemIdx].done=true;
       saveStudy();
@@ -2024,7 +2150,7 @@ function renderStudy(){
             <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
           <span style="flex:1;font-size:13px;${item.done?'text-decoration:line-through;color:var(--mu)':''}">${item.label}</span>
-          ${!timerRunning?`<button onclick="startTimer(${li},${ii})" style="padding:4px 8px;border-radius:6px;background:${sl.color}22;border:1px solid ${sl.color};color:${sl.color};font-size:11px;cursor:pointer">▶ 開始</button>`:''}
+          ${!timerRunning?('<button onclick="startTimer('+li+','+ii+')" style="padding:4px 8px;border-radius:6px;background:'+sl.color+'22;border:1px solid '+sl.color+';color:'+sl.color+';font-size:11px;cursor:pointer">▶ 開始</button>'):''}
         </div>`).join('')}
       </div>`;
     });
@@ -2035,6 +2161,7 @@ function renderStudy(){
 
 function toggleStudyItem(li,ii){
   studyLists[li].items[ii].done=!studyLists[li].items[ii].done;
+  if(studyLists[li].items[ii].done)playPing();
   saveStudy();
   renderStudy();
 }
