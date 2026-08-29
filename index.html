@@ -260,13 +260,23 @@ const MJ=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月'
 const DFJ=['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'];
 
 let habits=JSON.parse(localStorage.getItem('yp_h')||'null')||[
-  {id:'yoga',name:'朝ヨガ 45分',icon:'🧘',color:'#5A8A6A',timerMins:45},
-  {id:'med_am',name:'朝瞑想 30分',icon:'🌙',color:'#2D6A8F',timerMins:30},
-  {id:'english',name:'英語勉強 1時間',icon:'📖',color:'#E8856A',timerMins:60},
-  {id:'study',name:'哲学文献読み',icon:'📚',color:'#3A5FA0',timerMins:30},
-  {id:'med_pm',name:'夜瞑想 30分',icon:'✨',color:'#7A4FA0',timerMins:30},
-  {id:'journal',name:'日記',icon:'✏️',color:'#888'},
+  {id:'yoga',name:'朝ヨガ 45分',icon:'🧘',color:'#5A8A6A',timerMins:45,group:'morning'},
+  {id:'med_am',name:'朝瞑想 30分',icon:'🌙',color:'#2D6A8F',timerMins:30,group:'morning'},
+  {id:'english',name:'英語勉強 1時間',icon:'📖',color:'#E8856A',timerMins:60,group:'other'},
+  {id:'study',name:'哲学文献読み',icon:'📚',color:'#3A5FA0',timerMins:30,group:'other'},
+  {id:'med_pm',name:'夜瞑想 30分',icon:'✨',color:'#7A4FA0',timerMins:30,group:'night'},
+  {id:'journal',name:'日記',icon:'✏️',color:'#888',group:'night'},
 ];
+
+// Force-set correct groups based on habit id (always)
+const habitGroupDefaults={yoga:'morning',med_am:'morning',english:'other',study:'other',med_pm:'night',journal:'night'};
+let habitGroupUpdated=false;
+habits.forEach(h=>{
+  const correctGroup=habitGroupDefaults[h.id]||h.group||'other';
+  if(h.group!==correctGroup){h.group=correctGroup;habitGroupUpdated=true;}
+  if(!h.group){h.group='other';habitGroupUpdated=true;}
+});
+if(habitGroupUpdated)localStorage.setItem('yp_h',JSON.stringify(habits));
 
 let schedule=JSON.parse(localStorage.getItem('yp_sch')||'null')||[
   // ルーティン（毎日）
@@ -357,7 +367,13 @@ function save(){
     localStorage.setItem('yp_h',JSON.stringify(habits));
     localStorage.setItem('yp_sch',JSON.stringify(schedule));
     localStorage.setItem('yp_d',JSON.stringify(data));
-    localStorage.setItem('yp_t',JSON.stringify(tasks));
+    // Save tasks WITHOUT recurring instances (regenerated on load)
+    const tasksToSave={};
+    Object.keys(tasks).forEach(k=>{
+      const nonRecurring=(tasks[k]||[]).filter(t=>!t.recurringId);
+      if(nonRecurring.length>0)tasksToSave[k]=nonRecurring;
+    });
+    localStorage.setItem('yp_t',JSON.stringify(tasksToSave));
     localStorage.setItem('yp_recurring',JSON.stringify(recurringTasks));
     const el=document.getElementById('si');
     el.style.opacity='1';setTimeout(()=>el.style.opacity='0',2000);
@@ -483,7 +499,7 @@ function openDayModal(key){
         <button class="abtn" onclick="addModalTask('${key}')">追加</button>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
-        ${['#2D6A8F','#E8856A','#10B981','#9B6AD4','#DC2626','#C4882A','#5A8A6A','#1A2E3A'].map(c=>`<div onclick="document.getElementById('modal-color').value='${c}'" style="width:20px;height:20px;border-radius:50%;background:${c};cursor:pointer;border:2px solid transparent" title="${c}"></div>`).join('')}
+        ${['#2D6A8F','#E8856A','#10B981','#9B6AD4','#DC2626','#C4882A','#5A8A6A','#1A2E3A'].map(c=>'<div onclick="document.getElementById(\'modal-color\').value=\''+c+'\'" style="width:20px;height:20px;border-radius:50%;background:'+c+';cursor:pointer;border:2px solid transparent"></div>').join('')}
       </div>
     </div>
   </div>`;
@@ -545,6 +561,19 @@ function closeModal(e){
   document.getElementById('modal-wrap').innerHTML='';
   render();
 }
+
+// Swipe down to close modal
+let swipeTouchStartY=0;
+document.addEventListener('touchstart',e=>{
+  const modal=e.target.closest('.modal');
+  if(modal)swipeTouchStartY=e.touches[0].clientY;
+},{passive:true});
+document.addEventListener('touchend',e=>{
+  const modal=e.target.closest('.modal');
+  if(!modal)return;
+  const dy=e.changedTouches[0].clientY-swipeTouchStartY;
+  if(dy>80){closeModal();}
+},{passive:true});
 
 function openWeekMemo(){
   const wk=dk(getWk()[0]);
@@ -1478,6 +1507,42 @@ function saveHabitNote(hid){
   closeModal();
 }
 
+function editTodayGoal(key){
+  const current=localStorage.getItem('yp_goal_'+key)||'';
+  const wrap=document.getElementById('modal-wrap');
+  wrap.innerHTML=
+    '<div class="modal-bg" onclick="closeModal(event)">'+
+    '<div class="modal">'+
+    '<button class="modal-close" onclick="closeModal()">×</button>'+
+    '<div style="font-size:16px;font-weight:700;margin-bottom:4px;font-style:italic">Today&#39;s Intention</div>'+
+    '<div style="font-size:12px;color:var(--mu);margin-bottom:12px">今日の言葉・意図を設定</div>'+
+    '<textarea id="goal-inp" class="memo-box" style="min-height:80px;font-style:italic;font-size:15px" placeholder="Be myself. Only choose truth.">'+current+'</textarea>'+
+    '<div style="display:flex;gap:8px;margin-top:8px">'+
+    '<button onclick="resetTodayGoal(this)" data-key="'+key+'" style="flex:1;padding:10px;border-radius:10px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">デフォルトに戻す</button>'+
+    '<button onclick="saveTodayGoalBtn(this)" data-key="'+key+'" style="flex:1;padding:10px;border-radius:10px;background:var(--ac);color:white;border:none;font-size:13px;cursor:pointer;font-weight:600">保存</button>'+
+    '</div></div></div>';
+  setTimeout(()=>document.getElementById('goal-inp')?.focus(),100);
+}
+
+function saveTodayGoalBtn(btn){
+  const key=btn.getAttribute('data-key');
+  saveTodayGoal(key);
+}
+function resetTodayGoal(btn){
+  const key=btn.getAttribute('data-key');
+  saveTodayGoal(key,'');
+}
+function saveTodayGoal(key,forceVal){
+  const val=forceVal!==undefined?forceVal:(document.getElementById('goal-inp')?.value||'');
+  if(val===''){
+    localStorage.removeItem('yp_goal_'+key);
+  } else {
+    localStorage.setItem('yp_goal_'+key,val);
+  }
+  closeModal();
+  renderToday();
+}
+
 function buildHabitTimerBtn(hb,key){
   return '<button style="padding:5px 10px;border-radius:8px;background:'+hb.color+'22;border:1px solid '+hb.color+';color:'+hb.color+';font-size:11px;cursor:pointer;margin-right:6px" onclick="startHabitTimer(\''+hb.id+'\',\''+key+'\','+hb.timerMins+')">▶'+hb.timerMins+'分</button>';
 }
@@ -2035,33 +2100,64 @@ function addSchItem(){
 }
 
 function renderHabits(){
-  const dates=getWk(),today=dk(new Date());
-  let total=0,possible=dates.length*habits.length;
-  dates.forEach(d=>{const k=dk(d);habits.forEach(h=>{if(data[k]&&data[k][h.id])total++;})});
-  const pct=possible>0?Math.round(total/possible*100):0;
-  const maxS=Math.max(0,...habits.map(h=>streak(h.id)));
-  let h=`<div style="padding-top:8px"></div><div class="stats">
-    <div class="stat"><div class="sn">${pct}%</div><div class="sl">今週の達成率</div></div>
-    <div class="stat"><div class="sn">${total}</div><div class="sl">今週のチェック</div></div>
-    <div class="stat"><div class="sn">${maxS}日</div><div class="sl">最長連続</div></div>
-  </div><div class="sec">今週の習慣</div><div class="card"><div class="wgw">
-  <table class="wgt">
-      <colgroup><col style="width:34px"><col><col><col><col><col><col><col></colgroup>
-      <thead><tr><th style="width:34px"></th>`;
-  dates.forEach(d=>{const k=dk(d),isT=k===today;h+=`<th class="${isT?'tc2':''}">${DJ[d.getDay()]}<br>${d.getDate()}</th>`;});
-  h+='</tr></thead><tbody>';
-  habits.forEach(hb=>{
-    h+=`<tr><td style="text-align:left;padding:10px;font-size:12px;border-bottom:1px solid #F3F0EB">${hb.icon} ${hb.name}</td>`;
-    dates.forEach(d=>{
-      const k=dk(d),done=!!(data[k]&&data[k][hb.id]);
-      h+=`<td style="text-align:center;border-bottom:1px solid #F3F0EB">
-        <button class="hck${done?' done':''}" style="${done?('background:'+hb.color+';border-color:'+hb.color):''}" onclick="toggleH('${hb.id}','${k}')" aria-label="${hb.name}">
+  const d=getD(dayOff),key=dk(d),today=dk(new Date());
+  const groups=[
+    {key:'morning',label:'Morning Ritual',sub:'朝のルーティン',icon:'🌅',color:'#C4882A',gradient:'linear-gradient(135deg,#FFF8F0,#FFF3E0)'},
+    {key:'other',label:'Growth & Learning',sub:'学習・その他',icon:'📚',color:'#2D6A8F',gradient:'linear-gradient(135deg,#EBF3F8,#E8F0F8)'},
+    {key:'night',label:'Evening Wind Down',sub:'夜のルーティン',icon:'🌙',color:'#7A4FA0',gradient:'linear-gradient(135deg,#F5F0FF,#EDE8F5)'},
+  ];
+  let h=`<div style="padding-top:8px"></div>
+  <div class="dnav">
+    <button onclick="dayOff--;render()">‹</button>
+    <div class="dtitle">${key===today?'今日の習慣':DFJ[d.getDay()]+'の習慣'}<span class="dsub"> — ${d.getMonth()+1}月${d.getDate()}日</span></div>
+    <button onclick="dayOff++;render()">›</button>
+  </div>`;
+
+  const doneAll=habits.filter(hb=>data[key]&&data[key][hb.id]).length;
+  const pct=habits.length>0?Math.round(doneAll/habits.length*100):0;
+  h+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 0 12px">
+    <div style="flex:1;height:6px;background:var(--bd);border-radius:3px;overflow:hidden">
+      <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#5A8A6A,#2D6A8F);border-radius:3px;transition:width .3s"></div>
+    </div>
+    <span style="font-size:12px;color:var(--mu);flex-shrink:0">${doneAll}/${habits.length} 完了</span>
+  </div>`;
+
+  groups.forEach(grp=>{
+    const grpHabits=habits.filter(hb=>(hb.group||'other')===grp.key);
+    if(grpHabits.length===0)return;
+    const grpDone=grpHabits.filter(hb=>data[key]&&data[key][hb.id]).length;
+    const grpPct=grpHabits.length>0?Math.round(grpDone/grpHabits.length*100):0;
+    h+=`<div style="margin-bottom:12px">
+      <div style="background:${grp.gradient};border-radius:12px 12px 0 0;padding:10px 14px 8px;border-top:3px solid ${grp.color}">
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <span style="font-size:16px">${grp.icon}</span>
+          <span style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:${grp.color};letter-spacing:0.5px">${grp.label}</span>
+          <span style="font-size:10px;color:var(--mu);font-style:italic">${grp.sub}</span>
+          <span style="margin-left:auto;font-size:11px;font-weight:600;color:${grp.color}">${grpDone}/${grpHabits.length}</span>
+        </div>
+        <div style="margin-top:6px;height:3px;background:${grp.color}22;border-radius:2px;overflow:hidden">
+          <div style="width:${grpPct}%;height:100%;background:${grp.color};border-radius:2px;transition:width .4s ease"></div>
+        </div>
+      </div>
+      <div class="card" style="border-radius:0 0 12px 12px;margin-top:0;border-top:none">`;
+    grpHabits.forEach((hb,i)=>{
+      const done=!!(data[key]&&data[key][hb.id]),s=streak(hb.id);
+      const globalIdx=habits.indexOf(hb);
+      h+=`<div class="hrow" onclick="openHabitModal('${hb.id}','${key}')">
+        <div class="hic" style="background:${hb.color}22">${hb.icon}</div>
+        <div class="hin">
+          <div class="hn">${hb.name}</div>
+          <div class="hs">${s>0?'🔥 '+s+'日連続':'今日からスタート'}${hb.timerMins?' · ⏱'+hb.timerMins+'分':''}</div>
+        </div>
+        ${hb.timerMins&&!done?buildHabitTimerBtn(hb,key):''}
+        <button class="hck${done?' done':''}" style="${done?'background:'+hb.color+';border-color:'+hb.color:''}" onclick="event.stopPropagation();toggleH('${hb.id}','${key}')" aria-label="${hb.name}">
           <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-        </button></td>`;
+        </button>
+      </div>`;
     });
-    h+='</tr>';
+    h+=`</div></div>`;
   });
-  h+='</tbody></table></div></div>';
+
   document.getElementById('view-habits').innerHTML=h;
 }
 
@@ -2119,10 +2215,14 @@ function renderWeek(){
           const isStart=e.start>=t&&e.start<slotEnd;
           if(isStart){
             const dur=e.end-e.start; // in hours
-            const heightPx=Math.max(dur*slotH*2,24); // 2 slots per hour
-            h+=`<div class="wgev" onclick="event.stopPropagation();openSchItemModal('${e.id}','${k}')" style="background:${e.bg};border-left:2px solid ${e.color};color:${e.color};font-size:9px;padding:2px 3px;border-radius:3px;margin:1px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer;height:${heightPx}px;position:relative;z-index:2">${timeToStr(e.start)} ${e.label}</div>`;
+            const heightPx=Math.max(Math.round(dur*slotH*2)-4,24);
+            h+=`<div class="wgev" onclick="event.stopPropagation();openSchItemModal('${e.id}','${k}')" style="background:${e.bg};border-left:3px solid ${e.color};color:${e.color};font-size:9px;padding:3px 4px;border-radius:4px;margin:1px 0;overflow:hidden;cursor:pointer;height:${heightPx-4}px;position:relative;z-index:2;display:flex;flex-direction:column;justify-content:flex-start">
+              <div style="font-weight:600;white-space:nowrap;text-overflow:ellipsis;overflow:hidden">${e.label}</div>
+              <div style="opacity:0.7;font-size:8px">${timeToStr(e.start)}〜${timeToStr(e.end)}</div>
+            </div>`;
           } else if(e.start<t&&e.end>t){
-            h+=`<div style="background:${e.bg};border-left:2px solid ${e.color};height:${slotH-2}px;opacity:0.3;border-radius:2px;margin:1px 0"></div>`;
+            // Continuation cell - invisible spacer to prevent other content overlapping
+            h+=`<div style="height:${slotH-2}px;opacity:0"></div>`;
           }
         });
         
@@ -2238,6 +2338,11 @@ function renderSettings(){
           <select onchange="habits[${i}].timerMins=this.value==='timer'?20:null;save();render()" style="padding:2px 4px;border-radius:4px;border:1px solid var(--bd);font-size:11px;background:var(--bg)">
             <option value="check" ${!hb.timerMins?'selected':''}>✅ チェック</option>
             <option value="timer" ${hb.timerMins?'selected':''}>⏱ タイマー</option>
+          </select>
+          <select onchange="habits[${i}].group=this.value;save();render()" style="padding:2px 4px;border-radius:4px;border:1px solid var(--bd);font-size:11px;background:var(--bg)">
+            <option value="morning" ${(hb.group||'other')==='morning'?'selected':''}>🌅 朝</option>
+            <option value="other" ${(hb.group||'other')==='other'?'selected':''}>📚 日中</option>
+            <option value="night" ${(hb.group||'other')==='night'?'selected':''}>🌙 夜</option>
           </select>
           ${hb.timerMins?'<input type="number" value="'+hb.timerMins+'" min="1" max="120" onchange="habits['+i+'].timerMins=parseInt(this.value)||20;save()" style="width:44px;padding:2px 4px;border-radius:4px;border:1px solid var(--bd);font-size:11px">分':''}
         </div>
