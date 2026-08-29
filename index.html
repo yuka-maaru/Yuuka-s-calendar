@@ -1140,6 +1140,14 @@ function addRecurring(){
   save();toast('繰り返しタスクを追加しました！');render();
 }
 
+// Force clear old dream data if structure is wrong
+try {
+  const savedDream = JSON.parse(localStorage.getItem('yp_dream')||'null');
+  if(savedDream && !savedDream.dreams){
+    localStorage.removeItem('yp_dream');
+  }
+} catch(e){}
+
 // Force clear old recurring task data (version update)
 const recurringVersion = '2';
 if(localStorage.getItem('yp_recurring_ver') !== recurringVersion){
@@ -1445,10 +1453,10 @@ function renderDream(){
 
   // Be Myself - center
   html+=`<div style="text-align:center;margin-bottom:20px">
-    <div style="display:inline-block;padding:12px 28px;border-radius:30px;background:linear-gradient(135deg,var(--ac),#7A4FA0);color:white;font-size:18px;font-weight:700;box-shadow:0 4px 16px rgba(45,106,143,.3)">
+    <div style="display:inline-block;padding:12px 28px;border-radius:30px;background:linear-gradient(135deg,var(--ac),#7A4FA0);color:white;font-size:18px;font-weight:700;box-shadow:0 4px 16px rgba(45,106,143,.3)" onclick="editBeMyself()">
       ✨ ${dreamData.beMyselfText||'Be Myself'}
     </div>
-    <div style="font-size:11px;color:var(--mu);margin-top:6px">タップして編集</div>
+    <div style="font-size:12px;color:var(--sub);margin-top:8px;font-style:italic;max-width:300px;margin-left:auto;margin-right:auto">"${dreamData.beMyselfQuote||'Express what you love. Realize what you truly want to do.'}"</div>
   </div>`;
 
   // Dream list with water level
@@ -1457,6 +1465,7 @@ function renderDream(){
     dreamData.dreams.forEach((dream,di)=>{
       const pct=getDreamWater(dream);
       const waterPct=Math.round(pct*100);
+      if(!dream.text)return;
       html+=`<div onclick="mandalaOpenDream=${di};mandalaOpenCat=null;renderDream()" style="background:var(--sur);border-radius:12px;border:1.5px solid ${dream.color||'var(--bd)'};margin-bottom:10px;overflow:hidden;cursor:pointer;position:relative;min-height:64px;display:flex;align-items:center;gap:12px;padding:12px 14px">
         <div style="position:absolute;left:0;bottom:0;width:${waterPct}%;height:100%;background:${dream.color||'#2D6A8F'}18;transition:width .5s ease;pointer-events:none"></div>
         <div style="font-size:28px;position:relative;z-index:1">${dream.icon||'🌟'}</div>
@@ -1573,6 +1582,18 @@ function renderDream(){
   html+='</div>';
 
   document.getElementById('view-dream').innerHTML=html;
+}
+
+function editBeMyself(){
+  const text=prompt('あなたの「Be Myself」は？',dreamData.beMyselfText||'Be Myself');
+  if(text===null)return;
+  dreamData.beMyselfText=text;
+  const quote=prompt('名言を入力（空欄でデフォルト）',dreamData.beMyselfQuote||'');
+  if(quote!==null)dreamData.beMyselfQuote=quote;
+  const author=prompt('著者名（空欄でデフォルト）',dreamData.beMyselfAuthor||'');
+  if(author!==null)dreamData.beMyselfAuthor=author;
+  saveDream();
+  renderDream();
 }
 
 function getDreamWater(dream){
