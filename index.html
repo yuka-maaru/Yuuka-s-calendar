@@ -908,6 +908,57 @@ function saveHabitNote(hid){
   closeModal();
 }
 
+// Touch drag for mobile
+let touchHabitIdx=null;
+let touchHabitStartY=0;
+let touchHabitClone=null;
+
+function touchHabitStart(e,i){
+  touchHabitIdx=i;
+  touchHabitStartY=e.touches[0].clientY;
+  // Long press detection - highlight after 300ms
+  const el=document.getElementById('set-hrow-'+i);
+  if(el)el.style.background='var(--bg)';
+}
+
+function touchHabitMove(e){
+  if(touchHabitIdx===null)return;
+  e.preventDefault();
+  const touch=e.touches[0];
+  const y=touch.clientY;
+  // Find which row we're over
+  document.querySelectorAll('[id^=set-hrow-]').forEach((el,idx)=>{
+    const rect=el.getBoundingClientRect();
+    if(y>=rect.top&&y<=rect.bottom){
+      document.querySelectorAll('[id^=set-hrow-]').forEach(r=>r.style.background='');
+      el.style.background='var(--bg)';
+      el.setAttribute('data-drop-target','true');
+    } else {
+      el.removeAttribute('data-drop-target');
+    }
+  });
+}
+
+function touchHabitEnd(e){
+  if(touchHabitIdx===null)return;
+  // Find drop target
+  let dropIdx=null;
+  document.querySelectorAll('[id^=set-hrow-]').forEach((el,idx)=>{
+    if(el.getAttribute('data-drop-target')==='true'){
+      dropIdx=idx;
+      el.removeAttribute('data-drop-target');
+    }
+    el.style.background='';
+  });
+  if(dropIdx!==null&&dropIdx!==touchHabitIdx){
+    const [moved]=habits.splice(touchHabitIdx,1);
+    habits.splice(dropIdx,0,moved);
+    save();
+    render();
+  }
+  touchHabitIdx=null;
+}
+
 function buildHabitTimerBtn(hb,key){
   return '<button style="padding:5px 10px;border-radius:8px;background:'+hb.color+'22;border:1px solid '+hb.color+';color:'+hb.color+';font-size:11px;cursor:pointer;margin-right:6px" onclick="startHabitTimer(\''+hb.id+'\',\''+key+'\','+hb.timerMins+')">▶'+hb.timerMins+'分</button>';
 }
@@ -1337,7 +1388,16 @@ function renderSettings(){
   let h='<div style="padding-top:8px"></div><div class="sec">習慣をカスタマイズ</div><div class="card">';
   habits.forEach((hb,i)=>{
     const modeLabel=hb.timerMins?('⏱ '+hb.timerMins+'分タイマー'):'✅ チェック';
-    h+=`<div class="set-row">
+    h+=`<div class="set-row" draggable="true" id="set-hrow-${i}"
+      ondragstart="setHabitDragStart(${i})"
+      ondragover="setHabitDragOver(event,${i})"
+      ondrop="setHabitDrop(${i})"
+      ondragend="setHabitDragEnd()"
+      ontouchstart="touchHabitStart(event,${i})"
+      ontouchmove="touchHabitMove(event)"
+      ontouchend="touchHabitEnd(event)"
+      style="touch-action:none;position:relative">
+      <div style="color:var(--mu);font-size:18px;cursor:grab;padding:0 4px;flex-shrink:0;user-select:none">⠿</div>
       <div class="hic" style="background:${hb.color}22">${hb.icon}</div>
       <div class="sri">
         <input value="${hb.name}" onchange="habits[${i}].name=this.value;save()" placeholder="習慣名">
@@ -2225,6 +2285,28 @@ function saveStudy(){
 }
 
 let habitDragIdx=null;
+let setHabitDragIdx=null;
+
+function setHabitDragStart(i){
+  setHabitDragIdx=i;
+}
+function setHabitDragOver(e,i){
+  e.preventDefault();
+  document.querySelectorAll('[id^=set-hrow-]').forEach(r=>r.style.background='');
+  const el=document.getElementById('set-hrow-'+i);
+  if(el)el.style.background='var(--bg)';
+}
+function setHabitDrop(i){
+  if(setHabitDragIdx===null||setHabitDragIdx===i)return;
+  const [moved]=habits.splice(setHabitDragIdx,1);
+  habits.splice(i,0,moved);
+  save();
+  render();
+}
+function setHabitDragEnd(){
+  setHabitDragIdx=null;
+  document.querySelectorAll('[id^=set-hrow-]').forEach(r=>r.style.background='');
+}
 function habitDragStart(i){habitDragIdx=i;}
 function habitDragOver(e,i){e.preventDefault();document.querySelectorAll('.hrow').forEach(r=>r.style.background='');const el=document.getElementById('hrow-'+i);if(el)el.style.background='var(--bg)';}
 function habitDrop(i){
