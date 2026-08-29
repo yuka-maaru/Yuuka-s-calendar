@@ -235,28 +235,36 @@ const MJ=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月'
 const DFJ=['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'];
 
 let habits=JSON.parse(localStorage.getItem('yp_h')||'null')||[
-  {id:'yoga',name:'朝ヨガ 45分',icon:'🧘',color:'#5A8A6A'},
-  {id:'med_am',name:'朝瞑想 30分',icon:'🌙',color:'#2D6A8F'},
-  {id:'english',name:'英語勉強 1時間',icon:'📖',color:'#E8856A'},
-  {id:'study',name:'哲学文献読み',icon:'📚',color:'#3A5FA0'},
-  {id:'med_pm',name:'夜瞑想 30分',icon:'✨',color:'#7A4FA0'},
+  {id:'yoga',name:'朝ヨガ 45分',icon:'🧘',color:'#5A8A6A',timerMins:45},
+  {id:'med_am',name:'朝瞑想 30分',icon:'🌙',color:'#2D6A8F',timerMins:30},
+  {id:'english',name:'英語勉強 1時間',icon:'📖',color:'#E8856A',timerMins:60},
+  {id:'study',name:'哲学文献読み',icon:'📚',color:'#3A5FA0',timerMins:30},
+  {id:'med_pm',name:'夜瞑想 30分',icon:'✨',color:'#7A4FA0',timerMins:30},
   {id:'journal',name:'日記',icon:'✏️',color:'#888'},
 ];
 
 let schedule=JSON.parse(localStorage.getItem('yp_sch')||'null')||[
+  // ルーティン（毎日）
   {id:'s1',start:7,end:7.75,label:'朝ヨガ 45分',color:'#5A8A6A',bg:'#E8F4EC',days:[0,1,2,3,4,5,6]},
   {id:'s2',start:7.75,end:8.25,label:'朝瞑想 30分',color:'#2D6A8F',bg:'#EBF3F8',days:[0,1,2,3,4,5,6]},
   {id:'s3',start:8.25,end:9,label:'朝食・準備',color:'#C4882A',bg:'#FFF8F0',days:[0,1,2,3,4,5,6]},
   {id:'s4',start:9,end:10,label:'英語勉強',color:'#E8856A',bg:'#FFF3ED',days:[0,1,2,3,4,5,6]},
-  {id:'s5',start:10,end:13,label:'GA仕事',color:'#9B6AD4',bg:'#F5F0FF',days:[1,2,3,4,5]},
-  {id:'s16',start:9.5,end:10.33,label:'PHIL 111 セクション（KELL 401）',color:'#1A2E3A',bg:'#EEF2F5',days:[5]},
-  {id:'s12',start:10.5,end:11.33,label:'PHIL 111 TA（BUSAD A101）',color:'#1A2E3A',bg:'#EEF2F5',days:[1,3,5]},
-  {id:'s13',start:11,end:12,label:'ELI 111（Moore Hall 551）',color:'#E8856A',bg:'#FFF3ED',days:[1,3]},
+  // 月曜日（1）
+  {id:'s12',start:10.5,end:11.33,label:'PHIL 111 TA（BUSAD A101）',color:'#1A2E3A',bg:'#EEF2F5',days:[1]},
+  {id:'s13a',start:11.33,end:12,label:'ELI 111（Moore Hall 551）',color:'#E8856A',bg:'#FFF3ED',days:[1]},
+  {id:'s5a',start:12,end:22,label:'GA仕事・自習',color:'#9B6AD4',bg:'#F5F0FF',days:[1]},
+  // 火曜日（2）
+  {id:'s14',start:13,end:14,label:'🖨️ コピー作業（水曜日HW × 85枚）',color:'#888',bg:'#F5F5F5',days:[2]},
   {id:'s7',start:15,end:17.5,label:'PHIL 414B（ギリシャ哲学）',color:'#6A3A8F',bg:'#F5F0FF',days:[2]},
+  // 水曜日（3）
+  {id:'s13b',start:11,end:12,label:'ELI 111（Moore Hall 551）',color:'#E8856A',bg:'#FFF3ED',days:[3]},
   {id:'s8',start:15.5,end:18,label:'PHIL 770（荘子）',color:'#2D6A8F',bg:'#EBF3F8',days:[3]},
+  // 木曜日（4）
+  {id:'s15',start:12,end:13.5,label:'🖨️ コピー作業（金・月HW × 85枚×2）',color:'#888',bg:'#F5F5F5',days:[4]},
   {id:'s6',start:13.5,end:16,label:'PHIL 725（プロセミナー）',color:'#1A2E3A',bg:'#EEF2F5',days:[4]},
-  {id:'s14',start:14,end:15,label:'🖨️ コピー作業（水曜日HW）',color:'#888',bg:'#F5F5F5',days:[2]},
-  {id:'s15',start:13,end:13.5,label:'🖨️ コピー作業（金・月HW）',color:'#888',bg:'#F5F5F5',days:[4]},
+  // 金曜日（5）
+  {id:'s16',start:9.5,end:10.33,label:'PHIL 111 セクション（KELL 401）',color:'#1A2E3A',bg:'#EEF2F5',days:[5]},
+  // 毎日夜
   {id:'s9',start:18,end:21,label:'哲学文献・課題',color:'#3A5FA0',bg:'#F0F4FF',days:[0,1,2,3,4,5,6]},
   {id:'s10',start:21,end:21.5,label:'夜瞑想 30分',color:'#7A4FA0',bg:'#F0EBF8',days:[0,1,2,3,4,5,6]},
   {id:'s11',start:21.5,end:22.5,label:'シャワー・日記',color:'#888',bg:'#FAFAFA',days:[0,1,2,3,4,5,6]},
@@ -270,10 +278,8 @@ let recurringTasks=JSON.parse(localStorage.getItem('yp_recurring')||'null')||[
   {id:'r4',label:'🖨️ コピー作業（金・月HW × 85枚×2）',days:[4],icon:'🖨️'},
 ];
 
-let recurringApplied=false;
+
 function applyRecurringTasks(){
-  if(recurringApplied)return;
-  recurringApplied=true;
   
   const n=new Date(),dow=n.getDay();
   const monday=new Date(n);
@@ -434,9 +440,13 @@ function openDayModal(key){
         <span style="align-self:center;color:var(--mu);font-size:12px">〜</span>
         <input id="modal-end" type="time" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
       </div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <input id="modal-color" type="color" value="#2D6A8F" style="width:36px;height:36px;border-radius:8px;border:1px solid var(--bd);cursor:pointer;padding:2px;flex-shrink:0">
         <input id="modal-inp" placeholder="タスク・予定を追加..." style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter')addModalTask('${key}')">
         <button class="abtn" onclick="addModalTask('${key}')">追加</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+        ${['#2D6A8F','#E8856A','#10B981','#9B6AD4','#DC2626','#C4882A','#5A8A6A','#1A2E3A'].map(c=>`<div onclick="document.getElementById('modal-color').value='${c}'" style="width:20px;height:20px;border-radius:50%;background:${c};cursor:pointer;border:2px solid transparent" title="${c}"></div>`).join('')}
       </div>
     </div>
   </div>`;
@@ -449,8 +459,9 @@ function addModalTask(key){
   const v=inp.value.trim();if(!v)return;
   const startTime=document.getElementById('modal-start')?.value||'';
   const endTime=document.getElementById('modal-end')?.value||'';
+  const color=document.getElementById('modal-color')?.value||'';
   if(!tasks[key])tasks[key]=[];
-  tasks[key].push({id:'t'+Date.now(),label:v,done:false,startTime,endTime});
+  tasks[key].push({id:'t'+Date.now(),label:v,done:false,startTime,endTime,color:color||undefined});
   inp.value='';
   if(document.getElementById('modal-start'))document.getElementById('modal-start').value='';
   if(document.getElementById('modal-end'))document.getElementById('modal-end').value='';
@@ -794,6 +805,36 @@ function renderYearlyCalendar(){
 function saveMemo(id,val){}
 
 let schNotes=JSON.parse(localStorage.getItem('yp_sch_notes')||'{}');
+function openSchItemModal(eid,key){
+  const e=schedule.find(s=>s.id===eid);
+  if(!e)return;
+  const note=schNotes[eid+'_'+key]||'';
+  const wrap=document.getElementById('modal-wrap');
+  let html='<div class="modal-bg" onclick="closeModal(event)"><div class="modal">';
+  html+='<button class="modal-close" onclick="closeModal()">×</button>';
+  html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+  html+='<div style="width:4px;height:40px;background:'+e.color+';border-radius:2px"></div>';
+  html+='<div><div style="font-size:16px;font-weight:700">'+e.label+'</div>';
+  html+='<div style="font-size:12px;color:var(--mu)">'+timeToStr(e.start)+'〜'+timeToStr(e.end)+'</div></div>';
+  html+='</div>';
+  html+='<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:6px">📝 メモ</div>';
+  html+='<textarea id="sch-note-modal" class="memo-box" style="min-height:100px" placeholder="メモを追加...">'+note.replace(/</g,'&lt;')+'</textarea>';
+  html+='<button class="abtn" style="width:100%;margin-top:8px" id="save-sch-note-btn" data-eid="'+eid+'" data-key="'+key+'" onclick="saveSchNoteFromBtn(this)">保存</button>';
+  html+='</div></div>';
+  wrap.innerHTML=html;
+  setTimeout(()=>document.getElementById('sch-note-modal')?.focus(),100);
+}
+
+
+function saveSchNoteModal(eid,key){
+  const val=document.getElementById('sch-note-modal')?.value||'';
+  schNotes[eid+'_'+key]=val;
+  localStorage.setItem('yp_sch_notes',JSON.stringify(schNotes));
+  toast('💾 保存しました！');
+  closeModal();
+  render();
+}
+
 function toggleSchNote(id){
   const el=document.getElementById(id);
   if(el)el.style.display=el.style.display==='none'?'block':'none';
@@ -816,8 +857,98 @@ function memoDrop(i){
 }
 function memoDragEnd(){memoDragIdx=null;const rows=document.querySelectorAll('[id^=memo-row-]');rows.forEach(r=>r.style.background='');}
 
+function openHabitModal(hid,key){
+  const hb=habits.find(h=>h.id===hid);
+  if(!hb)return;
+  const done=!!(data[key]&&data[key][hid]);
+  const note=localStorage.getItem('habit_note_'+hid)||'';
+  const s=streak(hid);
+  const streakTxt=s>0?'🔥 '+s+'日連続':'今日からスタート';
+  const doneBg=done?hb.color+'22':'#10B981';
+  const doneBorder=done?hb.color:'#10B981';
+  const doneColor=done?hb.color:'white';
+  const doneTxt=done?'✅ 完了済み（タップで解除）':'チェック ✅';
+  const wrap=document.getElementById('modal-wrap');
+  let html='<div class="modal-bg" onclick="closeModal(event)"><div class="modal">';
+  html+='<button class="modal-close" onclick="closeModal()">×</button>';
+  html+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">';
+  html+='<div style="width:44px;height:44px;border-radius:50%;background:'+hb.color+'22;display:flex;align-items:center;justify-content:center;font-size:22px">'+hb.icon+'</div>';
+  html+='<div><div style="font-size:16px;font-weight:700">'+hb.name+'</div>';
+  html+='<div style="font-size:12px;color:var(--mu)">'+streakTxt+'</div></div>';
+  if(hb.timerMins){
+    html+='<div style="margin-left:auto;padding:6px 12px;border-radius:8px;background:'+hb.color+'22;border:1px solid '+hb.color+';color:'+hb.color+';font-size:13px;font-weight:600;cursor:pointer" id="habit-timer-btn" data-hid="'+hid+'" data-key="'+key+'" data-mins="'+hb.timerMins+'" onclick="closeModal();startHabitTimer(this.dataset.hid,this.dataset.key,parseInt(this.dataset.mins))">▶ '+hb.timerMins+'分</div>';
+  }
+  html+='</div>';
+  html+='<button id="habit-check-btn" data-hid="'+hid+'" data-key="'+key+'" onclick="toggleH(this.dataset.hid,this.dataset.key);closeModal()" style="width:100%;padding:10px;border-radius:10px;background:'+doneBg+';border:1px solid '+doneBorder+';color:'+doneColor+';font-size:14px;font-weight:600;cursor:pointer;margin-bottom:12px">'+doneTxt+'</button>';
+  html+='<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:6px">📝 メモ</div>';
+  html+='<textarea id="habit-note-modal" class="memo-box" style="min-height:80px" placeholder="メモ・気づき...">'+note.replace(/</g,'&lt;')+'</textarea>';
+  html+='<button class="abtn" style="width:100%;margin-top:8px" data-hid="'+hid+'" id="habit-save-btn" onclick="saveHabitNote(this.dataset.hid)">保存</button>';
+  html+='</div></div>';
+  wrap.innerHTML=html;
+}
+
+
+function saveHabitNote(hid){
+  const val=document.getElementById('habit-note-modal')?.value||'';
+  localStorage.setItem('habit_note_'+hid,val);
+  toast('💾 保存しました！');
+  closeModal();
+}
+
 function buildHabitTimerBtn(hb,key){
   return '<button style="padding:5px 10px;border-radius:8px;background:'+hb.color+'22;border:1px solid '+hb.color+';color:'+hb.color+';font-size:11px;cursor:pointer;margin-right:6px" onclick="startHabitTimer(\''+hb.id+'\',\''+key+'\','+hb.timerMins+')">▶'+hb.timerMins+'分</button>';
+}
+
+function openUrgentEdit(key){
+  const wrap=document.getElementById('modal-wrap');
+  const pending=(tasks[key]||[]).filter(t=>!t.done);
+  
+  let taskOpts='';
+  pending.forEach(t=>{
+    const checked=t.urgent?'checked':'';
+    const cb=document.createElement('label');
+    cb.setAttribute('data-task-id',t.id);
+    cb.setAttribute('data-key',key);
+    taskOpts+='<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bd);cursor:pointer" data-id="'+t.id+'" data-key="'+key+'" onclick="urgentCheckClick(this)">'+
+      '<input type="checkbox" '+(t.urgent?'checked':'')+' style="width:16px;height:16px;accent-color:var(--ac);pointer-events:none">'+
+      '<span style="font-size:13px">'+t.label+'</span>'+
+      '</label>';
+  });
+  
+  wrap.innerHTML=
+    '<div class="modal-bg" onclick="closeModal(event)">'+
+    '<div class="modal">'+
+    '<button class="modal-close" onclick="closeModal()">×</button>'+
+    '<h3>⚡ 今やるべきこと</h3>'+
+    '<p style="font-size:12px;color:var(--mu)">チェックで選択、または直接入力</p>'+
+    '<div class="card" style="margin-bottom:12px">'+
+    (taskOpts||'<div style="padding:12px;color:var(--mu);font-size:13px">今日のタスクがありません</div>')+
+    '</div>'+
+    '<div style="display:flex;gap:8px">'+
+    '<input id="urgent-inp" placeholder="今やることを直接入力..." style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">'+
+    '<button class="abtn" id="urgent-add-btn" data-key="'+key+'" onclick="addUrgentTask(this.dataset.key)">追加</button>'+
+    '</div></div></div>';
+  setTimeout(()=>document.getElementById('urgent-inp')?.focus(),100);
+}
+
+
+function urgentCheckClick(el){
+  const id=el.getAttribute('data-id');
+  const key=el.getAttribute('data-key');
+  toggleUrgent(key,id);
+  // Update checkbox visual
+  const cb=el.querySelector('input[type=checkbox]');
+  if(cb)cb.checked=!cb.checked;
+}
+
+function addUrgentTask(key){
+  const inp=document.getElementById('urgent-inp');
+  if(!inp||!inp.value.trim())return;
+  if(!tasks[key])tasks[key]=[];
+  tasks[key].push({id:'u'+Date.now(),label:inp.value.trim(),done:false,urgent:true});
+  save();
+  closeModal();
+  render();
 }
 
 function toggleUrgent(key,id){
@@ -860,7 +991,7 @@ function renderToday(){
     <div class="dtitle">${isT?'今日':DFJ[dow]}<span class="dsub"> — ${d.getMonth()+1}月${d.getDate()}日</span></div>
     <button onclick="dayOff++;render()">›</button>
   </div>
-  <div class="sec">⚡ 今やるべきこと</div>
+  <div class="sec"><span>⚡ 今やるべきこと</span><span class="sec-edit" onclick="openUrgentEdit('${key}')">編集</span></div>
   <div class="card" style="margin-bottom:8px">`;
   {
     const now=new Date();
@@ -943,10 +1074,10 @@ function renderToday(){
   }).forEach(t=>{
     const timeStr=t.startTime?(t.endTime?`${t.startTime}〜${t.endTime} `:`${t.startTime} `):'';
     h+=`<div class="trow${t.done?' dt':''}">
-      <button class="tck${t.done?' done':''}" onclick="toggleT('${key}','${t.id}')" aria-label="${t.label}">
+      <button class="tck${t.done?' done':''}" style="${t.color&&!t.done?'border-color:'+t.color+';background:'+t.color+'22':''}" onclick="toggleT('${key}','${t.id}')" aria-label="${t.label}">
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       </button>
-      <span class="tlb"><span style="font-size:11px;color:var(--sub)">${timeStr}</span>${t.label}</span>
+      <span class="tlb">${t.color?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+t.color+';margin-right:4px;vertical-align:middle"></span>':''}<span style="font-size:11px;color:var(--sub)">${timeStr}</span>${t.label}</span>
       <button class="tdl" onclick="delT('${key}','${t.id}')">×</button>
     </div>`;
   });
@@ -967,11 +1098,9 @@ function renderToday(){
       evs.forEach(e=>{
         const isStart=e.start>=t&&e.start<slotEnd;
         if(isStart){
-          h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color};cursor:pointer" onclick="toggleSchNote('sch-note-${e.id}-${key}')">
+          h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color};cursor:pointer" onclick="openSchItemModal('${e.id}','${key}')">
             <span style="font-size:10px;opacity:.7">${timeToStr(e.start)}〜${timeToStr(e.end)}</span> ${e.label}
-          </div>
-          <div id="sch-note-${e.id}-${key}" style="display:none;padding:4px 8px 6px 8px">
-            <textarea style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg);resize:none;min-height:50px;font-family:inherit" placeholder="メモを追加..." oninput="saveSchNote('${e.id}','${key}',this.value)">${(schNotes[e.id+'_'+key]||'').replace(/</g,'&lt;')}</textarea>
+            ${schNotes[e.id+'_'+key]?'<span style="font-size:9px;opacity:0.7"> 📝</span>':''}
           </div>`;
         } else {
           h+=`<div class="ev" style="background:${e.bg};border-left-color:${e.color};color:${e.color};opacity:.6">↳ ${e.label}</div>`;
@@ -987,7 +1116,8 @@ function renderToday(){
       ondragstart="habitDragStart(${i})" 
       ondragover="habitDragOver(event,${i})"
       ondrop="habitDrop(${i})"
-      ondragend="habitDragEnd()">
+      ondragend="habitDragEnd()"
+      onclick="openHabitModal('${hb.id}','${key}')">
       <div style="color:var(--mu);font-size:16px;cursor:grab;padding:0 6px;flex-shrink:0">⠿</div>
       <div class="hic" style="background:${hb.color}22">${hb.icon}</div>
       <div class="hin"><div class="hn">${hb.name}</div><div class="hs">${s>0?('🔥 '+s+'日連続'):'今日からスタート'}${hb.timerMins?' · ⏱'+hb.timerMins+'分':''}</div></div>
@@ -1124,7 +1254,7 @@ function renderWeek(){
         evs.forEach(e=>{
           const isStart=e.start>=t&&e.start<slotEnd;
           if(isStart){
-            h+=`<div class="wgev" style="background:${e.bg};border-left:2px solid ${e.color};color:${e.color};font-size:9px;padding:2px 3px;border-radius:3px;margin:1px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${timeToStr(e.start)} ${e.label}</div>`;
+            h+=`<div class="wgev" onclick="event.stopPropagation();openSchItemModal('${e.id}','${k}')" style="background:${e.bg};border-left:2px solid ${e.color};color:${e.color};font-size:9px;padding:2px 3px;border-radius:3px;margin:1px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:pointer">${timeToStr(e.start)} ${e.label}</div>`;
           } else if(e.start<t&&e.end>t){
             h+=`<div style="background:${e.bg};border-left:2px solid ${e.color};height:100%;min-height:26px;opacity:0.4;border-radius:2px;margin:1px 0"></div>`;
           }
@@ -1325,6 +1455,27 @@ try {
     localStorage.removeItem('yp_dream');
   }
 } catch(e){}
+
+// Force clear old schedule data to get updated default
+const scheduleVersion = '3';
+if(localStorage.getItem('yp_sch_ver') !== scheduleVersion){
+  localStorage.removeItem('yp_sch');
+  localStorage.setItem('yp_sch_ver', scheduleVersion);
+  schedule=JSON.parse(localStorage.getItem('yp_sch')||'null')||schedule;
+}
+
+// Update existing habits to add timerMins if missing
+const habitTimerDefaults={'yoga':45,'med_am':30,'english':60,'study':30,'med_pm':30};
+let habitsUpdated=false;
+habits.forEach(h=>{
+  if(habitTimerDefaults[h.id]&&!h.timerMins){
+    h.timerMins=habitTimerDefaults[h.id];
+    habitsUpdated=true;
+  }
+});
+if(habitsUpdated){
+  localStorage.setItem('yp_h',JSON.stringify(habits));
+}
 
 // Force clear old recurring task data (version update)
 const recurringVersion = '2';
