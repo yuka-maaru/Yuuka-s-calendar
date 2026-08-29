@@ -1972,6 +1972,12 @@ function renderToday(){
     <div class="dtitle">${isT?'今日':DFJ[dow]}<span class="dsub"> — ${d.getMonth()+1}月${d.getDate()}日</span></div>
     <button onclick="dayOff++;render()">›</button>
   </div>
+  <div onclick="editTodayGoal('${key}')" style="background:linear-gradient(135deg,#1A2E3A,#2D3A4A);border-radius:14px;padding:14px 16px;margin-bottom:12px;cursor:pointer;position:relative;overflow:hidden">
+    <div style="position:absolute;top:0;right:0;width:60px;height:60px;background:rgba(255,255,255,0.04);border-radius:50%;transform:translate(15px,-15px)"></div>
+    <div style="font-size:9px;letter-spacing:2.5px;color:rgba(255,255,255,0.4);margin-bottom:6px;text-transform:uppercase">Today's Intention</div>
+    <div style="font-size:15px;font-style:italic;color:white;line-height:1.6;font-weight:300">${todayGoal||defaultGoalTxt}</div>
+    <div style="font-size:9px;color:rgba(255,255,255,0.25);margin-top:6px;text-align:right">${d.getMonth()+1}/${d.getDate()} ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dow]}</div>
+  </div>
   <div class="sec"><span>⚡ 今やるべきこと</span><span class="sec-edit" onclick="openUrgentEdit('${key}')">編集</span><span class="sec-edit" onclick="startFocusMode('${key}')" style="margin-left:8px;color:#9B6AD4">🎯 集中</span></div>
   <div class="card" style="margin-bottom:8px">`;
   {
@@ -2207,7 +2213,7 @@ function renderHabits(){
         <div style="display:flex;align-items:baseline;gap:8px">
           <span style="font-size:16px">${grp.icon}</span>
           <span style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:${grp.color};letter-spacing:0.5px">${grp.label}</span>
-          <span style="font-size:10px;color:var(--mu);font-style:italic">${grp.sub}</span>
+          ${grp.sub?`<span style="font-size:10px;color:var(--mu);font-style:italic">${grp.sub}</span>`:''}
           <span style="margin-left:auto;font-size:11px;font-weight:600;color:${grp.color}">${grpDone}/${grpHabits.length}</span>
         </div>
         <div style="margin-top:6px;height:3px;background:${grp.color}22;border-radius:2px;overflow:hidden">
@@ -2238,105 +2244,117 @@ function renderHabits(){
 
 function renderWeek(){
   const dates=getWk(),today=dk(new Date());
-  // Build as single grid - header + all time rows share same column definition
-  const wkDates=dates;
-  const wkStart=wkDates[0];
-  const wkEnd=wkDates[6];
-  const wkLabel=`${wkStart.getMonth()+1}/${wkStart.getDate()} 〜 ${wkEnd.getMonth()+1}/${wkEnd.getDate()}`;
+  const wkStart=dates[0],wkEnd=dates[6];
+  const wkLabel=(wkStart.getMonth()+1)+'/'+wkStart.getDate()+' 〜 '+(wkEnd.getMonth()+1)+'/'+wkEnd.getDate();
+  const HOUR_H=56; // px per hour
+  const START_H=7; // 7am
+  const END_H=23; // 11pm
+  const TOTAL_H=END_H-START_H;
+  const COL_W=Math.floor(100/7); // % per day column
+
   let h=`<div style="padding-top:8px"></div>
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-    <button onclick="weekOff--;render()" style="width:32px;height:32px;border-radius:50%;background:var(--sur);border:1px solid var(--bd);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">‹</button>
-    <div style="flex:1;text-align:center;font-size:13px;font-weight:600;color:var(--tx)">${wkLabel}</div>
-    <button onclick="weekOff++;render()" style="width:32px;height:32px;border-radius:50%;background:var(--sur);border:1px solid var(--bd);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">›</button>
-    ${weekOff!==0?`<button onclick="weekOff=0;render()" style="padding:4px 8px;border-radius:8px;background:var(--ac);color:white;border:none;font-size:11px;cursor:pointer">今週</button>`:''}
+    <button onclick="weekOff--;render()" style="width:32px;height:32px;border-radius:50%;background:var(--sur);border:1px solid var(--bd);font-size:18px;cursor:pointer">‹</button>
+    <div style="flex:1;text-align:center;font-size:13px;font-weight:600">${wkLabel}</div>
+    <button onclick="weekOff++;render()" style="width:32px;height:32px;border-radius:50%;background:var(--sur);border:1px solid var(--bd);font-size:18px;cursor:pointer">›</button>
+    ${weekOff!==0?'<button onclick="weekOff=0;render()" style="padding:4px 10px;border-radius:8px;background:var(--ac);color:white;border:none;font-size:11px;cursor:pointer">今週</button>':''}
   </div>
-  <div class="sec"><span>週間スケジュール</span><span class="sec-edit" onclick="openSchEdit()">スケジュール編集</span><span class="sec-edit" onclick="openWeekMemo()" style="margin-left:8px">📝</span></div>
-  <div class="card" style="padding:0;overflow:hidden">
-  <div style="display:grid;grid-template-columns:36px repeat(7,1fr);overflow-x:auto">`;
+  <div class="sec"><span>週間スケジュール</span><span class="sec-edit" onclick="openSchEdit()">編集</span><span class="sec-edit" onclick="openWeekMemo()" style="margin-left:8px">📝</span></div>
+  <div class="card" style="padding:0;overflow:hidden">`;
 
-  // Header row - same grid as body
-  h+=`<div style="background:var(--sur);border-bottom:2px solid var(--bd);padding:4px 2px;font-size:10px;color:var(--mu);grid-column:1;position:sticky;top:0;z-index:10"></div>`;
+  // Header row
+  h+=`<div style="display:grid;grid-template-columns:36px repeat(7,1fr);border-bottom:2px solid var(--bd)">
+    <div style="background:var(--bg)"></div>`;
   dates.forEach(d=>{
     const k=dk(d),isT=k===today,dow=d.getDay();
     const isSun=dow===0,isSat=dow===6;
     const color=isT?'white':isSun?'#E85555':isSat?'#5577E8':'var(--tx)';
-    h+=`<div onclick="openDayModal('${k}')" style="background:${isT?'var(--ac)':'var(--sur)'};border-bottom:2px solid var(--bd);padding:6px 2px;text-align:center;cursor:pointer;color:${color};position:sticky;top:0;z-index:10">
-      <div style="font-size:10px;font-weight:600">${DJ[dow]}</div>
-      <div style="font-size:14px;font-weight:700">${d.getDate()}</div>
+    h+=`<div onclick="openDayModal('${k}')" style="background:${isT?'var(--ac)':'var(--sur)'};padding:6px 2px;text-align:center;cursor:pointer;border-left:1px solid var(--bd)">
+      <div style="font-size:10px;font-weight:600;color:${color}">${['日','月','火','水','木','金','土'][dow]}</div>
+      <div style="font-size:14px;font-weight:700;color:${color}">${d.getDate()}</div>
     </div>`;
   });
+  h+=`</div>`;
 
-  // Time slot rows
-  for(let hr=7;hr<=22;hr++){
-    for(let half=0;half<2;half++){
-      const t=hr+(half*0.5);
-      const slotEnd=t+0.5;
-      const borderStyle=half===0&&hr>7?'2px solid var(--bd)':'1px solid #F3F0EB';
-      h+=`<div style="font-size:9px;color:var(--mu);text-align:right;padding:0 4px;line-height:28px;background:var(--bg);border-top:${borderStyle};min-height:28px;grid-column:1">${half===0?hr+':00':''}</div>`;
-      dates.forEach(d=>{
-        const dow=d.getDay(),k=dk(d);
-        const evs=schedule.filter(e=>e.days.includes(dow)&&e.start<slotEnd&&e.end>t);
-        // Tasks starting in this slot
-        const tasksStart=(tasks[k]||[]).filter(x=>!x.done&&x.startTime&&strToTime(x.startTime)>=t&&strToTime(x.startTime)<slotEnd);
-        // Tasks spanning this slot (start before, end after)
-        const tasksSpan=(tasks[k]||[]).filter(x=>!x.done&&x.startTime&&x.endTime&&strToTime(x.startTime)<t&&strToTime(x.endTime)>t);
-        
-        // Calculate height for tasks with duration
-        const slotH=28; // px per 30min slot
-        
-        h+=`<div onclick="openTimeSlot('${k}',${t})" style="cursor:pointer;padding:1px;min-height:${slotH}px;border-top:${borderStyle};border-left:1px solid #F3F0EB;position:relative">`;
-        
-        evs.forEach(e=>{
-          const isStart=e.start>=t&&e.start<slotEnd;
-          if(isStart){
-            const dur=e.end-e.start; // in hours
-            const heightPx=Math.max(Math.round(dur*slotH*2)-4,24);
-            h+=`<div class="wgev" onclick="event.stopPropagation();openSchItemModal('${e.id}','${k}')" style="background:${e.bg};border-left:3px solid ${e.color};color:${e.color};font-size:9px;padding:3px 4px;border-radius:4px;margin:1px 0;overflow:hidden;cursor:pointer;height:${heightPx-4}px;position:relative;z-index:2;display:flex;flex-direction:column;justify-content:flex-start">
-              <div style="font-weight:600;white-space:nowrap;text-overflow:ellipsis;overflow:hidden">${e.label}</div>
-              <div style="opacity:0.7;font-size:8px">${timeToStr(e.start)}〜${timeToStr(e.end)}</div>
-            </div>`;
-          } else if(e.start<t&&e.end>t){
-            // Continuation cell - invisible spacer to prevent other content overlapping
-            h+=`<div style="height:${slotH-2}px;opacity:0"></div>`;
-          }
-        });
-        
-        // Tasks starting here - show with full height if end time given
-        tasksStart.forEach(tk=>{
-          const taskColor=tk.color||'#10B981';
-          const taskBg=tk.color?(tk.color+'18'):'#F0FDF4';
-          const taskText=tk.color||'#065F46';
-          if(tk.endTime){
-            const dur=strToTime(tk.endTime)-strToTime(tk.startTime);
-            const heightPx=Math.max(Math.round(dur*slotH*2),24);
-            h+=`<div onclick="event.stopPropagation();openDayModal('${k}')" style="background:${taskBg};border-left:3px solid ${taskColor};font-size:9px;padding:3px 4px;border-radius:3px;margin:1px 0;color:${taskText};cursor:pointer;height:${heightPx}px;overflow:hidden;position:relative;z-index:2">
-              <div style="font-weight:600">📝 ${tk.label}</div>
-              <div style="opacity:0.7">${tk.startTime}〜${tk.endTime}</div>
-            </div>`;
-          } else {
-            // No end time - small indicator
-            h+=`<div onclick="event.stopPropagation();openDayModal('${k}')" style="background:${taskBg};border-left:3px solid ${taskColor};font-size:9px;padding:2px 4px;border-radius:3px;margin:1px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:${taskText};cursor:pointer">📝 ${tk.label}</div>`;
-          }
-        });
-        
-        // Tasks spanning this slot (continuation)
-        tasksSpan.forEach(tk=>{
-          const taskColor=tk.color||'#10B981';
-          const taskBg=tk.color?(tk.color+'10'):'#F0FDF422';
-          h+=`<div style="background:${taskBg};border-left:3px solid ${taskColor};height:${slotH-2}px;opacity:0.4;border-radius:2px;margin:1px 0"></div>`;
-        });
-        
-        // Study blocks
-        (studyBlocks[k]||[]).filter(sb=>sb.startH>=t&&sb.startH<slotEnd).forEach(sb=>{
-          const dur=sb.endH-sb.startH;
-          const heightPx=Math.max(Math.round(dur*slotH*2),20);
-          h+=`<div style="background:#EBF3F8;border-left:2px solid #3A5FA0;color:#2D6A8F;font-size:8px;padding:2px 3px;border-radius:2px;margin:1px 0;overflow:hidden;height:${heightPx}px;position:relative;z-index:2">📚 ${sb.label}<span style="opacity:0.7;float:right">${timeToStr(sb.startH)}</span></div>`;
-        });
-        
-        h+=`</div>`;
-      });
-    }
+  // Time grid with absolute-positioned events
+  h+=`<div style="display:flex;overflow-y:auto;max-height:65vh">`;
+  
+  // Time labels column
+  h+=`<div style="width:36px;flex-shrink:0;position:relative;height:${TOTAL_H*HOUR_H}px;background:var(--bg)">`;
+  for(let hr=START_H;hr<END_H;hr++){
+    const top=(hr-START_H)*HOUR_H;
+    h+=`<div style="position:absolute;top:${top}px;right:4px;font-size:9px;color:var(--mu);line-height:1">${hr}:00</div>`;
   }
+  h+=`</div>`;
+
+  // Day columns
+  dates.forEach(d=>{
+    const k=dk(d),dow=d.getDay();
+    const isT=k===today;
+    const dayEvs=schedule.filter(e=>e.days.includes(dow));
+    const dayTasks=(tasks[k]||[]).filter(t=>!t.done&&t.startTime);
+    const dayStudy=(studyBlocks[k]||[]);
+
+    h+=`<div onclick="openTimeSlot('${k}',12)" style="flex:1;position:relative;height:${TOTAL_H*HOUR_H}px;border-left:1px solid var(--bd);cursor:pointer;background:${isT?'rgba(45,106,143,0.03)':'transparent'}">`;
+
+    // Hour grid lines
+    for(let hr=START_H;hr<END_H;hr++){
+      const top=(hr-START_H)*HOUR_H;
+      h+=`<div style="position:absolute;top:${top}px;left:0;right:0;border-top:1px solid ${hr===START_H?'transparent':'var(--bd)11'};pointer-events:none"></div>`;
+      h+=`<div style="position:absolute;top:${top+HOUR_H/2}px;left:0;right:0;border-top:1px solid var(--bd)08;pointer-events:none"></div>`;
+    }
+
+    // Schedule events
+    dayEvs.forEach(e=>{
+      const startPx=(e.start-START_H)*HOUR_H;
+      const heightPx=(e.end-e.start)*HOUR_H;
+      if(startPx<0||startPx>TOTAL_H*HOUR_H)return;
+      h+=`<div onclick="event.stopPropagation();openSchItemModal('${e.id}','${k}')"
+        style="position:absolute;top:${startPx}px;left:2px;right:2px;height:${Math.max(heightPx-3,20)}px;
+        background:${e.bg};border-left:3px solid ${e.color};border-radius:4px;
+        padding:2px 4px;overflow:hidden;cursor:pointer;z-index:2;
+        box-shadow:0 1px 3px rgba(0,0,0,0.1)">
+        <div style="font-size:9px;font-weight:700;color:${e.color};line-height:1.3;overflow:hidden">${e.label}</div>
+        <div style="font-size:8px;color:${e.color};opacity:0.8">${timeToStr(e.start)}〜${timeToStr(e.end)}</div>
+      </div>`;
+    });
+
+    // Tasks with time
+    dayTasks.forEach(tk=>{
+      const st=strToTime(tk.startTime);
+      if(isNaN(st)||st<START_H||st>END_H)return;
+      const startPx=(st-START_H)*HOUR_H;
+      const taskColor=tk.color||'#10B981';
+      let heightPx=28;
+      if(tk.endTime){
+        const et=strToTime(tk.endTime);
+        heightPx=Math.max((et-st)*HOUR_H-3,20);
+      }
+      h+=`<div onclick="event.stopPropagation();openTaskMemo('${k}','${tk.id}')"
+        style="position:absolute;top:${startPx}px;left:2px;right:2px;height:${heightPx}px;
+        background:${taskColor}18;border-left:3px solid ${taskColor};border-radius:4px;
+        padding:2px 4px;overflow:hidden;cursor:pointer;z-index:3">
+        <div style="font-size:9px;font-weight:600;color:${taskColor};overflow:hidden;white-space:nowrap;text-overflow:ellipsis">📝 ${tk.label}</div>
+        ${tk.endTime?`<div style="font-size:8px;color:${taskColor};opacity:0.7">${tk.startTime}〜${tk.endTime}</div>`:''}
+      </div>`;
+    });
+
+    // Study blocks
+    dayStudy.forEach(sb=>{
+      if(sb.startH<START_H||sb.startH>END_H)return;
+      const startPx=(sb.startH-START_H)*HOUR_H;
+      const heightPx=Math.max((sb.endH-sb.startH)*HOUR_H-3,20);
+      h+=`<div style="position:absolute;top:${startPx}px;left:2px;right:2px;height:${heightPx}px;
+        background:#EBF3F8;border-left:3px solid #3A5FA0;border-radius:4px;
+        padding:2px 4px;overflow:hidden;z-index:2">
+        <div style="font-size:9px;font-weight:600;color:#2D6A8F;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">📚 ${sb.label}</div>
+        <div style="font-size:8px;color:#2D6A8F;opacity:0.7">${timeToStr(sb.startH)}〜${timeToStr(sb.endH)}</div>
+      </div>`;
+    });
+
+    h+=`</div>`;
+  });
+
   h+=`</div></div>`;
   document.getElementById('view-week').innerHTML=h;
 }
@@ -2551,13 +2569,42 @@ if(localStorage.getItem('yp_sch_ver') !== scheduleVersion){
   schedule=JSON.parse(localStorage.getItem('yp_sch')||'null')||schedule;
 }
 
-// Force reset habits to new version if still using old structure
-const habitVersion='3';
-if(localStorage.getItem('yp_habit_ver')!==habitVersion&&habits.length<8){
+// Force reset habits and groups to new version
+const habitVersion='5';
+if(localStorage.getItem('yp_habit_ver')!==habitVersion){
   localStorage.removeItem('yp_h');
   localStorage.removeItem('yp_habit_groups');
-  habits=JSON.parse('null')||habits; // re-evaluate default
   localStorage.setItem('yp_habit_ver',habitVersion);
+  // Reload from defaults
+  habits=[
+    {id:'wake',name:'Wake up at 7:00',icon:'☀️',color:'#F59E0B',group:'morning'},
+    {id:'teeth',name:'Brush teeth',icon:'🪥',color:'#60A5FA',group:'morning'},
+    {id:'warmwater',name:'Drink warm water',icon:'🫖',color:'#34D399',group:'morning'},
+    {id:'affirmation',name:'Affirmation',icon:'💫',color:'#C4882A',timerMins:5,group:'morning'},
+    {id:'vocab',name:'Vocabulary practice',icon:'📝',color:'#E8856A',timerMins:15,group:'morning'},
+    {id:'yoga',name:'Morning yoga',icon:'🧘',color:'#5A8A6A',timerMins:45,group:'morning'},
+    {id:'med_am',name:'Meditation',icon:'🌿',color:'#2D6A8F',timerMins:20,group:'morning'},
+    {id:'clearing',name:'Clearing (morning)',icon:'🧹',color:'#9B6AD4',timerMins:10,group:'morning'},
+    {id:'todocheck',name:"Check today's to-do list",icon:'✅',color:'#10B981',group:'morning'},
+    {id:'skincare',name:'Skincare & get ready',icon:'✨',color:'#F472B6',group:'morning'},
+    {id:'handkerchief',name:'Bring a handkerchief',icon:'🤍',color:'#888',group:'other'},
+    {id:'nobinge',name:'No binge-watching',icon:'🚫',color:'#DC2626',group:'stop'},
+    {id:'writing',name:'Writing time (diary, essay, poem…)',icon:'✍️',color:'#7A4FA0',timerMins:30,group:'evening'},
+    {id:'plantmrw',name:'Plan tomorrow',icon:'📋',color:'#2D6A8F',timerMins:10,group:'evening'},
+    {id:'airplanemode',name:'Phone on airplane mode',icon:'✈️',color:'#1A2E3A',group:'evening'},
+    {id:'yoga_pm',name:'Evening yoga',icon:'🌙',color:'#5A8A6A',timerMins:20,group:'night'},
+    {id:'med_pm',name:'Night meditation',icon:'🌌',color:'#3A5FA0',timerMins:20,group:'night'},
+    {id:'clearing_pm',name:'Clearing (night)',icon:'🕯️',color:'#9B6AD4',timerMins:10,group:'night'},
+  ];
+  localStorage.setItem('yp_h',JSON.stringify(habits));
+  habitGroupConfig=[
+    {key:'morning',label:'Morning Ritual',icon:'🌅',color:'#C4882A',gradient:'linear-gradient(135deg,#FFF8F0,#FFF3E0)'},
+    {key:'other',label:'Essentials',icon:'🤍',color:'#5A8A6A',gradient:'linear-gradient(135deg,#F0F7F4,#E8F4EC)'},
+    {key:'stop',label:'Stop Doing',icon:'🚫',color:'#DC2626',gradient:'linear-gradient(135deg,#FEF2F2,#FEE2E2)'},
+    {key:'evening',label:'Evening Ritual',icon:'🖊️',color:'#7A4FA0',gradient:'linear-gradient(135deg,#F5F0FF,#EDE8F5)'},
+    {key:'night',label:'Night Routine',icon:'🌙',color:'#2D3A4A',gradient:'linear-gradient(135deg,#F0F4F8,#E8EEF4)'},
+  ];
+  localStorage.setItem('yp_habit_groups',JSON.stringify(habitGroupConfig));
 }
 
 // Update existing habits to add timerMins if missing
