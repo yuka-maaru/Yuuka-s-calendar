@@ -280,26 +280,33 @@ let recurringTasks=JSON.parse(localStorage.getItem('yp_recurring')||'null')||[
 
 
 function applyRecurringTasks(){
+  // Generate from Aug 24 2026 to Dec 18 2026 (entire semester)
+  const semStart=new Date(2026,7,24); // Aug 24
+  const semEnd=new Date(2026,11,18); // Dec 18
   
-  const n=new Date(),dow=n.getDay();
-  const monday=new Date(n);
-  monday.setDate(n.getDate()-(dow===0?6:dow-1));
-  monday.setHours(0,0,0,0);
-
   // Remove ALL existing recurring task instances
   Object.keys(tasks).forEach(k=>{
     tasks[k]=(tasks[k]||[]).filter(t=>!t.recurringId);
   });
 
-  // Re-add for -1 week to +2 weeks
-  for(let weekOffset=-1;weekOffset<=2;weekOffset++){
+  // Find Monday of semester start week
+  const startDow=semStart.getDay();
+  const firstMonday=new Date(semStart);
+  firstMonday.setDate(semStart.getDate()-(startDow===0?6:startDow-1));
+  firstMonday.setHours(0,0,0,0);
+  
+  // Count weeks in semester
+  const msPerWeek=7*24*60*60*1000;
+  const totalWeeks=Math.ceil((semEnd-firstMonday)/msPerWeek)+1;
+  
+  for(let weekOffset=0;weekOffset<totalWeeks;weekOffset++){
     recurringTasks.forEach(rt=>{
       (rt.days||[]).forEach(d=>{
         // JS: 0=Sun,1=Mon...6=Sat
         // Mon-start offset: Mon=0,Tue=1,...,Sun=6
         const dayOffset=d===0?6:d-1;
-        const target=new Date(monday);
-        target.setDate(monday.getDate()+weekOffset*7+dayOffset);
+        const target=new Date(firstMonday);
+        target.setDate(firstMonday.getDate()+weekOffset*7+dayOffset);
         const k=dk(target);
         if(!tasks[k])tasks[k]=[];
         if(!tasks[k].some(t=>t.recurringId===rt.id)){
@@ -825,6 +832,12 @@ function openSchItemModal(eid,key){
   setTimeout(()=>document.getElementById('sch-note-modal')?.focus(),100);
 }
 
+
+function saveSchNoteFromBtn(btn){
+  const eid=btn.getAttribute('data-eid');
+  const key=btn.getAttribute('data-key');
+  saveSchNoteModal(eid,key);
+}
 
 function saveSchNoteModal(eid,key){
   const val=document.getElementById('sch-note-modal')?.value||'';
