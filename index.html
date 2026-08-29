@@ -1218,11 +1218,7 @@ const UH_CALENDAR={
 
 // Dream data
 let dreamData=JSON.parse(localStorage.getItem('yp_dream')||'null')||{
-  dreams:[
-    {id:'d1',text:'哲学書・小説・詩を書く作家になる'},
-    {id:'d2',text:'英語と日本語で世界に発信する'},
-    {id:'d3',text:'自分の哲学で人々の心を動かす'},
-  ],
+  beMyselfText:'Be Myself',
   yearGoal:'UHマノアで哲学MAを修了し、英語・日本語両方で論文・詩を書く',
   monthGoals:{},
   reverseYear:'修士論文を書き上げ、英語での発表ができるレベルになる',
@@ -1232,47 +1228,88 @@ let dreamData=JSON.parse(localStorage.getItem('yp_dream')||'null')||{
   reverseToday:'',
   treeHabits:[],
   treeStudy:[],
-  mandalaCenter:'作家になる',
-  mandalaCats:[
-    {id:'mc1',icon:'✍️',name:'書く',syncType:'recurring',syncLabel:'ライティング',color:'#E8856A',
-      items:[
-        {id:'mi1',label:'詩を書く',type:'timer',mins:20,doneToday:false},
-        {id:'mi2',label:'小説・物語を書く',type:'timer',mins:30,doneToday:false},
-        {id:'mi3',label:'哲学考察を書く',type:'timer',mins:25,doneToday:false},
-        {id:'mi4',label:'日記を書く',type:'timer',mins:10,doneToday:false},
-      ]},
-    {id:'mc2',icon:'📚',name:'哲学を学ぶ',syncType:'study',syncIds:['sl1','sl2','sl3'],color:'#2D6A8F',
-      items:[
-        {id:'mi5',label:'PHIL 770 荘子を読む',type:'check',doneToday:false},
-        {id:'mi6',label:'PHIL 414B テキスト読む',type:'check',doneToday:false},
-        {id:'mi7',label:'授業コメント準備',type:'check',doneToday:false},
-      ]},
-    {id:'mc3',icon:'🧘',name:'心身を整える',syncType:'habit',color:'#5A8A6A',
-      items:[
-        {id:'mi8',label:'朝ヨガ',type:'timer',mins:45,doneToday:false},
-        {id:'mi9',label:'朝瞑想',type:'timer',mins:20,doneToday:false},
-      ]},
-    {id:'mc4',icon:'🗣️',name:'英語を伸ばす',syncType:'study',syncIds:['sl5'],color:'#9B6AD4',
-      items:[
-        {id:'mi10',label:'英語で100語書く',type:'timer',mins:15,doneToday:false},
-        {id:'mi11',label:'Geminiと英語会話',type:'timer',mins:15,doneToday:false},
-        {id:'mi12',label:'ELI 111 授業',type:'check',doneToday:false},
-      ]},
-    {id:'mc5',icon:'📖',name:'数学・論理',syncType:'study',syncIds:['sl4'],color:'#C4882A',
-      items:[
-        {id:'mi13',label:'PHIL 111 HW解く',type:'check',doneToday:false},
-        {id:'mi14',label:'解答を確認する',type:'check',doneToday:false},
-      ]},
-    {id:'mc6',icon:'💪',name:'継続する',syncType:'habit',color:'#1A2E3A',
-      items:[
-        {id:'mi15',label:'リフレクション提出',type:'check',doneToday:false},
-        {id:'mi16',label:'授業に出席する',type:'check',doneToday:false},
-      ]},
+  dreams:[
+    {
+      id:'d1',
+      text:'作家になる',
+      icon:'✍️',
+      color:'#E8856A',
+      water:0,
+      cats:[
+        {id:'mc1',icon:'✍️',name:'書く',syncType:'none',color:'#E8856A',items:[
+          {id:'mi1',label:'詩を書く',type:'timer',mins:20,doneToday:false},
+          {id:'mi2',label:'小説・物語を書く',type:'timer',mins:30,doneToday:false},
+          {id:'mi3',label:'哲学考察を書く',type:'timer',mins:25,doneToday:false},
+          {id:'mi4',label:'日記を書く',type:'timer',mins:10,doneToday:false},
+        ]},
+        {id:'mc2',icon:'📚',name:'哲学を学ぶ',syncType:'study',syncIds:['sl1','sl2','sl3'],color:'#2D6A8F',items:[
+          {id:'mi5',label:'PHIL 770 荘子を読む',type:'check',doneToday:false},
+          {id:'mi6',label:'PHIL 414B テキスト読む',type:'check',doneToday:false},
+          {id:'mi7',label:'授業コメント準備',type:'check',doneToday:false},
+        ]},
+        {id:'mc3',icon:'🧘',name:'心身を整える',syncType:'habit',color:'#5A8A6A',items:[
+          {id:'mi8',label:'朝ヨガ',type:'timer',mins:45,doneToday:false},
+          {id:'mi9',label:'朝瞑想',type:'timer',mins:20,doneToday:false},
+        ]},
+        {id:'mc4',icon:'🗣️',name:'英語を伸ばす',syncType:'study',syncIds:['sl5'],color:'#9B6AD4',items:[
+          {id:'mi10',label:'英語で100語書く',type:'timer',mins:15,doneToday:false},
+          {id:'mi11',label:'Geminiと英語会話',type:'timer',mins:15,doneToday:false},
+        ]},
+        {id:'mc5',icon:'🌍',name:'発信する',syncType:'none',color:'#C4882A',items:[
+          {id:'mi12',label:'ブログ・SNSに書く',type:'check',doneToday:false},
+          {id:'mi13',label:'英語で発信する',type:'check',doneToday:false},
+        ]},
+        {id:'mc6',icon:'💪',name:'継続する',syncType:'habit',color:'#1A2E3A',items:[
+          {id:'mi14',label:'リフレクション提出',type:'check',doneToday:false},
+          {id:'mi15',label:'授業に出席する',type:'check',doneToday:false},
+        ]},
+      ]
+    },
+    {
+      id:'d2',
+      text:'英語と日本語で世界に発信する',
+      icon:'🌍',
+      color:'#2D6A8F',
+      water:0,
+      cats:[
+        {id:'mc21',icon:'🗣️',name:'英語を話す',syncType:'study',syncIds:['sl5'],color:'#2D6A8F',items:[
+          {id:'mi21',label:'英語で100語書く',type:'timer',mins:15,doneToday:false},
+          {id:'mi22',label:'ELI 111 授業',type:'check',doneToday:false},
+        ]},
+        {id:'mc22',icon:'📖',name:'読む',syncType:'study',syncIds:['sl1','sl2'],color:'#5A8A6A',items:[
+          {id:'mi23',label:'英語テキストを読む',type:'timer',mins:30,doneToday:false},
+        ]},
+        {id:'mc23',icon:'✍️',name:'書く',syncType:'none',color:'#E8856A',items:[
+          {id:'mi24',label:'英語でエッセイを書く',type:'timer',mins:20,doneToday:false},
+          {id:'mi25',label:'日本語で詩を書く',type:'timer',mins:15,doneToday:false},
+        ]},
+      ]
+    },
+    {
+      id:'d3',
+      text:'自分の哲学で人々の心を動かす',
+      icon:'💫',
+      color:'#9B6AD4',
+      water:0,
+      cats:[
+        {id:'mc31',icon:'🤔',name:'考える',syncType:'none',color:'#9B6AD4',items:[
+          {id:'mi31',label:'哲学日記を書く',type:'timer',mins:20,doneToday:false},
+          {id:'mi32',label:'問いを立てる',type:'check',doneToday:false},
+        ]},
+        {id:'mc32',icon:'📚',name:'学ぶ',syncType:'study',syncIds:['sl1','sl2','sl3'],color:'#2D6A8F',items:[
+          {id:'mi33',label:'授業の文献を読む',type:'timer',mins:30,doneToday:false},
+          {id:'mi34',label:'授業コメント準備',type:'check',doneToday:false},
+        ]},
+        {id:'mc33',icon:'🧘',name:'整える',syncType:'habit',color:'#5A8A6A',items:[
+          {id:'mi35',label:'瞑想',type:'timer',mins:20,doneToday:false},
+        ]},
+      ]
+    },
   ],
 };
 
 let mandalaOpenCat=null;
-let mandalaTimerActive=null;
+let mandalaOpenDream=null;
 
 function saveDream(){
   localStorage.setItem('yp_dream',JSON.stringify(dreamData));
@@ -1296,24 +1333,23 @@ const FLOWERS=['🌸','🌺','🍎','🌻','🌹','🍊','🌷','🍇','🌼','�
 const ANIMALS=['🐦','🦋','🐿️','🦜','🐇','🦔','🐝','🦚'];
 
 function getTreeProgress(){
-  const dates=getWk();
-  let score=0;
-
-  // Mandala overall progress (main driver)
-  let mandalaTotal=0;
-  (dreamData.mandalaCats||[]).forEach(cat=>{
-    const pct=getMandalaProgress(cat);
-    score+=Math.round(pct*10);
-    mandalaTotal+=10;
-  });
-
-  // Habits this week (bonus)
-  dates.forEach(d=>{
-    const k=dk(d);
-    habits.forEach(h=>{if(data[k]&&data[k][h.id])score+=0.5;});
-  });
-
-  return Math.min(Math.round(score),60);
+  try {
+    const dates=getWk();
+    let score=0;
+    (dreamData.dreams||[]).forEach(dream=>{
+      (dream.cats||[]).forEach(cat=>{
+        const pct=getMandalaProgress(cat);
+        score+=Math.round(pct*5);
+      });
+    });
+    if(typeof habits!=='undefined'){
+      dates.forEach(d=>{
+        const k=dk(d);
+        habits.forEach(h=>{if(data[k]&&data[k][h.id])score+=0.5;});
+      });
+    }
+    return Math.min(Math.round(score),60);
+  } catch(e){ return 0; }
 }
 
 function drawTree(progress){
@@ -1404,93 +1440,122 @@ function renderDream(){
   let html=`<div style="padding-top:8px"></div>`;
 
   // Tree
-  html+=`<div class="dream-tree-wrap">${drawTree(progress)}</div>`;
-  html+=`<p style="font-size:11px;color:var(--mu);text-align:center;margin-bottom:12px">習慣・学習をするたびに木が育ちます🌱 月ごとに違う花が咲きます${FLOWERS[now.getMonth()%FLOWERS.length]}</p>`;
+  html+=`<div class="dream-tree-wrap">${drawTree(progress)}</div>
+  <p style="font-size:11px;color:var(--mu);text-align:center;margin-bottom:16px">習慣・学習・夢のタスクをするたびに木が育ちます🌱</p>`;
 
-  // Mandala chart
-  html+=`<div class="sec">🔮 曼陀羅チャート <span class="sec-edit" onclick="openMandalaEdit()">編集</span></div>
-  <div class="mandala-wrap">
-    <div class="mandala-grid">`;
+  // Be Myself - center
+  html+=`<div style="text-align:center;margin-bottom:20px">
+    <div style="display:inline-block;padding:12px 28px;border-radius:30px;background:linear-gradient(135deg,var(--ac),#7A4FA0);color:white;font-size:18px;font-weight:700;box-shadow:0 4px 16px rgba(45,106,143,.3)">
+      ✨ ${dreamData.beMyselfText||'Be Myself'}
+    </div>
+    <div style="font-size:11px;color:var(--mu);margin-top:6px">タップして編集</div>
+  </div>`;
 
-  const cats=dreamData.mandalaCats||[];
-  const positions=[0,1,2,3,null,4,5,6,7]; // 8 cats around center
-  positions.forEach((catIdx,gridPos)=>{
-    if(catIdx===null){
-      html+=`<div class="mandala-center" onclick="mandalaOpenCat=null;renderDream()">
-        <div style="font-size:24px">🌟</div>
-        <div style="margin-top:4px">${dreamData.mandalaCenter||'夢'}</div>
-      </div>`;
-    } else if(catIdx<cats.length){
-      const cat=cats[catIdx];
-      const pct=getMandalaProgress(cat);
-      const doneCount=(cat.items||[]).filter(i=>i.doneToday).length;
-      const totalCount=(cat.items||[]).length;
-      const isOpen=mandalaOpenCat===catIdx;
-      const waterH=Math.round(pct*80);
-      const syncLabel=getMandalaSync(cat);
-      html+=`<div class="mandala-cat${isOpen?' active':''}" onclick="mandalaOpenCat=${isOpen?'null':catIdx};renderDream()" style="border-color:${pct>0?cat.color||'var(--ac)':'var(--bd)'}">
-        <div class="mandala-water" style="height:${waterH}%;background:linear-gradient(180deg,${cat.color||'#2D6A8F'}22,${cat.color||'#2D6A8F'}44)"></div>
-        <div class="mandala-cat-icon">${cat.icon}</div>
-        <div class="mandala-cat-name">${cat.name}</div>
-        <div class="mandala-cat-pct">${Math.round(pct*100)}%</div>
-        <div class="mandala-sync">${syncLabel}</div>
-      </div>`;
-    } else {
-      html+=`<div class="mandala-cat" onclick="addMandalaCat()" style="border-style:dashed;opacity:.4">
-        <div style="font-size:20px;color:var(--mu)">＋</div>
-        <div style="font-size:10px;color:var(--mu)">追加</div>
-      </div>`;
-    }
-  });
-
-  html+=`</div>`;
-
-  // Detail panel for open category
-  if(mandalaOpenCat!==null&&cats[mandalaOpenCat]){
-    const cat=cats[mandalaOpenCat];
-    html+=`<div class="mandala-detail">
-      <div style="font-size:14px;font-weight:700;margin-bottom:10px">${cat.icon} ${cat.name}</div>`;
-    (cat.items||[]).forEach((item,ii)=>{
-      html+=`<div class="mandala-item">
-        <button class="mandala-check${item.doneToday?' done':''}" onclick="toggleMandalaItem(${mandalaOpenCat},${ii})">
-          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-        </button>
-        <span class="mandala-item-label${item.doneToday?' ':''}${item.doneToday?'" style="text-decoration:line-through;color:var(--mu)"':'"}'>${item.label}</span>
-        ${item.type==='timer'?`<button class="mandala-timer-btn" onclick="startMandalaTimer(${mandalaOpenCat},${ii})">⏱ ${item.mins}分</button>`:''}
-        ${item.type==='count'?`<button class="mandala-count-btn" onclick="countMandalaItem(${mandalaOpenCat},${ii})">+1 (${item.count||0})</button>`:''}
+  // Dream list with water level
+  if(mandalaOpenDream===null){
+    html+=`<div class="sec">🌟 Dream List <span class="sec-edit" onclick="addDream()">＋ 追加</span></div>`;
+    dreamData.dreams.forEach((dream,di)=>{
+      const pct=getDreamWater(dream);
+      const waterPct=Math.round(pct*100);
+      html+=`<div onclick="mandalaOpenDream=${di};mandalaOpenCat=null;renderDream()" style="background:var(--sur);border-radius:12px;border:1.5px solid ${dream.color||'var(--bd)'};margin-bottom:10px;overflow:hidden;cursor:pointer;position:relative;min-height:64px;display:flex;align-items:center;gap:12px;padding:12px 14px">
+        <div style="position:absolute;left:0;bottom:0;width:${waterPct}%;height:100%;background:${dream.color||'#2D6A8F'}18;transition:width .5s ease;pointer-events:none"></div>
+        <div style="font-size:28px;position:relative;z-index:1">${dream.icon||'🌟'}</div>
+        <div style="flex:1;position:relative;z-index:1">
+          <div style="font-size:14px;font-weight:600;color:var(--tx)">${dream.text}</div>
+          <div style="font-size:11px;color:var(--mu);margin-top:2px">達成度 ${waterPct}% 💧</div>
+        </div>
+        <div style="position:relative;z-index:1;color:var(--mu)">›</div>
       </div>`;
     });
-    html+=`<div style="display:flex;gap:6px;margin-top:10px">
-      <input id="mandala-item-inp" placeholder="項目を追加..." style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
-      <select id="mandala-item-type" style="padding:7px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)">
-        <option value="check">チェック</option>
-        <option value="timer">タイマー</option>
-        <option value="count">カウント</option>
-      </select>
-      <button class="abtn" onclick="addMandalaItem(${mandalaOpenCat})">追加</button>
-    </div></div>`;
+  } else {
+    // Show specific dream's mandala
+    const dream=dreamData.dreams[mandalaOpenDream];
+    if(!dream){mandalaOpenDream=null;renderDream();return;}
+    const cats=dream.cats||[];
+    const pct=getDreamWater(dream);
+
+    html+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <button onclick="mandalaOpenDream=null;mandalaOpenCat=null;renderDream()" style="padding:6px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">← 戻る</button>
+      <span style="font-size:16px">${dream.icon}</span>
+      <span style="font-size:14px;font-weight:700;flex:1">${dream.text}</span>
+      <span style="font-size:12px;color:${dream.color};font-weight:600">💧${Math.round(pct*100)}%</span>
+    </div>`;
+
+    // Water level bar
+    html+=`<div style="background:var(--bd);border-radius:20px;height:8px;margin-bottom:16px;overflow:hidden">
+      <div style="height:100%;width:${Math.round(pct*100)}%;background:linear-gradient(90deg,${dream.color||'var(--ac)'},${dream.color||'var(--ac)'}88);border-radius:20px;transition:width .5s ease"></div>
+    </div>`;
+
+    // Mandala grid
+    html+=`<div class="mandala-grid" style="margin-bottom:8px">`;
+    const positions=[0,1,2,3,null,4,5,6,7];
+    positions.forEach((catIdx)=>{
+      if(catIdx===null){
+        html+=`<div class="mandala-center">
+          <div style="font-size:22px">${dream.icon}</div>
+          <div style="font-size:10px;margin-top:2px">${dream.text}</div>
+        </div>`;
+      } else if(catIdx<cats.length){
+        const cat=cats[catIdx];
+        const catPct=getMandalaProgress(cat);
+        const waterH=Math.round(catPct*100);
+        const isOpen=mandalaOpenCat===catIdx;
+        html+=`<div class="mandala-cat${isOpen?' active':''}" onclick="mandalaOpenCat=${isOpen?'null':catIdx};renderDream()" style="border-color:${catPct>0?cat.color||'var(--ac)':'var(--bd)'}">
+          <div class="mandala-water" style="height:${waterH}%;background:linear-gradient(180deg,${cat.color||'#2D6A8F'}22,${cat.color||'#2D6A8F'}55)"></div>
+          <div class="mandala-cat-icon">${cat.icon}</div>
+          <div class="mandala-cat-name">${cat.name}</div>
+          <div class="mandala-cat-pct">${waterH}%</div>
+          <div class="mandala-sync">${getMandalaSync(cat)}</div>
+        </div>`;
+      } else if(catIdx<8){
+        html+=`<div class="mandala-cat" onclick="addMandalaCat()" style="border-style:dashed;opacity:.4">
+          <div style="font-size:18px;color:var(--mu)">＋</div>
+        </div>`;
+      } else {
+        html+=`<div></div>`;
+      }
+    });
+    html+=`</div>`;
+
+    // Detail panel
+    if(mandalaOpenCat!==null&&cats[mandalaOpenCat]){
+      const cat=cats[mandalaOpenCat];
+      html+=`<div class="mandala-detail">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="font-size:18px">${cat.icon}</span>
+          <span style="font-size:14px;font-weight:700">${cat.name}</span>
+          <span style="margin-left:auto;font-size:11px;color:${cat.color}">${Math.round(getMandalaProgress(cat)*100)}% 💧</span>
+        </div>`;
+      (cat.items||[]).forEach((item,ii)=>{
+        const doneStyle=item.doneToday?'text-decoration:line-through;color:var(--mu)':'';
+        const checkClass=item.doneToday?'mandala-check done':'mandala-check';
+        let actionBtn='';
+        if(item.type==='timer') actionBtn=`<button class="mandala-timer-btn" onclick="startMandalaTimer(${mandalaOpenDream},${mandalaOpenCat},${ii})">⏱ ${item.mins}分</button>`;
+        if(item.type==='count') actionBtn=`<button class="mandala-count-btn" onclick="countMandalaItem(${mandalaOpenDream},${mandalaOpenCat},${ii})">+1 (${item.count||0})</button>`;
+        html+=`<div class="mandala-item">
+          <button class="${checkClass}" onclick="toggleMandalaItem(${mandalaOpenDream},${mandalaOpenCat},${ii})">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+          <span style="flex:1;font-size:13px;${doneStyle}">${item.label}</span>
+          ${actionBtn}
+        </div>`;
+      });
+      html+=`<div style="display:flex;gap:6px;margin-top:10px">
+        <input id="mandala-item-inp" placeholder="項目を追加..." style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
+        <select id="mandala-item-type" style="padding:7px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)">
+          <option value="check">チェック</option>
+          <option value="timer">タイマー</option>
+          <option value="count">カウント</option>
+        </select>
+        <button class="abtn" onclick="addMandalaItem(${mandalaOpenDream},${mandalaOpenCat})">追加</button>
+      </div></div>`;
+    }
   }
 
-  html+=`</div>`;
-
-  // Dream list
-  html+=`<div class="sec">🌟 Dreamリスト</div><div class="card">`;
-  dreamData.dreams.forEach((d,i)=>{
-    html+=`<div class="dream-item">
-      <span style="color:#FFB347;font-size:16px">★</span>
-      <textarea class="dream-input" rows="1" oninput="dreamData.dreams[${i}].text=this.value;saveDream();autoResize(this)" onload="autoResize(this)">${d.text}</textarea>
-      <button class="delbtn" onclick="dreamData.dreams.splice(${i},1);saveDream();renderDream()">×</button>
-    </div>`;
-  });
-  html+=`<div class="af">
-    <input id="dream-inp" placeholder="夢を追加..." style="flex:1">
-    <button class="abtn" onclick="addDream()">追加</button>
-  </div></div>`;
-
-  // Year goal
-  html+=`<div class="sec">🎯 年間ゴール（2026-2027）</div>
-  <div class="card" style="padding:12px">
-    <textarea class="memo-box" style="border:none;background:transparent;min-height:60px" oninput="dreamData.yearGoal=this.value;saveDream()" placeholder="今年の大きな目標...">${dreamData.yearGoal}</textarea>
+  // Year goal & reverse plan (collapsed at bottom)
+  html+=`<div class="sec" style="margin-top:8px">🎯 年間ゴール・逆算プラン</div>
+  <div class="card" style="padding:12px;margin-bottom:12px">
+    <textarea class="memo-box" style="border:none;background:transparent;min-height:50px" oninput="dreamData.yearGoal=this.value;saveDream()" placeholder="今年の大きな目標...">${dreamData.yearGoal||''}</textarea>
   </div>`;
 
   // Monthly goals
@@ -1507,98 +1572,93 @@ function renderDream(){
   });
   html+='</div>';
 
-  // Reverse plan
-  html+=`<div class="sec">🔄 逆算プラン</div>
-  <div style="margin-bottom:12px">
-    <div class="reverse-card">
-      <div style="font-size:11px;font-weight:600;color:#7A4FA0;margin-bottom:4px">🌟 最終的な夢</div>
-      <div style="font-size:13px;color:var(--tx)">${dreamData.dreams.map(d=>d.text).join(' / ')||'夢を入力してください'}</div>
-    </div>
-    <div class="reverse-arrow">↓</div>
-    <div class="reverse-card">
-      <div style="font-size:11px;font-weight:600;color:#2D6A8F;margin-bottom:4px">🎯 今年やること</div>
-      <textarea class="memo-box" style="border:none;background:transparent;min-height:40px;padding:0" oninput="dreamData.reverseYear=this.value;saveDream()" placeholder="今年の具体的な行動...">${dreamData.reverseYear}</textarea>
-    </div>
-    <div class="reverse-arrow">↓</div>
-    <div class="reverse-card">
-      <div style="font-size:11px;font-weight:600;color:#5A8A6A;margin-bottom:4px">📚 今セメスターやること</div>
-      <textarea class="memo-box" style="border:none;background:transparent;min-height:40px;padding:0" oninput="dreamData.reverseSem=this.value;saveDream()" placeholder="今学期の具体的な行動...">${dreamData.reverseSem}</textarea>
-    </div>
-    <div class="reverse-arrow">↓</div>
-    <div class="reverse-card">
-      <div style="font-size:11px;font-weight:600;color:#C4882A;margin-bottom:4px">📅 今月やること</div>
-      <textarea class="memo-box" style="border:none;background:transparent;min-height:40px;padding:0" oninput="dreamData.reverseMonth=this.value;saveDream()" placeholder="今月の具体的な行動...">${dreamData.reverseMonth}</textarea>
-    </div>
-    <div class="reverse-arrow">↓</div>
-    <div class="reverse-card">
-      <div style="font-size:11px;font-weight:600;color:#E8856A;margin-bottom:4px">📝 今週やること</div>
-      <textarea class="memo-box" style="border:none;background:transparent;min-height:40px;padding:0" oninput="dreamData.reverseWeek=this.value;saveDream()" placeholder="今週の具体的な行動...">${dreamData.reverseWeek}</textarea>
-    </div>
-    <div class="reverse-arrow">↓</div>
-    <div class="reverse-card" style="background:linear-gradient(135deg,#FFF8F0,#FFF3ED);border-color:#E8856A">
-      <div style="font-size:11px;font-weight:600;color:#C4882A;margin-bottom:4px">⭐ 今日やること</div>
-      <textarea class="memo-box" style="border:none;background:transparent;min-height:40px;padding:0" oninput="dreamData.reverseToday=this.value;saveDream()" placeholder="今日できる一つのこと...">${dreamData.reverseToday}</textarea>
-    </div>
-  </div>`;
-
   document.getElementById('view-dream').innerHTML=html;
 }
 
+function getDreamWater(dream){
+  try {
+    const cats=dream.cats||[];
+    if(cats.length===0)return 0;
+    const total=cats.reduce((sum,cat)=>sum+getMandalaProgress(cat),0);
+    return Math.min(total/cats.length,1);
+  } catch(e){return 0;}
+}
+
 function addDream(){
-  const inp=document.getElementById('dream-inp');
-  if(!inp||!inp.value.trim())return;
-  dreamData.dreams.push({id:'d'+Date.now(),text:inp.value.trim()});
+  const colors=['#E8856A','#2D6A8F','#9B6AD4','#5A8A6A','#C4882A'];
+  const icons=['🌟','💫','🔥','🌸','🎯'];
+  const idx=dreamData.dreams.length;
+  const text=prompt('夢を入力してください');
+  if(!text)return;
+  dreamData.dreams.push({
+    id:'d'+Date.now(),
+    text,
+    icon:icons[idx%icons.length],
+    color:colors[idx%colors.length],
+    water:0,
+    cats:[]
+  });
   saveDream();
   renderDream();
 }
 
 function getMandalaProgress(cat){
-  const items=cat.items||[];
-  if(items.length===0)return 0;
-  // Check items done today
-  const itemDone=items.filter(i=>i.doneToday).length/items.length;
-  // Also check sync
-  let syncScore=0;
-  if(cat.syncType==='habit'){
-    const today=dk(new Date());
-    const total=habits.length;
-    const done=habits.filter(h=>data[today]&&data[today][h.id]).length;
-    syncScore=total>0?done/total:0;
-  } else if(cat.syncType==='study'){
-    const ids=cat.syncIds||[];
-    const lists=ids.length>0?studyLists.filter(sl=>ids.includes(sl.id)):studyLists;
-    let done=0,total=0;
-    lists.forEach(sl=>{total+=sl.items.length;done+=sl.items.filter(i=>i.done).length;});
-    syncScore=total>0?done/total:0;
-  }
-  return Math.min((itemDone+syncScore)/2*1.5,1);
+  try {
+    const items=cat.items||[];
+    if(items.length===0)return 0;
+    const itemDone=items.filter(i=>i.doneToday).length/items.length;
+    let syncScore=0;
+    if(cat.syncType==='habit'&&typeof habits!=='undefined'&&habits.length>0){
+      const today=dk(new Date());
+      const total=habits.length;
+      const done=habits.filter(h=>data[today]&&data[today][h.id]).length;
+      syncScore=total>0?done/total:0;
+    } else if(cat.syncType==='study'&&typeof studyLists!=='undefined'){
+      const ids=cat.syncIds||[];
+      const lists=ids.length>0?studyLists.filter(sl=>ids.includes(sl.id)):studyLists;
+      let done=0,total=0;
+      lists.forEach(sl=>{
+        total+=(sl.items||[]).length;
+        done+=(sl.items||[]).filter(i=>i.done).length;
+      });
+      syncScore=total>0?done/total:0;
+    }
+    return Math.min((itemDone+syncScore)/2*1.5,1);
+  } catch(e){ return 0; }
 }
 
 function getMandalaSync(cat){
-  if(cat.syncType==='habit'){
-    const today=dk(new Date());
-    const done=habits.filter(h=>data[today]&&data[today][h.id]).length;
-    return `習慣 ${done}/${habits.length}`;
-  } else if(cat.syncType==='study'){
-    const ids=cat.syncIds||[];
-    const lists=ids.length>0?studyLists.filter(sl=>ids.includes(sl.id)):studyLists;
-    let done=0,total=0;
-    lists.forEach(sl=>{total+=sl.items.length;done+=sl.items.filter(i=>i.done).length;});
-    return `学習 ${done}/${total}`;
-  }
-  return '';
+  try {
+    if(cat.syncType==='habit'&&typeof habits!=='undefined'){
+      const today=dk(new Date());
+      const done=habits.filter(h=>data[today]&&data[today][h.id]).length;
+      return `習慣 ${done}/${habits.length}`;
+    } else if(cat.syncType==='study'&&typeof studyLists!=='undefined'){
+      const ids=cat.syncIds||[];
+      const lists=ids.length>0?studyLists.filter(sl=>ids.includes(sl.id)):studyLists;
+      let done=0,total=0;
+      lists.forEach(sl=>{
+        total+=(sl.items||[]).length;
+        done+=(sl.items||[]).filter(i=>i.done).length;
+      });
+      return `学習 ${done}/${total}`;
+    }
+    return '';
+  } catch(e){ return ''; }
 }
 
-function toggleMandalaItem(catIdx,itemIdx){
-  const item=dreamData.mandalaCats[catIdx].items[itemIdx];
-  item.doneToday=!item.doneToday;
-  saveDream();
-  renderDream();
-  if(item.doneToday)toast('🌱 木が育ちました！');
+function toggleMandalaItem(dreamIdx,catIdx,itemIdx){
+  try{
+    const item=dreamData.dreams[dreamIdx].cats[catIdx].items[itemIdx];
+    item.doneToday=!item.doneToday;
+    saveDream();
+    renderDream();
+    if(item.doneToday)toast('💧 水が増えました！木が育ちます🌱');
+  }catch(e){console.error(e);}
 }
 
-function startMandalaTimer(catIdx,itemIdx){
-  const item=dreamData.mandalaCats[catIdx].items[itemIdx];
+function startMandalaTimer(dreamIdx,catIdx,itemIdx){
+  const item=dreamData.dreams[dreamIdx].cats[catIdx].items[itemIdx];
   timerActiveItem={mandala:{catIdx,itemIdx}};
   timerRunning=true;
   timerPaused=false;
@@ -1619,7 +1679,7 @@ function startMandalaTimer(catIdx,itemIdx){
       clearInterval(timerInterval);
       timerRunning=false;
       hideOverlay();
-      dreamData.mandalaCats[catIdx].items[itemIdx].doneToday=true;
+      try{dreamData.dreams[dreamIdx].cats[catIdx].items[itemIdx].doneToday=true;}catch(e){}
       saveDream();
       renderDream();
       toast('⏰ '+item.label+'完了！🌱');
@@ -1627,8 +1687,8 @@ function startMandalaTimer(catIdx,itemIdx){
   },1000);
 }
 
-function countMandalaItem(catIdx,itemIdx){
-  const item=dreamData.mandalaCats[catIdx].items[itemIdx];
+function countMandalaItem(dreamIdx,catIdx,itemIdx){
+  const item=dreamData.dreams[dreamIdx].cats[catIdx].items[itemIdx];
   item.count=(item.count||0)+1;
   item.doneToday=true;
   saveDream();
@@ -1636,12 +1696,12 @@ function countMandalaItem(catIdx,itemIdx){
   toast(`${item.label}: ${item.count}回 🌱`);
 }
 
-function addMandalaItem(catIdx){
+function addMandalaItem(dreamIdx,catIdx){
   const inp=document.getElementById('mandala-item-inp');
   const typeEl=document.getElementById('mandala-item-type');
   if(!inp||!inp.value.trim())return;
   const type=typeEl?.value||'check';
-  dreamData.mandalaCats[catIdx].items.push({
+  dreamData.dreams[dreamIdx].cats[catIdx].items.push({
     id:'mi'+Date.now(),
     label:inp.value.trim(),
     type,
@@ -1654,9 +1714,13 @@ function addMandalaItem(catIdx){
 }
 
 function addMandalaCat(){
-  if(dreamData.mandalaCats.length>=8){toast('最大8カテゴリーです');return;}
+  if(mandalaOpenDream===null)return;
+  const dream=dreamData.dreams[mandalaOpenDream];
+  if(!dream)return;
+  if((dream.cats||[]).length>=8){toast('最大8カテゴリーです');return;}
   const icons=['🎨','💡','🌍','❤️','🏃','🎵'];
-  dreamData.mandalaCats.push({
+  if(!dream.cats)dream.cats=[];
+  dream.cats.push({
     id:'mc'+Date.now(),
     icon:icons[dreamData.mandalaCats.length%icons.length],
     name:'新しいカテゴリー',
@@ -1667,21 +1731,21 @@ function addMandalaCat(){
 }
 
 function openMandalaEdit(){
+  if(mandalaOpenDream===null)return;
+  const dream=dreamData.dreams[mandalaOpenDream];
+  if(!dream)return;
   const wrap=document.getElementById('modal-wrap');
   let html=`<div class="modal-bg" onclick="closeModal(event)">
     <div class="modal" style="position:relative;max-height:85vh;overflow-y:auto">
       <button class="modal-close" onclick="closeModal()">×</button>
-      <h3>曼陀羅チャート編集</h3>
-      <div style="margin-bottom:12px">
-        <div style="font-size:11px;color:var(--mu);margin-bottom:4px">中心の夢</div>
-        <input value="${dreamData.mandalaCenter||''}" onchange="dreamData.mandalaCenter=this.value;saveDream()" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg)">
-      </div>
+      <h3>${dream.icon} ${dream.text}</h3>
+      <p>カテゴリーを編集</p>
       <div class="card">`;
-  dreamData.mandalaCats.forEach((cat,i)=>{
+  (dream.cats||[]).forEach((cat,i)=>{
     html+=`<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bd)">
-      <input value="${cat.icon}" onchange="dreamData.mandalaCats[${i}].icon=this.value;saveDream()" style="width:32px;text-align:center;border:none;background:transparent;font-size:18px;outline:none">
-      <input value="${cat.name}" onchange="dreamData.mandalaCats[${i}].name=this.value;saveDream()" style="flex:1;border:none;background:transparent;font-size:13px;outline:none;color:var(--tx)">
-      <button class="delbtn" onclick="dreamData.mandalaCats.splice(${i},1);saveDream();closeModal();renderDream()">×</button>
+      <input value="${cat.icon}" onchange="dreamData.dreams[${mandalaOpenDream}].cats[${i}].icon=this.value;saveDream()" style="width:32px;text-align:center;border:none;background:transparent;font-size:18px;outline:none">
+      <input value="${cat.name}" onchange="dreamData.dreams[${mandalaOpenDream}].cats[${i}].name=this.value;saveDream()" style="flex:1;border:none;background:transparent;font-size:13px;outline:none;color:var(--tx)">
+      <button class="delbtn" onclick="dreamData.dreams[${mandalaOpenDream}].cats.splice(${i},1);saveDream();closeModal();renderDream()">×</button>
     </div>`;
   });
   html+=`</div></div></div>`;
