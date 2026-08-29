@@ -394,6 +394,7 @@ function sw(t){
 function toggleH(hid,key){
   if(!data[key])data[key]={};
   data[key][hid]=!data[key][hid];
+  if(data[key][hid])playPing();
   save();toast(data[key][hid]?'✅ チェック完了！':'チェックを外しました');render();
 }
 
@@ -409,7 +410,7 @@ function addTask(key){
 function toggleT(key,tid){
   if(!tasks[key])return;
   const t=tasks[key].find(x=>x.id===tid);
-  if(t){t.done=!t.done;save();render();}
+  if(t){t.done=!t.done;if(t.done)playPing();save();render();}
 }
 
 function delT(key,tid){
@@ -1280,6 +1281,7 @@ function buildTodoMoveBtns(fromCat,idx){
 function toggleTodo(cat,idx){
   if(!todoLists[cat])return;
   todoLists[cat][idx].done=!todoLists[cat][idx].done;
+  if(todoLists[cat][idx].done)playPing();
   saveTodos();
   renderMemo();
 }
@@ -1367,6 +1369,7 @@ function addShop(){
 }
 function toggleShop(i){
   shoppingItems[i].done=!shoppingItems[i].done;
+  if(shoppingItems[i].done)playPing();
   saveShop();renderMemo();
 }
 function deleteShop(i){
@@ -1535,6 +1538,7 @@ function urgentCheckClick(el){
   const id=el.getAttribute('data-id');
   const key=el.getAttribute('data-key');
   toggleUrgent(key,id);
+  playPing();
   // Update checkbox visual
   const cb=el.querySelector('input[type=checkbox]');
   if(cb)cb.checked=!cb.checked;
@@ -3303,6 +3307,7 @@ function timerTick(){
             '<button onclick="studyLists['+li+'].items['+ii+'].done=true;saveStudy();closeModal();renderStudy()" style="padding:10px;border-radius:10px;background:#10B981;color:white;border:none;font-size:14px;cursor:pointer;font-weight:600">✅ 完了してやめる</button>'+
             '<button onclick="closeModal();startPomoBreak('+li+','+ii+','+cycle+','+focusMins+','+breakMins+')" style="padding:10px;border-radius:10px;background:#2D6A8F;color:white;border:none;font-size:14px;cursor:pointer">☕ '+breakMins+'分休憩してから続ける</button>'+
             '<button onclick="closeModal();startTimer('+li+','+ii+')" style="padding:10px;border-radius:10px;background:var(--sur);border:1px solid var(--bd);font-size:14px;cursor:pointer">▶ 休憩なしで続ける</button>'+
+            '<button onclick="closeModal();renderStudy()" style="padding:10px;border-radius:10px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer;color:var(--mu)">✕ 完了せず終了</button>'+
             '</div></div></div>';
         },300);
       }
