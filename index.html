@@ -260,16 +260,43 @@ const MJ=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月'
 const DFJ=['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'];
 
 let habits=JSON.parse(localStorage.getItem('yp_h')||'null')||[
-  {id:'yoga',name:'朝ヨガ 45分',icon:'🧘',color:'#5A8A6A',timerMins:45,group:'morning'},
-  {id:'med_am',name:'朝瞑想 30分',icon:'🌙',color:'#2D6A8F',timerMins:30,group:'morning'},
-  {id:'english',name:'英語勉強 1時間',icon:'📖',color:'#E8856A',timerMins:60,group:'other'},
-  {id:'study',name:'哲学文献読み',icon:'📚',color:'#3A5FA0',timerMins:30,group:'other'},
-  {id:'med_pm',name:'夜瞑想 30分',icon:'✨',color:'#7A4FA0',timerMins:30,group:'night'},
-  {id:'journal',name:'日記',icon:'✏️',color:'#888',group:'night'},
+  // Morning Ritual
+  {id:'wake',name:'Wake up at 7:00',icon:'☀️',color:'#F59E0B',group:'morning'},
+  {id:'teeth',name:'Brush teeth',icon:'🪥',color:'#60A5FA',group:'morning'},
+  {id:'warmwater',name:'Drink warm water',icon:'🫖',color:'#34D399',group:'morning'},
+  {id:'affirmation',name:'Affirmation',icon:'💫',color:'#C4882A',timerMins:5,group:'morning'},
+  {id:'vocab',name:'Vocabulary practice',icon:'📝',color:'#E8856A',timerMins:15,group:'morning'},
+  {id:'yoga',name:'Morning yoga',icon:'🧘',color:'#5A8A6A',timerMins:45,group:'morning'},
+  {id:'med_am',name:'Meditation',icon:'🌿',color:'#2D6A8F',timerMins:20,group:'morning'},
+  {id:'clearing',name:'Clearing (morning)',icon:'🧹',color:'#9B6AD4',timerMins:10,group:'morning'},
+  {id:'todocheck',name:'Check today\'s to-do list',icon:'✅',color:'#10B981',group:'morning'},
+  {id:'skincare',name:'Skincare & get ready',icon:'✨',color:'#F472B6',group:'morning'},
+  // Other
+  {id:'handkerchief',name:'Bring a handkerchief',icon:'🤍',color:'#888',group:'other'},
+  // Stop doing
+  {id:'nobinge',name:'No binge-watching',icon:'🚫',color:'#DC2626',group:'stop'},
+  // Evening (writing time)
+  {id:'writing',name:'Writing time (diary, essay, poem…)',icon:'✍️',color:'#7A4FA0',timerMins:30,group:'evening'},
+  {id:'plantmrw',name:'Plan tomorrow',icon:'📋',color:'#2D6A8F',timerMins:10,group:'evening'},
+  {id:'airplanemode',name:'Phone on airplane mode & sleep mode',icon:'✈️',color:'#1A2E3A',group:'evening'},
+  // Night Routine
+  {id:'yoga_pm',name:'Evening yoga',icon:'🌙',color:'#5A8A6A',timerMins:20,group:'night'},
+  {id:'med_pm',name:'Night meditation',icon:'🌌',color:'#3A5FA0',timerMins:20,group:'night'},
+  {id:'clearing_pm',name:'Clearing (night)',icon:'🕯️',color:'#9B6AD4',timerMins:10,group:'night'},
 ];
 
+// Dynamic habit groups (configurable)
+let habitGroupConfig=JSON.parse(localStorage.getItem('yp_habit_groups')||'null')||[
+  {key:'morning',label:'Morning Ritual',icon:'🌅',color:'#C4882A',gradient:'linear-gradient(135deg,#FFF8F0,#FFF3E0)'},
+  {key:'other',label:'Essentials',icon:'🤍',color:'#5A8A6A',gradient:'linear-gradient(135deg,#F0F7F4,#E8F4EC)'},
+  {key:'stop',label:'Stop Doing',icon:'🚫',color:'#DC2626',gradient:'linear-gradient(135deg,#FEF2F2,#FEE2E2)'},
+  {key:'evening',label:'Evening Ritual',icon:'🖊️',color:'#7A4FA0',gradient:'linear-gradient(135deg,#F5F0FF,#EDE8F5)'},
+  {key:'night',label:'Night Routine',icon:'🌙',color:'#2D3A4A',gradient:'linear-gradient(135deg,#F0F4F8,#E8EEF4)'},
+];
+function saveHabitGroups(){localStorage.setItem('yp_habit_groups',JSON.stringify(habitGroupConfig));}
+
 // Force-set correct groups based on habit id (always)
-const habitGroupDefaults={yoga:'morning',med_am:'morning',english:'other',study:'other',med_pm:'night',journal:'night'};
+const habitGroupDefaults={wake:'morning',teeth:'morning',warmwater:'morning',affirmation:'morning',vocab:'morning',yoga:'morning',med_am:'morning',clearing:'morning',todocheck:'morning',skincare:'morning',handkerchief:'other',nobinge:'stop',writing:'evening',planttmrw:'evening',airplanemode:'evening',yoga_pm:'night',med_pm:'night',clearing_pm:'night'};
 let habitGroupUpdated=false;
 habits.forEach(h=>{
   const correctGroup=habitGroupDefaults[h.id]||h.group||'other';
@@ -1524,6 +1551,55 @@ function editTodayGoal(key){
   setTimeout(()=>document.getElementById('goal-inp')?.focus(),100);
 }
 
+function buildGroupSelect(idx,currentGroup){
+  let opts=habitGroupConfig.map(g=>
+    '<option value="'+g.key+'" '+(currentGroup===g.key?'selected':'')+'>'+g.icon+' '+g.label+'</option>'
+  ).join('');
+  return '<select onchange="habits['+idx+'].group=this.value;save();render()" style="padding:2px 4px;border-radius:4px;border:1px solid var(--bd);font-size:11px;background:var(--bg)">'+opts+'</select>';
+}
+
+function openGroupEdit(){
+  const wrap=document.getElementById('modal-wrap');
+  let html='<div class="modal-bg" onclick="closeModal(event)"><div class="modal" style="max-height:85vh;overflow-y:auto">';
+  html+='<button class="modal-close" onclick="closeModal()">×</button>';
+  html+='<div style="font-size:16px;font-weight:700;margin-bottom:4px">習慣グループ</div>';
+  html+='<div style="font-size:12px;color:var(--mu);margin-bottom:12px">セクションの追加・編集・並び替え</div>';
+  html+='<div class="card" style="margin-bottom:12px">';
+  habitGroupConfig.forEach((g,gi)=>{
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--bd)">'+
+      '<input value="'+g.icon+'" onchange="habitGroupConfig['+gi+'].icon=this.value;saveHabitGroups();render()" style="width:32px;text-align:center;border:1px solid var(--bd);border-radius:6px;font-size:16px;background:var(--bg);padding:2px">'+
+      '<input value="'+g.label+'" onchange="habitGroupConfig['+gi+'].label=this.value;saveHabitGroups();render()" style="flex:1;border:1px solid var(--bd);border-radius:6px;font-size:13px;background:var(--bg);padding:4px 8px;outline:none;color:var(--tx)">'+
+      '<input type="color" value="'+g.color+'" onchange="habitGroupConfig['+gi+'].color=this.value;saveHabitGroups();render()" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--bd);cursor:pointer;padding:1px">'+
+      '<button onclick="habitGroupConfig.splice('+gi+',1);saveHabitGroups();render();openGroupEdit()" style="font-size:14px;color:#DC2626;background:none;border:none;cursor:pointer">×</button>'+
+      '</div>';
+  });
+  html+='</div>';
+  html+='<div style="display:flex;gap:8px;margin-bottom:8px">'+
+    '<input id="new-grp-icon" placeholder="🌟" style="width:40px;text-align:center;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:16px;background:var(--bg)">'+
+    '<input id="new-grp-name" placeholder="新しいグループ名..." style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;background:var(--bg);outline:none">'+
+    '<button onclick="addHabitGroup()" class="abtn">追加</button>'+
+    '</div>';
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">💡 習慣の設定タブでグループを変更できます</div>';
+  html+='</div></div>';
+  wrap.innerHTML=html;
+}
+
+function addHabitGroup(){
+  const icon=document.getElementById('new-grp-icon')?.value||'⭐';
+  const name=document.getElementById('new-grp-name')?.value.trim();
+  if(!name)return;
+  const key='grp'+Date.now();
+  const colors=['#10B981','#E8856A','#DC2626','#888'];
+  habitGroupConfig.push({
+    key,label:name,icon,
+    color:colors[habitGroupConfig.length%colors.length],
+    gradient:'linear-gradient(135deg,var(--sur),var(--bg))'
+  });
+  saveHabitGroups();
+  render();
+  openGroupEdit();
+}
+
 function saveTodayGoalBtn(btn){
   const key=btn.getAttribute('data-key');
   saveTodayGoal(key);
@@ -1888,6 +1964,9 @@ function renderToday(){
   const d=getD(dayOff),dow=d.getDay(),key=dk(d),today=dk(new Date()),isT=key===today;
   const dayTasks=tasks[key]||[];
   const doneT=dayTasks.filter(t=>t.done).length;
+  // Daily intention
+  const todayGoal=localStorage.getItem('yp_goal_'+key)||'';
+  const defaultGoalTxt='Be myself. Choose only what rings true to your heart.';
   let h=`<div class="dnav">
     <button onclick="dayOff--;render()">‹</button>
     <div class="dtitle">${isT?'今日':DFJ[dow]}<span class="dsub"> — ${d.getMonth()+1}月${d.getDate()}日</span></div>
@@ -2101,11 +2180,7 @@ function addSchItem(){
 
 function renderHabits(){
   const d=getD(dayOff),key=dk(d),today=dk(new Date());
-  const groups=[
-    {key:'morning',label:'Morning Ritual',sub:'朝のルーティン',icon:'🌅',color:'#C4882A',gradient:'linear-gradient(135deg,#FFF8F0,#FFF3E0)'},
-    {key:'other',label:'Growth & Learning',sub:'学習・その他',icon:'📚',color:'#2D6A8F',gradient:'linear-gradient(135deg,#EBF3F8,#E8F0F8)'},
-    {key:'night',label:'Evening Wind Down',sub:'夜のルーティン',icon:'🌙',color:'#7A4FA0',gradient:'linear-gradient(135deg,#F5F0FF,#EDE8F5)'},
-  ];
+  const groups=habitGroupConfig;
   let h=`<div style="padding-top:8px"></div>
   <div class="dnav">
     <button onclick="dayOff--;render()">‹</button>
@@ -2339,11 +2414,7 @@ function renderSettings(){
             <option value="check" ${!hb.timerMins?'selected':''}>✅ チェック</option>
             <option value="timer" ${hb.timerMins?'selected':''}>⏱ タイマー</option>
           </select>
-          <select onchange="habits[${i}].group=this.value;save();render()" style="padding:2px 4px;border-radius:4px;border:1px solid var(--bd);font-size:11px;background:var(--bg)">
-            <option value="morning" ${(hb.group||'other')==='morning'?'selected':''}>🌅 朝</option>
-            <option value="other" ${(hb.group||'other')==='other'?'selected':''}>📚 日中</option>
-            <option value="night" ${(hb.group||'other')==='night'?'selected':''}>🌙 夜</option>
-          </select>
+          ${buildGroupSelect(i,hb.group||'other')}
           ${hb.timerMins?'<input type="number" value="'+hb.timerMins+'" min="1" max="120" onchange="habits['+i+'].timerMins=parseInt(this.value)||20;save()" style="width:44px;padding:2px 4px;border-radius:4px;border:1px solid var(--bd);font-size:11px">分':''}
         </div>
       </div>
@@ -2480,8 +2551,17 @@ if(localStorage.getItem('yp_sch_ver') !== scheduleVersion){
   schedule=JSON.parse(localStorage.getItem('yp_sch')||'null')||schedule;
 }
 
+// Force reset habits to new version if still using old structure
+const habitVersion='3';
+if(localStorage.getItem('yp_habit_ver')!==habitVersion&&habits.length<8){
+  localStorage.removeItem('yp_h');
+  localStorage.removeItem('yp_habit_groups');
+  habits=JSON.parse('null')||habits; // re-evaluate default
+  localStorage.setItem('yp_habit_ver',habitVersion);
+}
+
 // Update existing habits to add timerMins if missing
-const habitTimerDefaults={'yoga':45,'med_am':30,'english':60,'study':30,'med_pm':30};
+const habitTimerDefaults={'yoga':45,'med_am':20,'affirmation':5,'vocab':15,'clearing':10,'writing':30,'planttmrw':10,'yoga_pm':20,'med_pm':20,'clearing_pm':10};
 let habitsUpdated=false;
 habits.forEach(h=>{
   if(habitTimerDefaults[h.id]&&!h.timerMins){
