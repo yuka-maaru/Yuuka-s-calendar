@@ -677,6 +677,13 @@ function openTimeSlot(key,t){
   
   // End time selector
   html+='<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:8px">⏰ 何時まで？</div>';
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">終了前に通知: '+
+    '<select id="notify-mins-sel" style="padding:2px 6px;border-radius:6px;border:1px solid var(--bd);font-size:11px;background:var(--bg)">'+
+    '<option value="5">5分前</option>'+
+    '<option value="10">10分前</option>'+
+    '<option value="15">15分前</option>'+
+    '<option value="0">なし</option>'+
+    '</select></div>';
   html+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px" id="end-time-opts">';
   endOptions.forEach(h=>{
     html+='<button onclick="selectEndTime('+h+')" id="et-'+h+'" style="padding:6px 12px;border-radius:20px;background:var(--sur);border:1.5px solid var(--bd);font-size:13px;cursor:pointer;color:var(--tx)">〜'+timeToStr(h)+'</button>';
@@ -800,10 +807,12 @@ function startFreeTimeSession(elOrKey,startT){
     };
   }
   
+  const notifyMins=parseInt(document.getElementById('notify-mins-sel')?.value||'5');
   timerRunning=true;
   timerPaused=false;
   timerSeconds=0;
   timerTotal=durationMins*60;
+  if(timerActiveItem)timerActiveItem.notifyMins=notifyMins;
   timerInterval=setInterval(timerTick,1000);
   showOverlay('📚 '+label);
   
@@ -1775,25 +1784,33 @@ function toggleUrgent(key,id){
 function playPing(){
   try{
     const ctx=new(window.AudioContext||window.webkitAudioContext)();
-    const o=ctx.createOscillator(),g=ctx.createGain();
-    o.connect(g);g.connect(ctx.destination);
-    o.frequency.value=880;o.type='sine';
-    g.gain.setValueAtTime(0.3,ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.4);
-    o.start(ctx.currentTime);o.stop(ctx.currentTime+0.4);
+    // Cute completion sound: two tones
+    [[880,0,0.15],[1108,0.1,0.2]].forEach(([freq,delay,dur])=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=freq;o.type='sine';
+      g.gain.setValueAtTime(0,ctx.currentTime+delay);
+      g.gain.linearRampToValueAtTime(0.25,ctx.currentTime+delay+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+delay+dur);
+      o.start(ctx.currentTime+delay);
+      o.stop(ctx.currentTime+delay+dur+0.05);
+    });
   }catch(e){}
 }
 
 function playTimerEnd(){
   try{
     const ctx=new(window.AudioContext||window.webkitAudioContext)();
-    [523,659,784].forEach((freq,i)=>{
+    // Cheerful 4-note ascending melody
+    [[523,0],[659,0.18],[784,0.36],[1047,0.54]].forEach(([freq,delay])=>{
       const o=ctx.createOscillator(),g=ctx.createGain();
       o.connect(g);g.connect(ctx.destination);
       o.frequency.value=freq;o.type='sine';
-      g.gain.setValueAtTime(0.3,ctx.currentTime+i*0.2);
-      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.2+0.4);
-      o.start(ctx.currentTime+i*0.2);o.stop(ctx.currentTime+i*0.2+0.4);
+      g.gain.setValueAtTime(0,ctx.currentTime+delay);
+      g.gain.linearRampToValueAtTime(0.28,ctx.currentTime+delay+0.03);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+delay+0.35);
+      o.start(ctx.currentTime+delay);
+      o.stop(ctx.currentTime+delay+0.4);
     });
   }catch(e){}
 }
@@ -1841,14 +1858,19 @@ function renderToday(){
       autoTasks.forEach(t=>{
         const isUrgent=t.urgent;
         const timeLabel=t.startTime?t.startTime:'';
+        const hasTimer=t.timerMins||t.habitId;
+        const timerMins=t.timerMins||(t.habitId?habits.find(h=>h.id===t.habitId)?.timerMins:null);
+        const taskColor=t.color||'var(--ac)';
         h+=`<div class="trow" style="${isUrgent?'background:#FFF8F0':''}">
-          <button class="tck${t.done?' done':''}" onclick="toggleT('${key}','${t.id}');render()">
+          <button class="tck${t.done?' done':''}" onclick="toggleT('${key}','${t.id}');render()" style="${t.done?'background:'+taskColor+';border-color:'+taskColor:''}">
             <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
-          <span class="tlb">
-            ${isUrgent?'⚡ ':'🕐 '}<span style="font-weight:600">${t.label}</span>
+          <span class="tlb" onclick="openTaskMemo('${key}','${t.id}')" style="cursor:pointer;flex:1">
+            ${isUrgent?'⚡ ':'🕐 '}<span style="font-weight:600;color:${taskColor}">${t.label}</span>
             ${timeLabel?'<span style="font-size:10px;color:var(--mu);margin-left:4px">'+timeLabel+'</span>':''}
+            ${t.memo?'<span style="font-size:9px;color:var(--mu);margin-left:4px">📝</span>':''}
           </span>
+          ${timerMins?`<button onclick="startHabitTimer('${t.habitId||''}','${key}',${timerMins})" style="padding:4px 8px;border-radius:8px;background:${taskColor}22;border:1px solid ${taskColor};color:${taskColor};font-size:11px;cursor:pointer;margin-right:4px">▶${timerMins}分</button>`:''}
           <button onclick="toggleUrgent('${key}','${t.id}')" style="font-size:10px;padding:2px 6px;border-radius:4px;background:${isUrgent?'#FEE2E2':'var(--bg)'};border:1px solid ${isUrgent?'#DC2626':'var(--bd)'};cursor:pointer;color:${isUrgent?'#DC2626':'var(--mu)'}">
             ${isUrgent?'解除':'⚡'}
           </button>
@@ -2263,7 +2285,13 @@ function startHabitTimer(hid,key,mins){
     timerSeconds++;
     updateTimerDisplay();
     updateOverlay();
-    if(timerSeconds>=timerTotal){
+    // Notify before end
+  const notifyAt=timerActiveItem?.notifyMins?timerTotal-(timerActiveItem.notifyMins*60):-1;
+  if(notifyAt>0&&timerSeconds===notifyAt){
+    playPing();
+    toast('⏰ あと'+(timerActiveItem?.notifyMins||5)+'分で終了します！');
+  }
+  if(timerSeconds>=timerTotal){
       clearInterval(timerInterval);
       timerRunning=false;
       hideOverlay();
@@ -3284,6 +3312,39 @@ function timerTick(){
   }
 }
 
+let studyNoiseNode=null;
+let studyNoiseCtx=null;
+
+function toggleStudyNoise(type){
+  // Stop existing
+  if(studyNoiseNode){try{studyNoiseNode.stop();}catch(e){}studyNoiseNode=null;}
+  if(studyNoiseCtx){try{studyNoiseCtx.close();}catch(e){}studyNoiseCtx=null;}
+  // Update buttons
+  ['none','rain','cafe','wave'].forEach(t=>{
+    const b=document.getElementById('snoise-'+t);
+    if(b){b.style.background=t===type?'var(--ac)':'var(--bg)';b.style.color=t===type?'white':'var(--tx)';b.style.border=t===type?'none':'1px solid var(--bd)';}
+  });
+  if(type==='none')return;
+  try{
+    studyNoiseCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const sr=studyNoiseCtx.sampleRate;
+    const buf=studyNoiseCtx.createBuffer(1,sr*4,sr);
+    const d=buf.getChannelData(0);
+    if(type==='rain'){for(let i=0;i<d.length;i++){d[i]=(Math.random()*2-1)*0.1;if(Math.random()<0.003)d[i]+=Math.random()*0.25;}}
+    else if(type==='cafe'){for(let i=0;i<d.length;i++){d[i]=(Math.random()*2-1)*0.07;if(i>0)d[i]=d[i]*0.3+d[i-1]*0.7;}}
+    else if(type==='wave'){for(let i=0;i<d.length;i++){const w=Math.sin(i*0.0001)*0.5+0.5;d[i]=(Math.random()*2-1)*w*0.12;}}
+    studyNoiseNode=studyNoiseCtx.createBufferSource();
+    studyNoiseNode.buffer=buf;studyNoiseNode.loop=true;
+    const g=studyNoiseCtx.createGain();g.gain.value=0.4;
+    studyNoiseNode.connect(g);g.connect(studyNoiseCtx.destination);
+    studyNoiseNode.start();
+  }catch(e){}
+}
+
+// Stop study noise when timer stops
+const _origStopTimer=stopTimer;
+// (stopTimer already handles this via timerInterval clear)
+
 function startPomoBreak(li,ii,cycle,focusMins,breakMins){
   timerActiveItem={listIdx:li,itemIdx:ii,isBreak:true,pomoCycle:cycle+1,focusMins,breakMins};
   timerRunning=true;
@@ -3380,6 +3441,12 @@ function renderStudy(){
   const isBreak=timerActiveItem&&timerActiveItem.isBreak;
   const pomoCycle=(timerActiveItem&&timerActiveItem.pomoCycle)||1;
   html+=`<div class="card" style="padding:20px;text-align:center;margin-bottom:12px">
+    ${timerRunning?'<div style="display:flex;gap:6px;justify-content:center;margin-bottom:10px">'+
+      '<button onclick="toggleStudyNoise(this.dataset.t)" data-t="none" id="snoise-none" style="padding:4px 8px;border-radius:10px;background:var(--ac);color:white;border:none;font-size:11px;cursor:pointer">🔇 なし</button>'+
+      '<button onclick="toggleStudyNoise(this.dataset.t)" data-t="rain" id="snoise-rain" style="padding:4px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--bd);font-size:11px;cursor:pointer">🌧️ 雨</button>'+
+      '<button onclick="toggleStudyNoise(this.dataset.t)" data-t="cafe" id="snoise-cafe" style="padding:4px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--bd);font-size:11px;cursor:pointer">☕ カフェ</button>'+
+      '<button onclick="toggleStudyNoise(this.dataset.t)" data-t="wave" id="snoise-wave" style="padding:4px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--bd);font-size:11px;cursor:pointer">🌊 波</button>'+
+      '</div>':''}
     <div style="font-size:12px;color:var(--mu);margin-bottom:4px">${timerRunning?(isBreak?'☕ 休憩中':'⏱ '+activeLabel):'ポモドーロタイマー'}</div>
     ${timerRunning?`<div style="font-size:10px;color:var(--mu);margin-bottom:8px">${isBreak?'休憩':'集中'} #${pomoCycle}</div>`:''}
     <div class="timer-circle" id="timer-circle" style="background:conic-gradient(${isBreak?'#10B981':'var(--ac)'} ${pctDeg}deg,var(--bd) ${pctDeg}deg)">
