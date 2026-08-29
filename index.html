@@ -498,6 +498,28 @@ function closeModal(e){
   render();
 }
 
+function openWeekMemo(){
+  const wk=dk(getWk()[0]);
+  const memo=localStorage.getItem('yp_week_memo_'+wk)||'';
+  const wrap=document.getElementById('modal-wrap');
+  wrap.innerHTML=`<div class="modal-bg" onclick="closeModal(event)">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal()">×</button>
+      <h3>📝 今週のメモ</h3>
+      <textarea id="week-memo-ta" class="memo-box" style="min-height:200px" placeholder="今週やること・メモ...">${memo.replace(/</g,'&lt;')}</textarea>
+      <button class="abtn" style="width:100%;margin-top:8px" onclick="saveWeekMemo('${wk}')">保存</button>
+    </div>
+  </div>`;
+  setTimeout(()=>document.getElementById('week-memo-ta')?.focus(),100);
+}
+
+function saveWeekMemo(wk){
+  const val=document.getElementById('week-memo-ta')?.value||'';
+  localStorage.setItem('yp_week_memo_'+wk,val);
+  toast('💾 保存しました！');
+  closeModal();
+}
+
 function openTimeSlot(key,t){
   // Pre-fill time and open day modal
   openDayModal(key);
@@ -794,6 +816,41 @@ function memoDrop(i){
 }
 function memoDragEnd(){memoDragIdx=null;const rows=document.querySelectorAll('[id^=memo-row-]');rows.forEach(r=>r.style.background='');}
 
+function buildHabitTimerBtn(hb,key){
+  return '<button style="padding:5px 10px;border-radius:8px;background:'+hb.color+'22;border:1px solid '+hb.color+';color:'+hb.color+';font-size:11px;cursor:pointer;margin-right:6px" onclick="startHabitTimer(\''+hb.id+'\',\''+key+'\','+hb.timerMins+')">▶'+hb.timerMins+'分</button>';
+}
+
+function toggleUrgent(key,id){
+  const t=(tasks[key]||[]).find(x=>x.id===id);
+  if(t){t.urgent=!t.urgent;save();render();}
+}
+
+function playPing(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.frequency.value=880;o.type='sine';
+    g.gain.setValueAtTime(0.3,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.4);
+    o.start(ctx.currentTime);o.stop(ctx.currentTime+0.4);
+  }catch(e){}
+}
+
+function playTimerEnd(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    [523,659,784].forEach((freq,i)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.frequency.value=freq;o.type='sine';
+      g.gain.setValueAtTime(0.3,ctx.currentTime+i*0.2);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.2+0.4);
+      o.start(ctx.currentTime+i*0.2);o.stop(ctx.currentTime+i*0.2+0.4);
+    });
+  }catch(e){}
+}
+
 function renderToday(){
   const d=getD(dayOff),dow=d.getDay(),key=dk(d),today=dk(new Date()),isT=key===today;
   const dayTasks=tasks[key]||[];
@@ -803,7 +860,79 @@ function renderToday(){
     <div class="dtitle">${isT?'今日':DFJ[dow]}<span class="dsub"> — ${d.getMonth()+1}月${d.getDate()}日</span></div>
     <button onclick="dayOff++;render()">›</button>
   </div>
-  <div class="sec"><span>タスク${dayTasks.length>0?(' ('+doneT+'/'+dayTasks.length+')'):''}</span></div>
+  <div class="sec">⚡ 今やるべきこと</div>
+  <div class="card" style="margin-bottom:8px">`;
+  {
+    const now=new Date();
+    const nowT=now.getHours()+(now.getMinutes()/60);
+    // 自動マッチ：時間指定タスク（±1時間以内）+ urgent設定タスク
+    const autoTasks=dayTasks.filter(t=>{
+      if(t.done)return false;
+      if(t.urgent)return true; // 手動設定
+      if(t.startTime){
+        const st=strToTime(t.startTime);
+        return st>=nowT-0.5&&st<=nowT+1.5; // ±1.5時間
+      }
+      return false;
+    });
+    // スケジュールから現在時刻に合うイベント
+    const nowEvs=schedule.filter(e=>e.days.includes(dow)&&e.start<=nowT+0.5&&e.end>=nowT-0.25);
+    
+    if(autoTasks.length>0||nowEvs.length>0){
+      // スケジュールイベント表示
+      nowEvs.forEach(e=>{
+        h+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bd);background:${e.bg}">
+          <div style="width:4px;height:30px;background:${e.color};border-radius:2px;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600;color:${e.color}">${e.label}</div>
+            <div style="font-size:10px;color:var(--mu)">${timeToStr(e.start)}〜${timeToStr(e.end)}</div>
+          </div>
+          <div style="font-size:10px;padding:2px 6px;border-radius:10px;background:${e.color}22;color:${e.color}">進行中</div>
+        </div>`;
+      });
+      // タスク表示
+      autoTasks.forEach(t=>{
+        const isUrgent=t.urgent;
+        const timeLabel=t.startTime?t.startTime:'';
+        h+=`<div class="trow" style="${isUrgent?'background:#FFF8F0':''}">
+          <button class="tck${t.done?' done':''}" onclick="toggleT('${key}','${t.id}');render()">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+          <span class="tlb">
+            ${isUrgent?'⚡ ':'🕐 '}<span style="font-weight:600">${t.label}</span>
+            ${timeLabel?'<span style="font-size:10px;color:var(--mu);margin-left:4px">'+timeLabel+'</span>':''}
+          </span>
+          <button onclick="toggleUrgent('${key}','${t.id}')" style="font-size:10px;padding:2px 6px;border-radius:4px;background:${isUrgent?'#FEE2E2':'var(--bg)'};border:1px solid ${isUrgent?'#DC2626':'var(--bd)'};cursor:pointer;color:${isUrgent?'#DC2626':'var(--mu)'}">
+            ${isUrgent?'解除':'⚡'}
+          </button>
+        </div>`;
+      });
+    } else {
+      // 時間マッチなし→手動で選べる
+      const pendingTasks=dayTasks.filter(t=>!t.done);
+      if(pendingTasks.length>0){
+        h+=`<div style="padding:6px 12px;font-size:11px;color:var(--mu)">今の時間帯のタスクはありません。手動で選べます：</div>`;
+        pendingTasks.slice(0,4).forEach(t=>{
+          h+=`<div class="trow">
+            <span class="tlb" style="color:var(--sub)">${t.label}</span>
+            <button onclick="toggleUrgent('${key}','${t.id}')" style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--bg);border:1px solid var(--bd);cursor:pointer;color:var(--ac)">今やる ⚡</button>
+          </div>`;
+        });
+      } else {
+        h+=`<div style="padding:12px;font-size:12px;color:var(--mu);text-align:center">今日のタスクはすべて完了です 🎉</div>`;
+      }
+    }
+    h+=`</div>`;
+    // 全タスクから追加ボタン（常時表示）
+    const notShown=dayTasks.filter(t=>!t.done&&!t.urgent&&(!t.startTime||(strToTime(t.startTime)<nowT-1.5||strToTime(t.startTime)>nowT+1.5)));
+    if(notShown.length>0){
+      h+=`<div style="font-size:11px;color:var(--mu);padding:4px 12px 4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span>追加：</span>
+        ${notShown.slice(0,4).map(t=>`<button onclick="toggleUrgent('${key}','${t.id}')" style="padding:2px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--bd);font-size:10px;cursor:pointer;color:var(--sub)">${t.label}</button>`).join('')}
+      </div>`;
+    }
+  }
+  h+=`<div class="sec"><span>タスク${dayTasks.length>0?(' ('+doneT+'/'+dayTasks.length+')'):''}</span></div>
   <div class="card">`;
   if(dayTasks.length===0)h+='<div class="empty">今日のタスクはまだありません</div>';
   else [...dayTasks].sort((a,b)=>{
@@ -964,7 +1093,7 @@ function renderWeek(){
   const dates=getWk(),today=dk(new Date());
   // Build as single grid - header + all time rows share same column definition
   let h=`<div style="padding-top:8px"></div>
-  <div class="sec"><span>週間スケジュール</span><span class="sec-edit" onclick="openSchEdit()">スケジュール編集</span></div>
+  <div class="sec"><span>週間スケジュール</span><span class="sec-edit" onclick="openSchEdit()">スケジュール編集</span><span class="sec-edit" onclick="openWeekMemo()" style="margin-left:8px">📝</span></div>
   <div class="card" style="padding:0;overflow:hidden">
   <div style="display:grid;grid-template-columns:36px repeat(7,1fr);overflow-x:auto">`;
 
