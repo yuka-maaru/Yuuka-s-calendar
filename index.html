@@ -1003,7 +1003,10 @@ function openTimeSlot(key,t){
   html+='<button class="modal-close" onclick="closeModal()">×</button>';
   html+='<div style="text-align:center;margin-bottom:14px">';
   html+='<div style="font-size:24px">🕐</div>';
-  html+='<div style="font-size:16px;font-weight:700;margin-top:4px">'+timeStr+' 〜 '+untilStr+'</div>';
+  const tH=Math.floor(t),tM=Math.round((t%1)*60);
+  const tInputVal=String(tH).padStart(2,'0')+':'+String(tM).padStart(2,'0');
+  html+='<div style="font-size:16px;font-weight:700;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px">';
+  html+='<input id="free-start-time" type="time" value="'+tInputVal+'" style="padding:4px 8px;border-radius:8px;border:1px solid var(--bd);font-size:14px;font-weight:700;background:var(--bg);outline:none;width:90px"> 〜 '+untilStr+'</div>';
   html+='<div style="font-size:12px;color:var(--mu);margin-top:2px">空き時間 約'+freeHours+'時間</div>';
   html+='</div>';
 
@@ -1016,12 +1019,24 @@ function openTimeSlot(key,t){
 
   // Study tab
   html+='<div id="free-tab-study" style="display:block">';
-  studySuggestions.forEach((s,i)=>{
-    html+='<button onclick="selectFreeItem(this)" data-label="'+s.label.replace(/"/g,'&quot;')+'" data-li="'+s.listIdx+'" data-ii="'+s.itemIdx+'" data-color="'+s.color+'" data-type="study" style="width:100%;padding:9px 12px;border-radius:10px;background:'+s.color+'18;border:1.5px solid var(--bd);text-align:left;font-size:13px;cursor:pointer;color:var(--tx);margin-bottom:6px;display:flex;align-items:center;gap:8px">'+
-      '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+s.color+';flex-shrink:0"></span>'+s.label+'</button>';
+  studyLists.forEach((sl,li)=>{
+    const pending=sl.items.filter(it=>!it.done);
+    if(pending.length===0)return;
+    html+='<div style="margin-bottom:10px">';
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
+    html+='<span style="font-size:11px;font-weight:700;color:'+sl.color+'">📚 '+sl.name+'</span>';
+    html+='<button onclick="selectFreeItemBulk(this)" data-name="'+sl.name+'" data-li="'+li+'" data-color="'+sl.color+'" style="padding:2px 8px;border-radius:8px;background:'+sl.color+'22;border:1px solid '+sl.color+';color:'+sl.color+';font-size:10px;cursor:pointer;margin-left:auto">一括選択</button>';
+    html+='</div>';
+    pending.forEach((it)=>{
+      const fullLabel=sl.name+' — '+it.label;
+      const ii=sl.items.indexOf(it);
+      html+='<button onclick="selectFreeItem(this)" data-label="'+fullLabel.replace(/"/g,"&quot;")+'" data-li="'+li+'" data-ii="'+ii+'" data-color="'+sl.color+'" data-type="study" style="width:100%;padding:7px 12px;border-radius:8px;background:'+sl.color+'18;border:1.5px solid var(--bd);text-align:left;font-size:12px;cursor:pointer;color:var(--tx);margin-bottom:4px;display:flex;align-items:center;gap:8px"><span style="width:7px;height:7px;border-radius:50%;background:'+sl.color+';flex-shrink:0;display:inline-block"></span>'+it.label+'</button>';
+    });
+    html+='</div>';
   });
   html+='<button onclick="selectFreeItem(this)" data-label="" data-li="-1" data-ii="-1" data-color="#888" data-type="custom" style="width:100%;padding:9px 12px;border-radius:10px;background:var(--sur);border:1.5px solid var(--bd);text-align:left;font-size:13px;cursor:pointer;color:var(--mu);margin-bottom:6px">✏️ 自由に入力...</button>';
   html+='</div>';
+
 
   // Task tab
   html+='<div id="free-tab-task" style="display:none">';
@@ -1101,6 +1116,25 @@ function switchFreeTab(tabOrEl){
   checkSessionReady();
 }
 
+function selectFreeItemBulk(btn){
+  const li=parseInt(btn.getAttribute('data-li'));
+  const name=btn.getAttribute('data-name');
+  const color=btn.getAttribute('data-color');
+  const sl=studyLists[li];
+  if(!sl)return;
+  // Select the list name as label, set studyIdx to list
+  freeSessionLabel=name+'（全項目）';
+  freeSessionStudyIdx={li,ii:-1}; // -1 = whole list
+  // Highlight button
+  document.querySelectorAll('[id^=free-tab-] button').forEach(b=>{
+    b.style.border='1.5px solid var(--bd)';
+    b.style.background=b.getAttribute('data-type')==='custom'?'var(--sur)':(b.getAttribute('data-color')||'#888')+'18';
+  });
+  btn.style.border='1.5px solid '+color;
+  btn.style.background=color+'33';
+  checkSessionReady();
+}
+
 function selectFreeItem(btn){
   // Deselect all in current tab
   const tabPanels=btn.closest('[id^=free-tab-]');
@@ -1163,7 +1197,15 @@ function startFreeTimeSession(elOrKey,startT){
   const label=freeSessionLabel||(customInp?.value.trim()||'勉強');
   if(!label||!freeSessionEndTime)return;
   
+  // Use custom start time if user changed it
+  const startTimeEl=document.getElementById('free-start-time');
+  if(startTimeEl&&startTimeEl.value){
+    const parts=startTimeEl.value.split(':');
+    startT=parseInt(parts[0])+(parseInt(parts[1])/60);
+  }
+  
   const durationMins=Math.round((freeSessionEndTime-startT)*60);
+  if(durationMins<=0){toast('終了時間が開始時間より前です');return;}
   
   closeModal();
   
@@ -4751,6 +4793,25 @@ function updateOverlay(){
   if(bar)bar.style.width=`${((timerTotal-timerSeconds)/timerTotal)*100}%`;
 }
 
+function startBreakFromTimer(){
+  // Stop current timer, start 5-min break
+  clearInterval(timerInterval);
+  timerRunning=false;
+  timerPaused=false;
+  const prevItem=timerActiveItem;
+  timerActiveItem={isBreak:true,prevItem,pomoCycle:(prevItem?.pomoCycle||1)};
+  timerSeconds=0;
+  timerTotal=5*60;
+  timerRunning=true;
+  timerInterval=setInterval(timerTick,1000);
+  updateTimerDisplay();
+  if(document.getElementById('timer-overlay').classList.contains('active')){
+    document.getElementById('overlay-label').textContent='☕ 休憩中';
+  }
+  render();
+  toast('☕ 5分休憩スタート！');
+}
+
 function togglePause(){
   const btn=document.getElementById('overlay-pause-btn');
   if(timerPaused){
@@ -4850,6 +4911,21 @@ function startPomoBreak(li,ii,cycle,focusMins,breakMins){
   timerTotal=breakMins*60;
   timerInterval=setInterval(timerTick,1000);
   showOverlay('☕ 休憩中... #'+cycle);
+  renderStudy();
+}
+
+function startTimerFromPomo(){
+  // Start timer from pomodoro card without specific study item
+  const customMins=parseInt(document.getElementById('timer-mins')?.value||'25');
+  const breakMins=parseInt(document.getElementById('break-mins')?.value||'5');
+  if(timerRunning)stopTimer();
+  timerActiveItem={listIdx:-1,itemIdx:-1,isBreak:false,pomoCycle:1,breakMins,studyMins:customMins};
+  timerRunning=true;
+  timerPaused=false;
+  timerSeconds=0;
+  timerTotal=customMins*60;
+  timerInterval=setInterval(timerTick,1000);
+  showOverlay('集中中');
   renderStudy();
 }
 
@@ -4955,13 +5031,18 @@ function renderStudy(){
     </div>
     <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:16px">
       ${timerRunning
-        ?'<button class="stop-btn" onclick="stopTimer()">⏹ ストップ</button>'
+        ?'<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'+
+          '<button onclick="togglePause()" id="study-pause-btn" style="padding:8px 16px;border-radius:10px;background:var(--ac)22;border:1px solid var(--ac);color:var(--ac);font-size:13px;cursor:pointer">'+(timerPaused?'▶ 再開':'⏸ 一時停止')+'</button>'+
+          '<button onclick="startBreakFromTimer()" style="padding:8px 16px;border-radius:10px;background:#10B98122;border:1px solid #10B981;color:#10B981;font-size:13px;cursor:pointer">☕ 休憩</button>'+
+          '<button onclick="stopTimer()" style="padding:8px 16px;border-radius:10px;background:#DC262622;border:1px solid #DC2626;color:#DC2626;font-size:13px;cursor:pointer">✕ 終了</button>'+
+          '</div>'
         :'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center">'+
           '<label style="font-size:12px;color:var(--mu)">集中</label>'+
           '<input id="timer-mins" type="number" value="25" min="1" max="120" style="width:50px;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:14px;text-align:center;outline:none">'+
           '<label style="font-size:12px;color:var(--mu)">分　休憩</label>'+
           '<input id="break-mins" type="number" value="5" min="1" max="30" style="width:50px;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:14px;text-align:center;outline:none">'+
           '<label style="font-size:12px;color:var(--mu)">分</label>'+
+          '<button onclick="startTimerFromPomo()" style="padding:8px 16px;border-radius:10px;background:var(--ac);color:white;border:none;font-size:14px;cursor:pointer;font-weight:600">▶ 開始</button>'+
           '</div>'
       }
     </div>
@@ -5010,7 +5091,12 @@ function renderStudy(){
             <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
           <span style="flex:1;font-size:13px;${item.done?'text-decoration:line-through;color:var(--mu)':''}">${item.label}</span>
-          ${!timerRunning?('<button onclick="startTimer('+li+','+ii+')" style="padding:4px 8px;border-radius:6px;background:'+sl.color+'22;border:1px solid '+sl.color+';color:'+sl.color+';font-size:11px;cursor:pointer">▶ 開始</button>'):''}
+          ${(()=>{
+            const isActive=timerRunning&&timerActiveItem&&timerActiveItem.listIdx===li&&timerActiveItem.itemIdx===ii;
+            if(!timerRunning)return '<button onclick="startTimer('+li+','+ii+')" style="padding:4px 8px;border-radius:6px;background:'+sl.color+'22;border:1px solid '+sl.color+';color:'+sl.color+';font-size:11px;cursor:pointer">▶ 開始</button>';
+            if(isActive)return '<div style="display:flex;gap:4px"><button onclick="togglePause();renderStudy()" style="padding:4px 8px;border-radius:6px;background:var(--ac)22;border:1px solid var(--ac);color:var(--ac);font-size:11px;cursor:pointer">'+(timerPaused?'▶ 再開':'⏸ 停止')+'</button><button onclick="startBreakFromTimer()" style="padding:4px 8px;border-radius:6px;background:#10B98122;border:1px solid #10B981;color:#10B981;font-size:11px;cursor:pointer">☕</button><button onclick="stopTimer()" style="padding:4px 8px;border-radius:6px;background:#DC262622;border:1px solid #DC2626;color:#DC2626;font-size:11px;cursor:pointer">✕</button></div>';
+            return '';
+          })()}
         </div>`).join('')}
       </div>`;
     });
