@@ -881,17 +881,26 @@ function closeModal(e){
   render();
 }
 
-// Swipe down to close modal
+// Swipe down to close modal - only when scrolled to top and swiping far down
 let swipeTouchStartY=0;
+let swipeTouchStartScrollTop=0;
+let swipeModalEl=null;
 document.addEventListener('touchstart',e=>{
   const modal=e.target.closest('.modal');
-  if(modal)swipeTouchStartY=e.touches[0].clientY;
+  if(modal){
+    swipeTouchStartY=e.touches[0].clientY;
+    swipeTouchStartScrollTop=modal.scrollTop;
+    swipeModalEl=modal;
+  }
 },{passive:true});
 document.addEventListener('touchend',e=>{
-  const modal=e.target.closest('.modal');
-  if(!modal)return;
+  if(!swipeModalEl)return;
   const dy=e.changedTouches[0].clientY-swipeTouchStartY;
-  if(dy>80){closeModal();}
+  // Only close if: swiped down 200px+ AND was scrolled to top when swipe started
+  if(dy>200&&swipeTouchStartScrollTop<=0){
+    closeModal();
+  }
+  swipeModalEl=null;
 },{passive:true});
 
 function openWeekMemo(){
@@ -925,23 +934,35 @@ function openTimeSlotFromClick(e,key,startH,hourH){
 }
 
 function openTimeSlot(key,t){
-  // Detect free time around this slot
   const [ky,km,kd]=key.split('-').map(Number);
   const d=new Date(ky,km-1,kd);
   const dow=d.getDay();
-  
-  // Find what's scheduled around this time
+  const isToday=key===dk(new Date());
+
+  // For today, clamp t to current time
+  const now=new Date();
+  const nowT=now.getHours()+(now.getMinutes()/60);
+  if(isToday&&t<nowT){
+    // Round up to current time (nearest 30min)
+    t=Math.ceil(nowT*2)/2;
+  }
+
   const dayEvs=schedule.filter(e=>e.days.includes(dow)&&!isEventCancelled(key,e.id));
   
   // Find free block: next event after t
   const nextEv=dayEvs.filter(e=>e.start>t).sort((a,b)=>a.start-b.start)[0];
-  const freeUntil=nextEv?nextEv.start:22; // free until next event or 10pm
+  const freeUntil=nextEv?nextEv.start:23;
   const freeHours=Math.round((freeUntil-t)*10)/10;
   
-  // Is this slot already busy?
+  // Is this slot busy?
   const busyNow=dayEvs.some(e=>e.start<=t&&e.end>t);
   if(busyNow){
-    // Just open normal day modal
+    openDayModal(key);
+    return;
+  }
+  
+  // If no free time left
+  if(freeHours<=0){
     openDayModal(key);
     return;
   }
@@ -1786,45 +1807,299 @@ function renderMealRecord(){
   const tmr=new Date();tmr.setDate(tmr.getDate()+1);
   const tmrKey=dk(tmr);
   const days=[
-    {key:today,label:'今日 '+( new Date().getMonth()+1)+'月'+(new Date().getDate())+'日'},
+    {key:today,label:'今日 '+(new Date().getMonth()+1)+'月'+(new Date().getDate())+'日'},
     {key:tmrKey,label:'明日 '+(tmr.getMonth()+1)+'月'+tmr.getDate()+'日'},
   ];
+
+  const ingredients=JSON.parse(localStorage.getItem('yp_ingredients')||'[]');
+  const condiments=JSON.parse(localStorage.getItem('yp_condiments')||'[]');
+
   let html='';
+
+  // === 食材リスト ===
+  html+=`<div class="card" style="margin-bottom:12px;padding:12px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px">🥦 今ある食材</div>`;
+
+  ingredients.forEach((ing,i)=>{
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bd)">
+      <button onclick="toggleIngredientSelect(${i})" style="width:22px;height:22px;border-radius:6px;border:2px solid ${ing.selected!==false&&!ing.used?'var(--ac)':'var(--bd)'};background:${ing.selected!==false&&!ing.used?'var(--ac)':'none'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+        ${ing.selected!==false&&!ing.used?'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}
+      </button>
+      <span style="flex:1;font-size:13px;${ing.used?'text-decoration:line-through;color:var(--mu)':''}">${ing.name}</span>
+      ${ing.expiry?`<span style="font-size:10px;color:${isExpiringSoon(ing.expiry)?'#DC2626':'var(--mu)'}">〜${ing.expiry.slice(5)}</span>`:''}
+      <button onclick="markIngredientUsed(${i})" style="font-size:10px;padding:2px 6px;border-radius:6px;background:${ing.used?'var(--sur)':'#10B98122'};border:1px solid ${ing.used?'var(--bd)':'#10B981'};color:${ing.used?'var(--mu)':'#10B981'};cursor:pointer">${ing.used?'戻す':'使用'}</button>
+      <button onclick="deleteIngredient(${i})" style="color:var(--mu);background:none;border:none;font-size:15px;cursor:pointer;line-height:1">×</button>
+    </div>`;
+  });
+
+  if(ingredients.length===0){
+    html+='<div style="padding:10px 0;color:var(--mu);font-size:13px;text-align:center">食材を追加してください</div>';
+  }
+
+  html+=`<div style="display:flex;gap:6px;margin-top:10px">
+    <input id="ing-inp" placeholder="食材を追加（カンマ区切りで複数可）" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter')addIngredient()">
+    <input id="ing-expiry" type="date" title="賞味期限" style="width:36px;padding:4px;border-radius:8px;border:1px solid var(--bd);font-size:11px;outline:none;background:var(--bg);cursor:pointer" onchange="this.style.width=this.value?'100px':'36px'">
+    <button onclick="addIngredient()" class="abtn">追加</button>
+  </div>
+  <button onclick="clearUsedIngredients()" style="width:100%;margin-top:6px;padding:5px;background:none;border:none;color:var(--mu);font-size:11px;cursor:pointer;border-top:1px solid var(--bd)">使用済みをクリア</button>
+  </div>`;
+
+  // === 調味料リスト ===
+  const defaultCondiments=['醤油','味噌','みりん','酒','砂糖','塩','こしょう','ごま油','オリーブ油','酢','マヨネーズ','ケチャップ','だし','にんにく','しょうが'];
+  html+=`<div class="card" style="margin-bottom:12px;padding:12px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:8px">🧂 常備調味料</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">`;
+
+  // Show saved condiments + defaults
+  const allConds=[...new Set([...defaultCondiments,...condiments.map(c=>c.name)])];
+  allConds.forEach(name=>{
+    const saved=condiments.find(c=>c.name===name);
+    const has=saved?saved.has:true; // defaults assumed available
+    html+=`<button onclick="toggleCondiment('${name.replace(/'/g,"&#39;")}')" style="padding:5px 10px;border-radius:20px;background:${has?'var(--ac)22':'var(--sur)'};border:1px solid ${has?'var(--ac)':'var(--bd)'};color:${has?'var(--ac)':'var(--mu)'};font-size:12px;cursor:pointer">${has?'✓ ':' '}${name}</button>`;
+  });
+
+  html+=`</div>
+    <div style="display:flex;gap:6px">
+      <input id="cond-inp" placeholder="調味料を追加..." style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter')addCondiment()">
+      <button onclick="addCondiment()" class="abtn">追加</button>
+    </div>
+  </div>`;
+
+  // === Claudeに聞くボタン ===
+  const selected=ingredients.filter(i=>i.selected!==false&&!i.used);
+  const hasCondiments=condiments.filter(c=>c.has!==false);
+  const condNames=[...defaultCondiments.filter(d=>!condiments.find(c=>c.name===d&&c.has===false)),...condiments.filter(c=>c.has!==false&&!defaultCondiments.includes(c.name)).map(c=>c.name)];
+
+  html+=`<div class="card" style="margin-bottom:12px;padding:12px;background:linear-gradient(135deg,var(--sur),var(--bg))">
+    <div style="font-size:14px;font-weight:700;margin-bottom:6px">✨ Claudeに料理提案を聞く</div>
+    <div style="font-size:12px;color:var(--mu);margin-bottom:10px">
+      チェックした食材 ${selected.length}品 が自動でテキストに入ります
+    </div>
+    <div style="background:var(--bg);border-radius:8px;padding:10px;font-size:12px;color:var(--sub);margin-bottom:10px;border:1px solid var(--bd);white-space:pre-wrap" id="claude-preview">${generateClaudeText(selected,condNames)}</div>
+    <button onclick="copyClaudeText()" style="width:100%;padding:10px;border-radius:10px;background:var(--ac);color:white;border:none;font-size:14px;font-weight:600;cursor:pointer">📋 コピーしてClaudeに聞く</button>
+    <div id="copy-toast" style="text-align:center;font-size:12px;color:#10B981;margin-top:6px;display:none">コピーしました！Claudeアプリに貼り付けてください✨</div>
+  </div>`;
+
+  // === ごはん記録 ===
   days.forEach(d=>{
     const meal=JSON.parse(localStorage.getItem('yp_meal_full_'+d.key)||'{}');
     html+=`<div class="card" style="margin-bottom:12px;padding:12px">
       <div style="font-size:14px;font-weight:700;margin-bottom:10px">${d.label}</div>`;
-    ['朝ごはん','昼ごはん','夜ごはん'].forEach(slot=>{
-      const slotKey=slot;
-      const val=meal[slotKey]||'';
+    ['朝','昼','夜'].forEach(slot=>{
+      const key=slot+'ごはん';
+      const val=(meal[key]||'').replace(/"/g,'&quot;');
       html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="font-size:12px;color:var(--mu);width:56px;flex-shrink:0">${slot}</span>
-        <input value="${val.replace(/"/g,'&quot;')}" placeholder="未定" data-day="${d.key}" data-slot="${slotKey}"
+        <span style="font-size:12px;color:var(--mu);width:24px;flex-shrink:0">${slot}</span>
+        <input value="${val}" placeholder="未定" data-day="${d.key}" data-slot="${key}"
           oninput="saveMealInput(this)"
           style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
-        ${val?`<button onclick="addMealToShop('${val.replace(/'/g,"\\'")}','${d.key}','${slotKey}')" style="font-size:10px;padding:3px 8px;border-radius:6px;background:var(--sur);border:1px solid var(--bd);cursor:pointer">🛒</button>`:''}
       </div>`;
     });
-    const note=meal['メモ']||'';
+    const note=(meal['メモ']||'').replace(/</g,'&lt;');
     html+=`<textarea placeholder="メモ（作り置き・レシピなど）" data-day="${d.key}" data-slot="メモ" oninput="saveMealInput(this)"
-      style="width:100%;min-height:50px;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg);box-sizing:border-box;resize:none">${note}</textarea>`;
-    html+='</div>';
+      style="width:100%;min-height:40px;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg);box-sizing:border-box;resize:none">${note}</textarea>
+    </div>`;
   });
-  // Past week
-  html+='<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:8px">過去のごはん</div>';
-  for(let i=1;i<=5;i++){
+
+  // Past
+  html+='<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:8px">📅 過去の記録</div>';
+  let hasPast=false;
+  for(let i=1;i<=7;i++){
     const d=new Date();d.setDate(d.getDate()-i);
     const k=dk(d);
     const meal=JSON.parse(localStorage.getItem('yp_meal_full_'+k)||'{}');
-    const hasData=Object.values(meal).some(v=>v);
-    if(!hasData)continue;
+    if(!['朝ごはん','昼ごはん','夜ごはん'].some(s=>meal[s]))continue;
+    hasPast=true;
     html+=`<div style="padding:8px 12px;border-radius:8px;background:var(--sur);margin-bottom:6px">
-      <div style="font-size:11px;font-weight:600;color:var(--mu);margin-bottom:4px">${(d.getMonth()+1)}月${d.getDate()}日</div>
-      ${['朝ごはん','昼ごはん','夜ごはん'].filter(s=>meal[s]).map(s=>`<div style="font-size:12px">• ${s}: ${meal[s]}</div>`).join('')}
+      <div style="font-size:11px;font-weight:600;color:var(--mu);margin-bottom:3px">${(d.getMonth()+1)}/${d.getDate()}</div>
+      ${['朝ごはん','昼ごはん','夜ごはん'].filter(s=>meal[s]).map(s=>'<div style="font-size:12px">• '+s.replace('ごはん','')+'：'+meal[s]+'</div>').join('')}
     </div>`;
   }
+  if(!hasPast)html+='<div style="color:var(--mu);font-size:12px;padding:8px">まだ記録がありません</div>';
+
   return html;
 }
+
+function generateClaudeText(selected,condNames){
+  const ingList=selected.length>0?selected.map(i=>i.name).join('、'):'（食材を選択してください）';
+  const condList=condNames.slice(0,8).join('、')+(condNames.length>8?'など':'');
+  return `今ある食材（使いたいもの）：${ingList}
+常備調味料：${condList}
+
+この食材を組み合わせて作れる料理を3〜4品提案してください。
+• 全部使わなくてOK
+• 一人暮らしで簡単に作れるもの
+• 「これを買い足すと美味しくなる」食材があれば教えて
+• バリエーション（和洋中）も意識して`;
+}
+
+function copyClaudeText(){
+  const selected=JSON.parse(localStorage.getItem('yp_ingredients')||'[]').filter(i=>i.selected!==false&&!i.used);
+  const condiments=JSON.parse(localStorage.getItem('yp_condiments')||'[]');
+  const defaultConds=['醤油','味噌','みりん','酒','砂糖','塩','こしょう','ごま油','オリーブ油','酢','マヨネーズ','ケチャップ','だし','にんにく','しょうが'];
+  const condNames=[...defaultConds.filter(d=>!condiments.find(c=>c.name===d&&c.has===false)),...condiments.filter(c=>c.has!==false&&!defaultConds.includes(c.name)).map(c=>c.name)];
+  const text=generateClaudeText(selected,condNames);
+  navigator.clipboard.writeText(text).then(()=>{
+    const t=document.getElementById('copy-toast');
+    if(t){t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+  }).catch(()=>{
+    // Fallback
+    const ta=document.createElement('textarea');
+    ta.value=text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const t=document.getElementById('copy-toast');
+    if(t){t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+  });
+}
+
+function toggleIngredientSelect(idx){
+  const ings=JSON.parse(localStorage.getItem('yp_ingredients')||'[]');
+  if(!ings[idx])return;
+  ings[idx].selected=ings[idx].selected===false?true:false;
+  localStorage.setItem('yp_ingredients',JSON.stringify(ings));
+  renderMemo();
+}
+
+function markIngredientUsed(idx){
+  const ings=JSON.parse(localStorage.getItem('yp_ingredients')||'[]');
+  if(!ings[idx])return;
+  ings[idx].used=!ings[idx].used;
+  localStorage.setItem('yp_ingredients',JSON.stringify(ings));
+  renderMemo();
+}
+
+function toggleCondiment(name){
+  const conds=JSON.parse(localStorage.getItem('yp_condiments')||'[]');
+  const existing=conds.find(c=>c.name===name);
+  if(existing){existing.has=!existing.has;}
+  else{conds.push({name,has:false});}
+  localStorage.setItem('yp_condiments',JSON.stringify(conds));
+  renderMemo();
+}
+
+function addCondiment(){
+  const inp=document.getElementById('cond-inp');
+  if(!inp||!inp.value.trim())return;
+  const conds=JSON.parse(localStorage.getItem('yp_condiments')||'[]');
+  if(!conds.find(c=>c.name===inp.value.trim())){
+    conds.push({name:inp.value.trim(),has:true});
+    localStorage.setItem('yp_condiments',JSON.stringify(conds));
+  }
+  inp.value='';
+  renderMemo();
+}
+
+
+function isExpiringSoon(dateStr){
+  if(!dateStr)return false;
+  const d=new Date(dateStr),today=new Date();
+  return (d-today)/(1000*60*60*24)<=2;
+}
+
+function addIngredient(){
+  const inp=document.getElementById('ing-inp');
+  const exp=document.getElementById('ing-expiry');
+  if(!inp||!inp.value.trim())return;
+  const items=inp.value.split(/[、,，]/).map(s=>s.trim()).filter(Boolean);
+  const ings=JSON.parse(localStorage.getItem('yp_ingredients')||'[]');
+  items.forEach(name=>{
+    ings.push({id:'i'+Date.now()+Math.random(),name,used:false,expiry:exp?.value||''});
+  });
+  localStorage.setItem('yp_ingredients',JSON.stringify(ings));
+  inp.value='';if(exp)exp.value='';
+  renderMemo();
+}
+
+function toggleIngredient(idx){
+  const ings=JSON.parse(localStorage.getItem('yp_ingredients')||'[]');
+  if(!ings[idx])return;
+  ings[idx].used=!ings[idx].used;
+  localStorage.setItem('yp_ingredients',JSON.stringify(ings));
+  renderMemo();
+}
+
+function deleteIngredient(idx){
+  const ings=JSON.parse(localStorage.getItem('yp_ingredients')||'[]');
+  ings.splice(idx,1);
+  localStorage.setItem('yp_ingredients',JSON.stringify(ings));
+  renderMemo();
+}
+
+function clearUsedIngredients(){
+  const ings=JSON.parse(localStorage.getItem('yp_ingredients')||'[]');
+  localStorage.setItem('yp_ingredients',JSON.stringify(ings.filter(i=>!i.used)));
+  renderMemo();
+}
+
+async function askMealAI(){
+  const ings=JSON.parse(localStorage.getItem('yp_ingredients')||'[]');
+  const available=ings.filter(i=>!i.used).map(i=>i.name);
+  if(available.length===0){toast('食材を追加してください！');return;}
+
+  const area=document.getElementById('ai-meal-suggestion');
+  if(!area)return;
+  area.style.display='block';
+  area.innerHTML=`<div class="card" style="padding:12px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:14px;font-weight:700">✨ AI料理提案</span>
+      <div style="width:16px;height:16px;border:2px solid var(--ac);border-top:transparent;border-radius:50%;animation:spin 0.8s linear infinite;margin-left:auto"></div>
+    </div>
+    <div style="font-size:12px;color:var(--mu)">考え中...</div>
+  </div>`;
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:600,
+        messages:[{role:'user',content:`今ある食材：${available.join('、')}
+
+この食材を使って作れる料理を3〜4品提案してください。
+シンプルで一人暮らしでも作れるものを。
+
+以下のJSON形式のみで返してください（説明不要）：
+{"suggestions":[{"name":"料理名","ingredients":["使う食材"],"time":"調理時間","memo":"一言メモ"}]}`}]
+      })
+    });
+    const data=await res.json();
+    const text=data.content?.find(c=>c.type==='text')?.text||'';
+    const json=JSON.parse(text.replace(/```json|```/g,'').trim());
+
+    area.innerHTML=`<div class="card" style="padding:12px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px">✨ AI料理提案</div>
+      ${json.suggestions.map(s=>`
+        <div style="padding:10px;border-radius:10px;background:var(--bg);margin-bottom:8px;border:1px solid var(--bd)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span style="font-size:14px;font-weight:700">🍽️ ${s.name}</span>
+            <span style="font-size:10px;color:var(--mu);margin-left:auto">⏱ ${s.time}</span>
+          </div>
+          <div style="font-size:11px;color:var(--mu);margin-bottom:4px">使う食材: ${s.ingredients.join('・')}</div>
+          <div style="font-size:12px;color:var(--sub)">${s.memo}</div>
+          <button onclick="setMealFromAI('${s.name.replace(/'/g,"&#39;")}')" style="margin-top:6px;padding:4px 10px;border-radius:8px;background:var(--ac)22;border:1px solid var(--ac);color:var(--ac);font-size:11px;cursor:pointer">明日の夜ごはんに設定</button>
+        </div>
+      `).join('')}
+    </div>`;
+  }catch(e){
+    area.innerHTML=`<div class="card" style="padding:12px;color:#DC2626">エラーが発生しました。もう一度お試しください。</div>`;
+    console.error(e);
+  }
+}
+
+function setMealFromAI(name){
+  const tmr=new Date();tmr.setDate(tmr.getDate()+1);
+  const tKey=dk(tmr);
+  const meal=JSON.parse(localStorage.getItem('yp_meal_full_'+tKey)||'{}');
+  meal['夜ごはん']=name;
+  localStorage.setItem('yp_meal_full_'+tKey,JSON.stringify(meal));
+  renderMemo();
+  toast('🍽️ 明日の夜ごはんに「'+name+'」を設定しました！');
+}
+
 
 function saveMealInput(inp){
   const day=inp.getAttribute('data-day');
@@ -2147,25 +2422,38 @@ function openPlanTomorrow(){
 
   // Todo tab
   h+='<div id="plan-tab-todo" style="display:none">';
-  const catColors={week:'#2D6A8F',month:'#9B6AD4'};
-  ['week','month'].forEach(cat=>{
-    const items=todoLists[cat]||[];
-    const catLabel=cat==='week'?'📆 今週':'🗓️ 今月';
-    const col=catColors[cat];
-    h+='<div style="font-size:11px;font-weight:600;color:'+col+';margin-bottom:4px">'+catLabel+'</div>';
+  const allTodoCats=[
+    {key:'week',label:'📆 今週',col:'#2D6A8F'},
+    {key:'month',label:'🗓️ 今月',col:'#9B6AD4'},
+    {key:'dream',label:'🌟 夢への一歩',col:'#5A8A6A'},
+  ];
+  allTodoCats.forEach(({key:cat,label:catLabel,col})=>{
+    const items=cat==='today'?getTodayTasks():(todoLists[cat]||[]);
+    const doneCount=items.filter(i=>i.done).length;
+    h+='<div style="margin-bottom:10px">';
+    h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">';
+    h+='<span style="font-size:11px;font-weight:700;color:'+col+'">'+catLabel+'</span>';
+    h+='<span style="font-size:10px;color:var(--mu)">'+doneCount+'/'+items.length+'</span>';
+    h+='</div>';
     items.forEach((item,ii)=>{
+      const isTodayCat=false;
       h+=`<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:8px;background:var(--sur);margin-bottom:3px">
-        <button onclick="toggleTodoInPlan('${cat}',${ii})" style="width:18px;height:18px;border-radius:50%;border:2px solid ${item.done?col:'var(--bd)'};background:${item.done?col:'none'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+        <button onclick="isTodayCat?planCheckTask2('${item._taskKey||tKey}','${item.id}'):toggleTodoInPlan('${cat}',${ii})" style="width:18px;height:18px;border-radius:50%;border:2px solid ${item.done?col:'var(--bd)'};background:${item.done?col:'none'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">
           ${item.done?'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}
         </button>
         <span style="flex:1;font-size:12px;${item.done?'text-decoration:line-through;color:var(--mu)':''}">${item.label}</span>
-        <button onclick="movePlanToTmr(this)" data-cat="${cat}" data-idx="${ii}" data-tkey="${tKey}" style="font-size:10px;padding:2px 7px;border-radius:6px;background:${col}22;border:1px solid ${col};color:${col};cursor:pointer">→明日</button>
-        <button onclick="deleteTodoPlan('${cat}',${ii})" style="font-size:11px;color:var(--mu);background:none;border:none;cursor:pointer">×</button>
+        ${cat!=='today'?`<button onclick="movePlanToTmr(this)" data-cat="${cat}" data-idx="${ii}" data-tkey="${tKey}" style="font-size:10px;padding:2px 7px;border-radius:6px;background:${col}22;border:1px solid ${col};color:${col};cursor:pointer">→明日</button>`:''}
+        ${cat==='week'?`<button onclick="moveTodoInPlan('week',${ii},'month')" style="font-size:10px;padding:2px 7px;border-radius:6px;background:#9B6AD422;border:1px solid #9B6AD4;color:#9B6AD4;cursor:pointer">→今月</button>`:''}
+        ${cat==='month'?`<button onclick="moveTodoInPlan('month',${ii},'week')" style="font-size:10px;padding:2px 7px;border-radius:6px;background:#2D6A8F22;border:1px solid #2D6A8F;color:#2D6A8F;cursor:pointer">→今週</button>`:''}
+        <button onclick="isTodayCat?planDelTask2('${item._taskKey||tKey}','${item.id}'):deleteTodoPlan('${cat}',${ii})" style="font-size:11px;color:var(--mu);background:none;border:none;cursor:pointer">×</button>
       </div>`;
     });
-    h+='<div style="display:flex;gap:6px;margin-bottom:10px">';
-    h+='<input id="plan-todo-'+cat+'" placeholder="'+catLabel+'に追加..." style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)">';
-    h+='<button onclick="addTodoInPlan(this.dataset.cat)" data-cat="'+cat+'" style="padding:6px 10px;border-radius:8px;background:'+col+';color:white;border:none;font-size:12px;cursor:pointer">追加</button>';
+    if(cat!=='today'){
+      h+='<div style="display:flex;gap:6px;margin-top:4px">';
+      h+='<input id="plan-todo-'+cat+'" placeholder="'+catLabel+'に追加..." style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)" data-cat="'+cat+'">';
+      h+='<button onclick="addTodoInPlan(this.dataset.cat)" data-cat="'+cat+'" style="padding:6px 10px;border-radius:8px;background:'+col+';color:white;border:none;font-size:12px;cursor:pointer">追加</button>';
+      h+='</div>';
+    }
     h+='</div>';
   });
   h+='</div>';
@@ -2303,9 +2591,33 @@ function skipHabitDay(hid,key,btn){
   saveSkipped();
 }
 
+function planCheckTask(btn){
+  const k=btn.getAttribute('data-k');
+  const id=btn.getAttribute('data-id');
+  const t=(tasks[k]||[]).find(x=>x.id===id);
+  if(t){t.done=!t.done;if(t.done)playPing();save();}
+  openPlanTomorrow();
+}
+function planDelTask(btn){
+  const k=btn.getAttribute('data-k');
+  const id=btn.getAttribute('data-id');
+  tasks[k]=(tasks[k]||[]).filter(x=>x.id!==id);
+  save();openPlanTomorrow();
+}
+function moveTodoInPlan(fromCat,idx,toCat){
+  const item=(todoLists[fromCat]||[])[idx];
+  if(!item)return;
+  todoLists[fromCat].splice(idx,1);
+  if(!todoLists[toCat])todoLists[toCat]=[];
+  todoLists[toCat].push({...item,movedFrom:fromCat==='week'?'今週':'今月'});
+  saveTodos();
+  openPlanTomorrow();
+  toast('移動しました！');
+}
+
 function addTodoInPlan(elOrCat){
-  const cat=typeof elOrCat==='string'?elOrCat:elOrCat.getAttribute('data-cat');
-  const inp=document.getElementById('plan-todo-'+cat);
+  const cat=typeof elOrCat==='string'?elOrCat:(elOrCat.getAttribute('data-cat'));
+  const inp=document.getElementById('plan-todo-'+cat)||(elOrCat.tagName==='INPUT'?elOrCat:null);
   if(!inp||!inp.value.trim())return;
   if(!todoLists[cat])todoLists[cat]=[];
   todoLists[cat].push({id:'td'+Date.now(),label:inp.value.trim(),done:false});
@@ -3183,11 +3495,30 @@ function renderWeek(){
       </div>`;
     });
 
+    // Current time line (today only)
+    if(isT){
+      const now=new Date();
+      const nowH=now.getHours()+(now.getMinutes()/60);
+      if(nowH>=START_H&&nowH<=END_H){
+        const topPx=(nowH-START_H)*HOUR_H;
+        h+=`<div style="position:absolute;top:${topPx}px;left:0;right:0;z-index:10;pointer-events:none">
+          <div style="position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:#DC2626"></div>
+          <div style="border-top:2px solid #DC2626;opacity:0.8"></div>
+        </div>`;
+      }
+    }
     h+=`</div>`;
   });
 
   h+=`</div></div>`;
   document.getElementById('view-week').innerHTML=h;
+  // Auto-scroll to current time
+  const grid=document.querySelector('#view-week [style*="overflow-y:auto"]');
+  if(grid){
+    const now=new Date();
+    const scrollTo=((now.getHours()+(now.getMinutes()/60))-START_H)*HOUR_H-80;
+    grid.scrollTop=Math.max(0,scrollTo);
+  }
 }
 
 function renderMonth(){
