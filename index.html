@@ -434,7 +434,40 @@ function sw(t){
   render();
 }
 
+let skippedHabits=JSON.parse(localStorage.getItem('yp_skipped')||'{}');
+function saveSkipped(){localStorage.setItem('yp_skipped',JSON.stringify(skippedHabits));}
+function isSkipped(hid,key){return (skippedHabits[key]||[]).includes(hid);}
+
+function skipHabitToday(hid){
+  const key=dk(new Date());
+  if(!skippedHabits[key])skippedHabits[key]=[];
+  if(skippedHabits[key].includes(hid)){
+    skippedHabits[key]=skippedHabits[key].filter(x=>x!==hid);
+  } else {
+    skippedHabits[key].push(hid);
+  }
+  saveSkipped();render();
+}
+
+function skipHabitDay(hid,key,btn){
+  if(!skippedHabits[key])skippedHabits[key]=[];
+  const sk=skippedHabits[key].includes(hid);
+  if(sk){skippedHabits[key]=skippedHabits[key].filter(x=>x!==hid);}
+  else{skippedHabits[key].push(hid);}
+  saveSkipped();
+  if(btn){
+    btn.style.background=sk?'var(--sur)':'#DC262622';
+    btn.style.border='1px solid '+(sk?'var(--bd)':'#DC2626');
+    btn.style.color=sk?'var(--tx)':'#DC2626';
+  }
+}
+
 function toggleH(hid,key){
+  // Special: plantmrw opens Plan Tomorrow modal
+  if(hid==='plantmrw'&&key===dk(new Date())){
+    openPlanTomorrow();
+    return;
+  }
   if(!data[key])data[key]={};
   data[key][hid]=!data[key][hid];
   if(data[key][hid])playPing();
@@ -606,17 +639,23 @@ function addStudyAsTask(btn){
   const key=btn.getAttribute('data-key')||dk(new Date());
   const label=btn.getAttribute('data-label');
   const color=btn.getAttribute('data-color');
+  if(!label)return;
   if(!tasks[key])tasks[key]=[];
-  tasks[key].push({id:'t'+Date.now(),label,done:false,color,studyRef:true});
-  save();
-  playPing();
-  // Flash the button
-  btn.style.background=color+'44';
-  btn.style.border='1.5px solid '+color;
-  setTimeout(()=>{btn.style.background=color+'18';btn.style.border='1px solid var(--bd)';},600);
-  // Refresh today tab in background
-  if(tab==='today')renderToday();
-  toast('📚 追加しました！');
+  // Check for duplicates
+  if(!tasks[key].some(t=>t.label===label)){
+    tasks[key].push({id:'t'+Date.now(),label,done:false,color,studyRef:true});
+    save();
+    playPing();
+  }
+  // Flash button
+  const origBg=btn.style.background;
+  btn.style.background=color+'55';
+  setTimeout(()=>{btn.style.background=origBg;},500);
+  // Re-render context
+  const isTmr=key!==dk(new Date());
+  if(isTmr){openPlanTomorrow();}
+  else if(tab==='today'){renderToday();}
+  toast('📚 '+label+' を追加！');
 }
 
 function addAllStudyAsTask(btn){
@@ -644,6 +683,37 @@ function addAllStudyAsTask(btn){
 
 function saveDayMemo(key,val){
   localStorage.setItem('yp_day_memo_'+key,val);
+}
+
+function openTaskMemo(key,id){
+  const t=(tasks[key]||[]).find(x=>x.id===id);
+  if(!t)return;
+  const wrap=document.getElementById('modal-wrap');
+  wrap.innerHTML=
+    '<div class="modal-bg" onclick="closeModal(event)">'+
+    '<div class="modal">'+
+    '<button class="modal-close" onclick="closeModal()">×</button>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'+
+    '<span style="font-size:14px;font-weight:600;flex:1">'+t.label+'</span>'+
+    (t.startTime?'<span style="font-size:11px;color:var(--mu)">'+t.startTime+(t.endTime?'〜'+t.endTime:'')+'</span>':'')+
+    '</div>'+
+    '<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:6px">📝 メモ</div>'+
+    '<textarea id="task-memo-input" class="memo-box" style="min-height:80px" placeholder="メモを追加...">'+((t.memo||'').replace(/</g,'&lt;'))+'</textarea>'+
+    '<button class="abtn" style="width:100%;margin-top:8px" onclick="saveTaskMemo(this.dataset.k,this.dataset.id)" data-k="'+key+'" data-id="'+id+'">保存</button>'+
+    '</div></div>';
+  setTimeout(()=>document.getElementById('task-memo-input')?.focus(),100);
+}
+
+function saveTaskMemo(elOrKey,id){
+  const key=typeof elOrKey==='string'?elOrKey:elOrKey.getAttribute('data-k');
+  if(typeof elOrKey!=='string')id=elOrKey.getAttribute('data-id');
+  const t=(tasks[key]||[]).find(x=>x.id===id);
+  if(!t)return;
+  t.memo=document.getElementById('task-memo-input')?.value||'';
+  save();
+  closeModal();
+  render();
+  toast('💾 保存しました！');
 }
 
 function toggleT(key,tid){
@@ -1230,6 +1300,20 @@ function saveTaskNote(key,tid,val){
   if(t){t.note=val;save();}
 }
 
+function toggleDark(){
+  document.body.classList.toggle('dark');
+  localStorage.setItem('yp_dark',document.body.classList.contains('dark')?'1':'0');
+  renderSettings();
+}
+
+function addRecurringTask(){
+  const inp=document.getElementById('new-rec-inp');
+  if(!inp||!inp.value.trim())return;
+  recurringTasks.push({id:'r'+Date.now(),label:inp.value.trim(),days:[1,3],icon:'📝'});
+  inp.value='';
+  save();recurringApplied=false;applyRecurringTasks();renderSettings();
+}
+
 function render(){
   if(tab==='today')renderToday();
   else if(tab==='habits')renderHabits();
@@ -1253,12 +1337,14 @@ function getMemoPages(){
     {id:'p4',title:'📅 年間スケジュール 2026-2027',content:'_YEARLY_CALENDAR_'},
     {id:'p5',title:'✅ やることリスト',content:'_TODO_LIST_'},
     {id:'p6',title:'🛒 ショッピングリスト',content:'_SHOPPING_LIST_'},
+    {id:'p7',title:'🍱 ごはん記録',content:'_MEAL_RECORD_'},
     ];
   }
   // Auto-add special pages if missing
   const specialPages=[
     {id:'p5',title:'✅ やることリスト',content:'_TODO_LIST_'},
     {id:'p6',title:'🛒 ショッピングリスト',content:'_SHOPPING_LIST_'},
+    {id:'p7',title:'🍱 ごはん記録',content:'_MEAL_RECORD_'},
     {id:'p4',title:'📅 年間スケジュール 2026-2027',content:'_YEARLY_CALENDAR_'},
   ];
   specialPages.forEach(sp=>{
@@ -1303,6 +1389,18 @@ function renderMemo(){
         <span style="font-size:16px;font-weight:700">🛒 ショッピングリスト</span>
       </div>
       ${renderShoppingList()}`;
+      document.getElementById('view-memo').innerHTML=html2;
+      return;
+    }
+
+    // Special: meal record
+    if(p.content==='_MEAL_RECORD_'){
+      const html2=`<div style="padding-top:8px"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <button onclick="memoOpenIndex=null;renderMemo()" style="padding:6px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">← 戻る</button>
+        <span style="font-size:16px;font-weight:700">🍱 ごはん記録</span>
+      </div>
+      ${renderMealRecord()}`;
       document.getElementById('view-memo').innerHTML=html2;
       return;
     }
@@ -1683,6 +1781,72 @@ function renderShoppingList(){
   return html;
 }
 
+function renderMealRecord(){
+  const today=dk(new Date());
+  const tmr=new Date();tmr.setDate(tmr.getDate()+1);
+  const tmrKey=dk(tmr);
+  const days=[
+    {key:today,label:'今日 '+( new Date().getMonth()+1)+'月'+(new Date().getDate())+'日'},
+    {key:tmrKey,label:'明日 '+(tmr.getMonth()+1)+'月'+tmr.getDate()+'日'},
+  ];
+  let html='';
+  days.forEach(d=>{
+    const meal=JSON.parse(localStorage.getItem('yp_meal_full_'+d.key)||'{}');
+    html+=`<div class="card" style="margin-bottom:12px;padding:12px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px">${d.label}</div>`;
+    ['朝ごはん','昼ごはん','夜ごはん'].forEach(slot=>{
+      const slotKey=slot;
+      const val=meal[slotKey]||'';
+      html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:12px;color:var(--mu);width:56px;flex-shrink:0">${slot}</span>
+        <input value="${val.replace(/"/g,'&quot;')}" placeholder="未定" data-day="${d.key}" data-slot="${slotKey}"
+          oninput="saveMealInput(this)"
+          style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
+        ${val?`<button onclick="addMealToShop('${val.replace(/'/g,"\\'")}','${d.key}','${slotKey}')" style="font-size:10px;padding:3px 8px;border-radius:6px;background:var(--sur);border:1px solid var(--bd);cursor:pointer">🛒</button>`:''}
+      </div>`;
+    });
+    const note=meal['メモ']||'';
+    html+=`<textarea placeholder="メモ（作り置き・レシピなど）" data-day="${d.key}" data-slot="メモ" oninput="saveMealInput(this)"
+      style="width:100%;min-height:50px;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg);box-sizing:border-box;resize:none">${note}</textarea>`;
+    html+='</div>';
+  });
+  // Past week
+  html+='<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:8px">過去のごはん</div>';
+  for(let i=1;i<=5;i++){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const k=dk(d);
+    const meal=JSON.parse(localStorage.getItem('yp_meal_full_'+k)||'{}');
+    const hasData=Object.values(meal).some(v=>v);
+    if(!hasData)continue;
+    html+=`<div style="padding:8px 12px;border-radius:8px;background:var(--sur);margin-bottom:6px">
+      <div style="font-size:11px;font-weight:600;color:var(--mu);margin-bottom:4px">${(d.getMonth()+1)}月${d.getDate()}日</div>
+      ${['朝ごはん','昼ごはん','夜ごはん'].filter(s=>meal[s]).map(s=>`<div style="font-size:12px">• ${s}: ${meal[s]}</div>`).join('')}
+    </div>`;
+  }
+  return html;
+}
+
+function saveMealInput(inp){
+  const day=inp.getAttribute('data-day');
+  const slot=inp.getAttribute('data-slot');
+  const meal=JSON.parse(localStorage.getItem('yp_meal_full_'+day)||'{}');
+  meal[slot]=inp.value;
+  localStorage.setItem('yp_meal_full_'+day,JSON.stringify(meal));
+  // Sync with plan tomorrow meal input
+  if(document.getElementById('plan-meal')){
+    const planInp=document.getElementById('plan-meal');
+    if(planInp.getAttribute('data-mkey')===day&&slot==='夜ごはん'){
+      planInp.value=inp.value;
+    }
+  }
+}
+
+function addMealToShop(food,day,slot){
+  shoppingItems.unshift({id:'s'+Date.now(),label:food+'（'+slot+'用）',done:false});
+  saveShop();
+  toast('🛒 ショッピングリストに追加！');
+}
+
 function addShop(){
   const inp=document.getElementById('shop-inp');
   if(!inp||!inp.value.trim())return;
@@ -1883,6 +2047,348 @@ function saveTodayGoal(key,forceVal){
   }
   closeModal();
   renderToday();
+}
+
+function openPlanTomorrow(){
+  const tmr=new Date();tmr.setDate(tmr.getDate()+1);
+  const tKey=dk(tmr);
+  const dow=tmr.getDay();
+  const dayLabel=tmr.getMonth()+1+'月'+tmr.getDate()+'日（'+['日','月','火','水','木','金','土'][dow]+'）';
+  const tmrEvs=schedule.filter(e=>e.days.includes(dow)&&!isEventCancelled(tKey,e.id));
+
+  const wrap=document.getElementById('modal-wrap');
+  let h='<div class="modal-bg" onclick="closeModal(event)"><div class="modal" style="max-height:90vh;overflow-y:auto">';
+  h+='<button class="modal-close" onclick="closeModal()">×</button>';
+  h+='<div style="font-size:18px;font-weight:700;margin-bottom:4px">🌙 明日の準備</div>';
+  h+='<div style="font-size:13px;color:var(--mu);margin-bottom:14px">'+dayLabel+'</div>';
+
+  // Tomorrow schedule - mini time axis
+  const HOUR_H=44, START_H=7, END_H=23;
+  const tmrTasks2=tasks[tKey]||[];
+  h+='<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:6px">📅 明日のスケジュール <span style="font-size:10px;font-weight:400;color:var(--mu)">（空白タップでタスク追加）</span></div>';
+  h+='<div style="display:flex;margin-bottom:12px;background:var(--sur);border-radius:10px;overflow:hidden;max-height:300px;overflow-y:auto">';
+  // Time labels
+  h+='<div style="width:36px;flex-shrink:0;background:var(--bg)">';
+  for(let hr=START_H;hr<END_H;hr++){
+    h+=`<div style="height:${HOUR_H}px;font-size:9px;color:var(--mu);text-align:right;padding-right:4px;padding-top:2px;border-top:1px solid var(--bd)11">${hr}</div>`;
+  }
+  h+='</div>';
+  // Event column
+  h+=`<div style="flex:1;position:relative;height:${(END_H-START_H)*HOUR_H}px">`;
+  // Click zones
+  for(let hr=START_H;hr<END_H;hr++){
+    for(let half=0;half<2;half++){
+      const t=hr+half*0.5;
+      const top=(t-START_H)*HOUR_H;
+      const busy=tmrEvs.some(e=>e.start<=t&&e.end>t)||tmrTasks2.some(tk=>tk.startTime&&strToTime(tk.startTime)<=t&&tk.endTime&&strToTime(tk.endTime)>t);
+      if(!busy){
+        h+=`<div onclick="addPlanTaskAtTime('${tKey}',${t})" style="position:absolute;top:${top}px;left:0;right:0;height:${HOUR_H/2}px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0'">
+          <span style="font-size:9px;color:var(--ac);background:var(--ac)18;padding:1px 6px;border-radius:6px">+ ${timeToStr(t)}</span>
+        </div>`;
+      }
+    }
+  }
+  // Schedule events
+  tmrEvs.forEach(e=>{
+    const top=(e.start-START_H)*HOUR_H;
+    const height=Math.max((e.end-e.start)*HOUR_H-2,20);
+    h+=`<div style="position:absolute;top:${top}px;left:2px;right:2px;height:${height}px;background:${e.bg};border-left:3px solid ${e.color};border-radius:4px;padding:2px 4px;overflow:hidden">
+      <div style="font-size:9px;font-weight:600;color:${e.color}">${e.label}</div>
+      <div style="font-size:8px;color:${e.color};opacity:0.7">${timeToStr(e.start)}〜${timeToStr(e.end)}</div>
+    </div>`;
+  });
+  // Tomorrow tasks already added
+  tmrTasks2.filter(tk=>tk.startTime).forEach(tk=>{
+    const st=strToTime(tk.startTime);
+    if(st<START_H||st>=END_H)return;
+    const top=(st-START_H)*HOUR_H;
+    const height=tk.endTime?Math.max((strToTime(tk.endTime)-st)*HOUR_H-2,20):24;
+    const col=tk.color||'#10B981';
+    h+=`<div style="position:absolute;top:${top}px;left:2px;right:2px;height:${height}px;background:${col}18;border-left:3px solid ${col};border-radius:4px;padding:2px 4px;overflow:hidden">
+      <div style="font-size:9px;font-weight:600;color:${col}">📝 ${tk.label}</div>
+    </div>`;
+  });
+  h+='</div></div>';
+
+  // Task tabs
+  h+='<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:6px">📝 明日やること</div>';
+  h+='<div style="display:flex;gap:3px;margin-bottom:8px;background:var(--bg);border-radius:8px;padding:3px">';
+  h+='<button onclick="switchPlanTab(this.dataset.t)" data-t="task" id="ptab-task" style="flex:1;padding:5px;border-radius:6px;border:none;font-size:11px;cursor:pointer;background:var(--ac);color:white;font-weight:600">📝 タスク</button>';
+  h+='<button onclick="switchPlanTab(this.dataset.t)" data-t="study" id="ptab-study" style="flex:1;padding:5px;border-radius:6px;border:none;font-size:11px;cursor:pointer;background:transparent;color:var(--mu)">📚 学習</button>';
+  h+='<button onclick="switchPlanTab(this.dataset.t)" data-t="todo" id="ptab-todo" style="flex:1;padding:5px;border-radius:6px;border:none;font-size:11px;cursor:pointer;background:transparent;color:var(--mu)">📋 今週・今月</button>';
+  h+='</div>';
+
+  // Task tab
+  h+='<div id="plan-tab-task">';
+  // Show existing tomorrow tasks
+  const tmrTasks=tasks[tKey]||[];
+  if(tmrTasks.length>0){
+    tmrTasks.forEach((t,ti)=>{
+      h+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;background:var(--sur);margin-bottom:4px">
+        <span style="flex:1;font-size:13px">${t.label}</span>
+        <button onclick="delTmrTask('${tKey}',${ti})" style="color:var(--mu);background:none;border:none;cursor:pointer;font-size:14px">×</button>
+      </div>`;
+    });
+  }
+  h+='<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">';
+  h+='<input id="plan-task-color" type="color" value="#2D6A8F" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--bd);cursor:pointer;padding:1px;flex-shrink:0">';
+  h+='<input id="plan-task-inp" placeholder="明日のタスクを入力..." style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">';
+  h+='<button onclick="addPlanTask(this.dataset.key)" data-key="'+tKey+'" class="abtn">追加</button>';
+  h+='</div>';
+  h+='<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">';
+  h+='<input id="plan-start" type="time" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)">';
+  h+='<span style="color:var(--mu);font-size:12px">〜</span>';
+  h+='<input id="plan-end" type="time" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)">';
+  h+='</div>';
+  h+='</div>';
+
+  // Study tab
+  h+='<div id="plan-tab-study" style="display:none;max-height:200px;overflow-y:auto">'+buildStudyAddList(tKey)+'</div>';
+
+  // Todo tab
+  h+='<div id="plan-tab-todo" style="display:none">';
+  const catColors={week:'#2D6A8F',month:'#9B6AD4'};
+  ['week','month'].forEach(cat=>{
+    const items=todoLists[cat]||[];
+    const catLabel=cat==='week'?'📆 今週':'🗓️ 今月';
+    const col=catColors[cat];
+    h+='<div style="font-size:11px;font-weight:600;color:'+col+';margin-bottom:4px">'+catLabel+'</div>';
+    items.forEach((item,ii)=>{
+      h+=`<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:8px;background:var(--sur);margin-bottom:3px">
+        <button onclick="toggleTodoInPlan('${cat}',${ii})" style="width:18px;height:18px;border-radius:50%;border:2px solid ${item.done?col:'var(--bd)'};background:${item.done?col:'none'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+          ${item.done?'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}
+        </button>
+        <span style="flex:1;font-size:12px;${item.done?'text-decoration:line-through;color:var(--mu)':''}">${item.label}</span>
+        <button onclick="movePlanToTmr(this)" data-cat="${cat}" data-idx="${ii}" data-tkey="${tKey}" style="font-size:10px;padding:2px 7px;border-radius:6px;background:${col}22;border:1px solid ${col};color:${col};cursor:pointer">→明日</button>
+        <button onclick="deleteTodoPlan('${cat}',${ii})" style="font-size:11px;color:var(--mu);background:none;border:none;cursor:pointer">×</button>
+      </div>`;
+    });
+    h+='<div style="display:flex;gap:6px;margin-bottom:10px">';
+    h+='<input id="plan-todo-'+cat+'" placeholder="'+catLabel+'に追加..." style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)">';
+    h+='<button onclick="addTodoInPlan(this.dataset.cat)" data-cat="'+cat+'" style="padding:6px 10px;border-radius:8px;background:'+col+';color:white;border:none;font-size:12px;cursor:pointer">追加</button>';
+    h+='</div>';
+  });
+  h+='</div>';
+
+  // Meal & shopping
+  h+='<div style="font-size:12px;font-weight:600;color:var(--sub);margin:10px 0 6px">🍱 明日のご飯</div>';
+  const mealFull=JSON.parse(localStorage.getItem('yp_meal_full_'+tKey)||'{}');
+  const savedMeal=mealFull['メモ']||localStorage.getItem('yp_meal_'+tKey)||'';
+  ['朝','昼','夜'].forEach(slot=>{
+    const val=(mealFull[slot+'ごはん']||'').replace(/"/g,'&quot;');
+    h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
+      '<span style="font-size:11px;color:var(--mu);width:28px;flex-shrink:0">'+slot+'</span>'+
+      '<input value="'+val+'" placeholder="未定" data-mkey="'+tKey+'" data-slot="'+slot+'ごはん" oninput="savePlanMealSlot(this)" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">'+
+      '</div>';
+  });
+  h+='<div style="display:flex;gap:8px;margin-bottom:4px">'+
+    '<input id="plan-meal" placeholder="メモ（作り置きなど）..." value="'+savedMeal.replace(/"/g,'&quot;')+'" data-mkey="'+tKey+'" style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)" oninput="savePlanMeal(this)">'+
+    '<button onclick="openShopInPlan()" style="padding:7px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:12px;cursor:pointer">🛒</button>'+
+  '</div>';
+
+  // Skip habits tomorrow
+  h+='<div style="font-size:12px;font-weight:600;color:var(--sub);margin:10px 0 6px">🧘 明日スキップする習慣</div>';
+  h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">';
+  habits.forEach(hb=>{
+    const skipped=(skippedHabits[tKey]||[]).includes(hb.id);
+    h+=`<button onclick="skipHabitDay('${hb.id}','${tKey}',this)" style="padding:5px 10px;border-radius:20px;background:${skipped?'#DC262622':'var(--sur)'};border:1px solid ${skipped?'#DC2626':'var(--bd)'};color:${skipped?'#DC2626':'var(--tx)'};font-size:11px;cursor:pointer">${hb.icon} ${hb.name}</button>`;
+  });
+  h+='</div>';
+
+  h+='<button class="abtn" style="width:100%;padding:12px;font-size:15px" onclick="finishPlanTomorrow()">✅ 準備完了！</button>';
+  h+='</div></div>';
+  wrap.innerHTML=h;
+}
+
+function switchPlanTab(tab){
+  ['task','study','todo'].forEach(t=>{
+    const el=document.getElementById('plan-tab-'+t);
+    const btn=document.getElementById('ptab-'+t);
+    if(el)el.style.display=t===tab?'block':'none';
+    if(btn){btn.style.background=t===tab?'var(--ac)':'transparent';btn.style.color=t===tab?'white':'var(--mu)';}
+  });
+}
+
+function addPlanTaskAtTime(key,t){
+  const timeStr=timeToStr(t);
+  // Use a small inline modal
+  const existing=document.getElementById('plan-quick-add');
+  if(existing)existing.remove();
+  const div=document.createElement('div');
+  div.id='plan-quick-add';
+  div.style.cssText='position:fixed;bottom:0;left:0;right:0;background:var(--sur);border-radius:16px 16px 0 0;padding:16px;z-index:9999;box-shadow:0 -4px 20px rgba(0,0,0,0.15)';
+  div.innerHTML=
+    '<div style="font-size:14px;font-weight:600;margin-bottom:10px">'+timeStr+' からのタスクを追加</div>'+
+    '<input id="quick-task-inp" placeholder="タスク名..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg);box-sizing:border-box;margin-bottom:8px" data-key="'+key+'" data-time="'+timeStr+'">'+
+    '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">'+
+    '<span style="font-size:12px;color:var(--mu);flex-shrink:0">〜何時まで</span>'+
+    '<input id="quick-task-end" type="time" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">'+
+    '<span style="font-size:11px;color:var(--mu)">（任意）</span>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px">'+
+    '<button onclick="confirmQuickTask()" class="abtn" style="flex:1">追加</button>'+
+    '<button onclick="closeQuickAdd()" style="padding:10px 14px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);cursor:pointer">✕</button>'+
+    '</div>';
+  document.body.appendChild(div);
+  setTimeout(()=>document.getElementById('quick-task-inp')?.focus(),100);
+}
+
+function closeQuickAdd(){
+  document.getElementById('plan-quick-add')?.remove();
+}
+function confirmQuickTask(){
+  const inp=document.getElementById('quick-task-inp');
+  if(!inp||!inp.value.trim())return;
+  const key=inp.getAttribute('data-key');
+  const timeStr=inp.getAttribute('data-time');
+  const endTime=document.getElementById('quick-task-end')?.value||'';
+  if(!tasks[key])tasks[key]=[];
+  tasks[key].push({id:'t'+Date.now(),label:inp.value.trim(),done:false,
+    startTime:timeStr,endTime:endTime||undefined});
+  save();
+  document.getElementById('plan-quick-add')?.remove();
+  openPlanTomorrow();
+}
+
+function addPlanTask(elOrKey){
+  const key=typeof elOrKey==='string'?elOrKey:elOrKey.getAttribute('data-key');
+  const inp=document.getElementById('plan-task-inp');
+  if(!inp||!inp.value.trim())return;
+  const color=document.getElementById('plan-task-color')?.value||'';
+  const startTime=document.getElementById('plan-start')?.value||'';
+  const endTime=document.getElementById('plan-end')?.value||'';
+  if(!tasks[key])tasks[key]=[];
+  tasks[key].push({id:'t'+Date.now(),label:inp.value.trim(),done:false,
+    color:color!=='#2D6A8F'?color:undefined,
+    startTime:startTime||undefined,endTime:endTime||undefined});
+  inp.value='';
+  save();
+  openPlanTomorrow();
+}
+
+function delTmrTask(key,idx){
+  if(!tasks[key])return;
+  tasks[key].splice(idx,1);
+  save();
+  openPlanTomorrow();
+}
+
+function movePlanToTmr(el){
+  const cat=el.getAttribute('data-cat');
+  const idx=parseInt(el.getAttribute('data-idx'));
+  const tKey=el.getAttribute('data-tkey');
+  const item=todoLists[cat][idx];
+  if(!item)return;
+  if(!tasks[tKey])tasks[tKey]=[];
+  tasks[tKey].push({id:'t'+Date.now(),label:item.label,done:false});
+  save();
+  toast('→明日のタスクに追加！');
+  openPlanTomorrow();
+}
+
+function skipHabitDay(hid,key,btn){
+  if(!skippedHabits[key])skippedHabits[key]=[];
+  const skipped=skippedHabits[key].includes(hid);
+  if(skipped){
+    skippedHabits[key]=skippedHabits[key].filter(x=>x!==hid);
+    btn.style.background='var(--sur)';
+    btn.style.border='1px solid var(--bd)';
+    btn.style.color='var(--tx)';
+  } else {
+    skippedHabits[key].push(hid);
+    btn.style.background='#DC262622';
+    btn.style.border='1px solid #DC2626';
+    btn.style.color='#DC2626';
+  }
+  saveSkipped();
+}
+
+function addTodoInPlan(elOrCat){
+  const cat=typeof elOrCat==='string'?elOrCat:elOrCat.getAttribute('data-cat');
+  const inp=document.getElementById('plan-todo-'+cat);
+  if(!inp||!inp.value.trim())return;
+  if(!todoLists[cat])todoLists[cat]=[];
+  todoLists[cat].push({id:'td'+Date.now(),label:inp.value.trim(),done:false});
+  saveTodos();
+  openPlanTomorrow();
+}
+
+function toggleTodoInPlan(cat,idx){
+  if(!todoLists[cat])return;
+  todoLists[cat][idx].done=!todoLists[cat][idx].done;
+  saveTodos();
+  openPlanTomorrow();
+}
+
+function deleteTodoPlan(cat,idx){
+  if(!todoLists[cat])return;
+  todoLists[cat].splice(idx,1);
+  saveTodos();
+  openPlanTomorrow();
+}
+
+function finishPlanTomorrow(){
+  closeModal();
+  const key=dk(new Date());
+  if(!data[key])data[key]={};
+  data[key]['plantmrw']=true;
+  save();
+  render();
+  toast('🌙 明日の準備完了！');
+}
+
+function closePlanShop(){
+  const p=document.getElementById('plan-shop-panel');
+  if(p)p.remove();
+}
+function openShopInPlan(){
+  // Show shopping list in a sub-panel without closing plan tomorrow
+  const existing=document.getElementById('plan-shop-panel');
+  if(existing){existing.remove();return;}
+  const panel=document.createElement('div');
+  panel.id='plan-shop-panel';
+  panel.style.cssText='position:fixed;bottom:0;left:0;right:0;background:var(--sur);border-radius:16px 16px 0 0;padding:16px;z-index:9999;max-height:60vh;overflow-y:auto;box-shadow:0 -4px 20px rgba(0,0,0,0.15)';
+  panel.innerHTML=
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'+
+    '<span style="font-size:15px;font-weight:700">🛒 ショッピングリスト</span>'+
+    '<button onclick="closePlanShop()" style="margin-left:auto;background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu)">×</button>'+
+    '</div>'+
+    renderShoppingList()+
+    '<div style="display:flex;gap:8px;margin-top:8px">'+
+    '<input id="plan-shop-inp" placeholder="買い物メモを追加..." style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">'+
+    '<button onclick="addShopFromPlan()" class="abtn">追加</button>'+
+    '</div>';
+  document.body.appendChild(panel);
+}
+
+function addShopFromPlan(){
+  const inp=document.getElementById('plan-shop-inp');
+  if(!inp||!inp.value.trim())return;
+  shoppingItems.unshift({id:'s'+Date.now(),label:inp.value.trim(),done:false});
+  saveShop();
+  openShopInPlan();openShopInPlan(); // toggle to refresh
+}
+
+function savePlanMealSlot(inp){
+  const day=inp.getAttribute('data-mkey');
+  const slot=inp.getAttribute('data-slot');
+  const meal=JSON.parse(localStorage.getItem('yp_meal_full_'+day)||'{}');
+  meal[slot]=inp.value;
+  localStorage.setItem('yp_meal_full_'+day,JSON.stringify(meal));
+}
+
+function savePlanMeal(inp){
+  const key=inp.getAttribute('data-mkey');
+  if(key)localStorage.setItem('yp_meal_'+key,inp.value);
+}
+
+function openMemoPage(elOrId){
+  const id=typeof elOrId==='string'?elOrId:elOrId.getAttribute('data-pid');
+  closeModal();
+  tab='memo';
+  const pages=getMemoPages();
+  memoOpenIndex=pages.findIndex(p=>p.id===id);
+  render();
 }
 
 function buildHabitTimerBtn(hb,key){
@@ -2421,7 +2927,7 @@ function renderToday(){
       h+='</div></div>';
     }
   }
-  h+=`</div><div class="sec"><span>今日の習慣</span><span class="sec-edit" onclick="sw('settings')">編集</span></div><div class="card">`;
+  h+=`</div><div class="sec"><span>今日の習慣</span><span class="sec-edit" onclick="sw('settings')">編集</span><span class="sec-edit" onclick="openPlanTomorrow()" style="margin-left:6px;color:#7A4FA0">🌙 明日の準備</span></div><div class="card">`;
   habits.forEach((hb,i)=>{
     const done=!!(data[key]&&data[key][hb.id]),s=streak(hb.id);
     h+=`<div class="hrow" draggable="true" id="hrow-${i}" 
@@ -2547,16 +3053,18 @@ function renderHabits(){
     grpHabits.forEach((hb,i)=>{
       const done=!!(data[key]&&data[key][hb.id]),s=streak(hb.id);
       const globalIdx=habits.indexOf(hb);
-      h+=`<div class="hrow" onclick="openHabitModal('${hb.id}','${key}')">
+      const skipped=isSkipped(hb.id,key);
+      h+=`<div class="hrow${skipped?' dt':''}" onclick="openHabitModal('${hb.id}','${key}')" style="${skipped?'opacity:0.4':''}">
         <div class="hic" style="background:${hb.color}22">${hb.icon}</div>
         <div class="hin">
-          <div class="hn">${hb.name}</div>
+          <div class="hn">${hb.name}${skipped?'<span style="font-size:10px;color:var(--mu);margin-left:6px">今日スキップ</span>':''}</div>
           <div class="hs">${s>0?'🔥 '+s+'日連続':'今日からスタート'}${hb.timerMins?' · ⏱'+hb.timerMins+'分':''}</div>
         </div>
-        ${hb.timerMins&&!done?buildHabitTimerBtn(hb,key):''}
-        <button class="hck${done?' done':''}" style="${done?'background:'+hb.color+';border-color:'+hb.color:''}" onclick="event.stopPropagation();toggleH('${hb.id}','${key}')" aria-label="${hb.name}">
+        ${!skipped&&hb.timerMins&&!done?buildHabitTimerBtn(hb,key):''}
+        ${!skipped?`<button class="hck${done?' done':''}" style="${done?'background:'+hb.color+';border-color:'+hb.color:''}" onclick="event.stopPropagation();toggleH('${hb.id}','${key}')" aria-label="${hb.name}">
           <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-        </button>
+        </button>`:''}
+        <button onclick="event.stopPropagation();skipHabitToday('${hb.id}')" style="font-size:10px;padding:2px 6px;border-radius:6px;background:${skipped?'#DC262622':'var(--bg)'};border:1px solid ${skipped?'#DC2626':'var(--bd)'};color:${skipped?'#DC2626':'var(--mu)'};cursor:pointer;flex-shrink:0" title="今日スキップ">${skipped?'↩':'⊘'}</button>
       </div>`;
     });
     h+=`</div></div>`;
@@ -2570,8 +3078,8 @@ function renderWeek(){
   const wkStart=dates[0],wkEnd=dates[6];
   const wkLabel=(wkStart.getMonth()+1)+'/'+wkStart.getDate()+' 〜 '+(wkEnd.getMonth()+1)+'/'+wkEnd.getDate();
   const HOUR_H=56; // px per hour
-  const START_H=7; // 7am
-  const END_H=23; // 11pm
+  const START_H=5; // 5am
+  const END_H=24; // midnight
   const TOTAL_H=END_H-START_H;
   const COL_W=Math.floor(100/7); // % per day column
 
@@ -2733,66 +3241,154 @@ function saveMonthMemo(key,val){
 }
 
 function renderSettings(){
-  let h='<div style="padding-top:8px"></div><div class="sec">習慣をカスタマイズ</div><div class="card">';
-  habits.forEach((hb,i)=>{
-    const modeLabel=hb.timerMins?('⏱ '+hb.timerMins+'分タイマー'):'✅ チェック';
-    h+=`<div class="set-row" id="set-hrow-${i}" data-idx="${i}"
-      draggable="true"
-      ondragstart="setHabitDragStart(event,${i})"
-      ondragover="setHabitDragOver(event,${i})"
-      ondrop="setHabitDrop(event,${i})"
-      ondragend="setHabitDragEnd()">
-      <div style="color:var(--mu);font-size:20px;cursor:grab;padding:0 8px 0 4px;flex-shrink:0;-webkit-user-select:none;user-select:none;touch-action:none"
-        ontouchstart="touchSortStart(event,${i})"
-        ontouchmove="touchSortMove(event)"
-        ontouchend="touchSortEnd(event)">⠿</div>
-      <div class="hic" style="background:${hb.color}22">${hb.icon}</div>
-      <div class="sri">
-        <input value="${hb.name}" onchange="habits[${i}].name=this.value;save()" placeholder="習慣名">
-        <div class="srs" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span>アイコン:</span><input value="${hb.icon}" onchange="habits[${i}].icon=this.value;save();render()" style="width:28px">
-          <select onchange="habits[${i}].timerMins=this.value==='timer'?20:null;save();render()" style="padding:2px 4px;border-radius:4px;border:1px solid var(--bd);font-size:11px;background:var(--bg)">
-            <option value="check" ${!hb.timerMins?'selected':''}>✅ チェック</option>
-            <option value="timer" ${hb.timerMins?'selected':''}>⏱ タイマー</option>
-          </select>
-          ${buildGroupSelect(i,hb.group||'other')}
-          ${hb.timerMins?'<input type="number" value="'+hb.timerMins+'" min="1" max="120" onchange="habits['+i+'].timerMins=parseInt(this.value)||20;save()" style="width:44px;padding:2px 4px;border-radius:4px;border:1px solid var(--bd);font-size:11px">分':''}
+  // iPhone-style settings menu
+  const sections=[
+    {id:'habits',icon:'🧘',label:'習慣',sub:'追加・編集・並び替え'},
+    {id:'groups',icon:'🗂️',label:'習慣グループ',sub:'グループの管理'},
+    {id:'schedule',icon:'📅',label:'スケジュール',sub:'授業・繰り返し予定'},
+    {id:'recurring',icon:'🔁',label:'繰り返しタスク',sub:'毎週のTA・コピー作業'},
+    {id:'sound',icon:'🔔',label:'サウンド',sub:'チェック音・タイマー音'},
+    {id:'display',icon:'🌙',label:'表示・テーマ',sub:'ダークモード'},
+  ];
+
+  if(!settingsSection){
+    // Main menu
+    let h='<div style="padding-top:8px"></div>';
+    h+='<div class="card" style="padding:0">';
+    sections.forEach((s,i)=>{
+      h+=`<div onclick="settingsSection='${s.id}';renderSettings()" style="display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:${i<sections.length-1?'1px solid var(--bd)':'none'};cursor:pointer">
+        <div style="width:32px;height:32px;border-radius:8px;background:var(--ac)22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${s.icon}</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600">${s.label}</div>
+          <div style="font-size:11px;color:var(--mu)">${s.sub}</div>
         </div>
-      </div>
-      <input type="color" class="cpick" value="${hb.color}" oninput="habits[${i}].color=this.value;save();render()" style="background:${hb.color}">
-      <button class="delbtn" onclick="if(confirm('削除しますか？')){habits.splice(${i},1);save();render()}">×</button>
-    </div>`;
-  });
-  h+=`<div class="af" style="flex-wrap:wrap;gap:6px">
-    <input id="ni" placeholder="🌟" style="width:38px;text-align:center;flex:none" maxlength="2">
-    <input id="nn" placeholder="新しい習慣を追加" style="flex:1;min-width:100px">
-    <input id="nt" type="number" placeholder="分(任意)" style="width:70px;flex:none" min="1" max="120">
-    <button class="abtn" onclick="addH()">追加</button>
-  </div>
-  <div style="font-size:11px;color:var(--mu);padding:4px 12px 8px">⏱ 分を入力するとタイマー形式になります</div></div>
-  <div class="sec">スケジュール編集</div>
-  <div class="card">`;
-  schedule.forEach((s,i)=>{
-    h+=`<div class="sch-edit-row">
-      <input type="text" value="${s.label}" onchange="schedule[${i}].label=this.value;save()">
-      <input type="color" class="cpick" value="${s.color}" oninput="schedule[${i}].color=this.value;schedule[${i}].bg=this.value+'22';save()" style="background:${s.color}">
-      <button class="delbtn" onclick="schedule.splice(${i},1);save();render()">×</button>
-    </div>`;
-  });
-  h+='</div>';
-  h+=renderRecurring();
-  // Sound settings
-  h+=`<div class="sec">🔔 サウンド設定</div>
-  <div class="card" style="padding:12px">
-    <div style="font-size:12px;color:var(--mu);margin-bottom:10px">チェック・完了音のスタイル</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      ${[['ping','🎵 Ping（デフォルト）'],['soft','🎶 Soft'],['pop','💧 Pop'],['none','🔇 なし']].map(([v,l])=>
-        '<button onclick="setSoundStyle(\''+v+'\');render()" style="padding:8px 14px;border-radius:20px;background:'+(soundStyle===v?'var(--ac)':'var(--sur)')+';border:1px solid '+(soundStyle===v?'var(--ac)':'var(--bd)')+';color:'+(soundStyle===v?'white':'var(--tx)')+';font-size:12px;cursor:pointer">'+l+'</button>'
-      ).join('')}
-    </div>
+        <div style="color:var(--mu);font-size:16px">›</div>
+      </div>`;
+    });
+    h+='</div>';
+    document.getElementById('view-settings').innerHTML=h;
+    return;
+  }
+
+  // Back button header
+  let h=`<div style="display:flex;align-items:center;gap:8px;padding:8px 0 12px">
+    <button onclick="settingsSection=null;renderSettings()" style="padding:6px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">‹ 戻る</button>
+    <span style="font-size:16px;font-weight:700">${sections.find(s=>s.id===settingsSection)?.label||''}</span>
   </div>`;
+
+  if(settingsSection==='habits'){
+    h+='<div class="card" style="padding:0">';
+    habits.forEach((hb,i)=>{
+      const modeLabel=hb.timerMins?('⏱ '+hb.timerMins+'分'):'✅ チェック';
+      h+=`<div class="set-row" id="set-hrow-${i}" data-idx="${i}"
+        draggable="true"
+        ondragstart="setHabitDragStart(event,${i})"
+        ondragover="setHabitDragOver(event,${i})"
+        ondrop="setHabitDrop(event,${i})"
+        ondragend="setHabitDragEnd()">
+        <div style="color:var(--mu);font-size:20px;cursor:grab;padding:0 8px 0 4px;flex-shrink:0;-webkit-user-select:none;user-select:none;touch-action:none"
+          ontouchstart="touchSortStart(event,${i})"
+          ontouchmove="touchSortMove(event)"
+          ontouchend="touchSortEnd(event)">⠿</div>
+        <div class="hic" style="background:${hb.color}22">${hb.icon}</div>
+        <div style="flex:1;min-width:0">
+          <input value="${hb.name}" onchange="habits[${i}].name=this.value;save()" style="width:100%;border:none;background:transparent;font-size:13px;outline:none;color:var(--tx)">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+            <select onchange="habits[${i}].timerMins=this.value==='timer'?20:null;save();render()" style="padding:2px 4px;border-radius:4px;border:1px solid var(--bd);font-size:11px;background:var(--bg)">
+              <option value="check" ${!hb.timerMins?'selected':''}>✅ チェック</option>
+              <option value="timer" ${hb.timerMins?'selected':''}>⏱ タイマー</option>
+            </select>
+            ${hb.timerMins?`<input type="number" value="${hb.timerMins}" min="1" max="120" onchange="habits[${i}].timerMins=parseInt(this.value)||20;save()" style="width:48px;padding:2px 4px;border-radius:4px;border:1px solid var(--bd);font-size:11px;background:var(--bg)"><span style="font-size:11px;color:var(--mu);align-self:center">分</span>`:''}
+            ${buildGroupSelect(i,hb.group||'other')}
+          </div>
+        </div>
+        <input type="color" value="${hb.color}" onchange="habits[${i}].color=this.value;save();render()" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--bd);cursor:pointer;padding:1px;flex-shrink:0">
+        <button class="delbtn" onclick="habits.splice(${i},1);save();render()">×</button>
+      </div>`;
+    });
+    h+='</div>';
+    h+=`<div style="display:flex;gap:8px;margin-top:10px">
+      <input id="new-habit-inp" placeholder="新しい習慣を追加..." style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg)">
+      <button class="abtn" onclick="addNewHabit()">追加</button>
+    </div>`;
+
+  } else if(settingsSection==='groups'){
+    h+='<div class="card" style="padding:0;margin-bottom:12px">';
+    habitGroupConfig.forEach((g,gi)=>{
+      h+=`<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--bd)">
+        <input value="${g.icon}" onchange="habitGroupConfig[${gi}].icon=this.value;saveHabitGroups();render()" style="width:32px;text-align:center;border:1px solid var(--bd);border-radius:6px;font-size:16px;background:var(--bg);padding:2px">
+        <input value="${g.label}" onchange="habitGroupConfig[${gi}].label=this.value;saveHabitGroups();render()" style="flex:1;border:1px solid var(--bd);border-radius:6px;font-size:13px;background:var(--bg);padding:4px 8px;outline:none;color:var(--tx)">
+        <input type="color" value="${g.color}" onchange="habitGroupConfig[${gi}].color=this.value;saveHabitGroups();render()" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--bd);cursor:pointer;padding:1px">
+        <button onclick="habitGroupConfig.splice(${gi},1);saveHabitGroups();render()" style="font-size:14px;color:#DC2626;background:none;border:none;cursor:pointer">×</button>
+      </div>`;
+    });
+    h+='</div>';
+    h+=`<div style="display:flex;gap:8px">
+      <input id="new-grp-icon" placeholder="🌟" style="width:40px;text-align:center;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:16px;background:var(--bg)">
+      <input id="new-grp-name" placeholder="新しいグループ名..." style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;background:var(--bg);outline:none">
+      <button onclick="addHabitGroup()" class="abtn">追加</button>
+    </div>`;
+
+  } else if(settingsSection==='schedule'){
+    h+='<div class="card" style="padding:0;margin-bottom:12px">';
+    schedule.forEach((e,i)=>{
+      h+=`<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--bd)">
+        <div style="width:10px;height:10px;border-radius:50%;background:${e.color};flex-shrink:0"></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${e.label}</div>
+          <div style="font-size:11px;color:var(--mu)">${timeToStr(e.start)}〜${timeToStr(e.end)} · ${['日','月','火','水','木','金','土'].filter((_,d)=>e.days.includes(d)).join('・')}</div>
+        </div>
+        <button onclick="openSchItemModal('${e.id}',null)" style="padding:4px 8px;border-radius:6px;background:var(--sur);border:1px solid var(--bd);font-size:11px;cursor:pointer">編集</button>
+      </div>`;
+    });
+    h+='</div>';
+    h+=`<button class="abtn" style="width:100%" onclick="openSchEdit()">+ スケジュールを追加</button>`;
+
+  } else if(settingsSection==='recurring'){
+    h+='<div class="card" style="padding:0;margin-bottom:12px">';
+    recurringTasks.forEach((rt,i)=>{
+      h+=`<div style="padding:10px 12px;border-bottom:1px solid var(--bd)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <input value="${rt.label}" onchange="recurringTasks[${i}].label=this.value;save();recurringApplied=false;applyRecurringTasks()" style="flex:1;border:none;background:transparent;font-size:13px;color:var(--tx);outline:none">
+          <button onclick="recurringTasks.splice(${i},1);save();recurringApplied=false;applyRecurringTasks();renderSettings()" style="color:#DC2626;background:none;border:none;cursor:pointer;font-size:16px">×</button>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${['日','月','火','水','木','金','土'].map((d,di)=>{
+            const sel=rt.days.includes(di);
+            return `<button onclick="if(recurringTasks[${i}].days.includes(${di})){recurringTasks[${i}].days=recurringTasks[${i}].days.filter(x=>x!==${di});}else{recurringTasks[${i}].days.push(${di});}save();recurringApplied=false;applyRecurringTasks();renderSettings()" style="padding:3px 8px;border-radius:12px;background:${sel?'var(--ac)':'var(--sur)'};color:${sel?'white':'var(--tx)'};border:1px solid ${sel?'var(--ac)':'var(--bd)'};font-size:11px;cursor:pointer">${d}</button>`;
+          }).join('')}
+        </div>
+      </div>`;
+    });
+    h+='</div>';
+    h+=`<div style="display:flex;gap:8px">
+      <input id="new-rec-inp" placeholder="繰り返しタスク名..." style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg)">
+      <button class="abtn" onclick="addRecurringTask()">追加</button>
+    </div>`;
+
+  } else if(settingsSection==='sound'){
+    h+=`<div class="card" style="padding:12px;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--mu);margin-bottom:10px">チェック・完了音</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${[['ping','🎵 Ping'],['soft','🎶 Soft'],['pop','💧 Pop'],['none','🔇 なし']].map(([v,l])=>
+          `<button onclick="setSoundStyle('${v}');renderSettings()" style="padding:8px 14px;border-radius:20px;background:${soundStyle===v?'var(--ac)':'var(--sur)'};border:1px solid ${soundStyle===v?'var(--ac)':'var(--bd)'};color:${soundStyle===v?'white':'var(--tx)'};font-size:12px;cursor:pointer">${l}</button>`
+        ).join('')}
+      </div>
+    </div>`;
+
+  } else if(settingsSection==='display'){
+    h+=`<div class="card" style="padding:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:14px">ダークモード</span>
+        <button onclick="toggleDark()" style="padding:6px 16px;border-radius:20px;background:var(--ac);color:white;border:none;font-size:13px;cursor:pointer">${document.body.classList.contains('dark')?'オフ':'オン'}</button>
+      </div>
+    </div>`;
+  }
+
   document.getElementById('view-settings').innerHTML=h;
 }
+
+let settingsSection=null;
 
 function addH(){
   const icon=document.getElementById('ni').value.trim()||'⭐';
@@ -3890,7 +4486,7 @@ function toggleStudyNoise(type){
   if(studyNoiseNode){try{studyNoiseNode.stop();}catch(e){}studyNoiseNode=null;}
   if(studyNoiseCtx){try{studyNoiseCtx.close();}catch(e){}studyNoiseCtx=null;}
   // Update buttons
-  ['none','rain','cafe','wave'].forEach(t=>{
+  ['none','rain','cafe','wave','white'].forEach(t=>{
     const b=document.getElementById('snoise-'+t);
     if(b){b.style.background=t===type?'var(--ac)':'var(--bg)';b.style.color=t===type?'white':'var(--tx)';b.style.border=t===type?'none':'1px solid var(--bd)';}
   });
