@@ -196,9 +196,11 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
     <div class="overlay-label" id="overlay-label">集中中</div>
     <div class="overlay-time" id="overlay-time">25:00</div>
     <div class="overlay-progress"><div class="overlay-progress-bar" id="overlay-bar" style="width:100%"></div></div>
-    <button class="overlay-pause" id="overlay-pause-btn" onclick="togglePause()">⏸ 一時停止</button>
-    <br>
-    <button class="overlay-stop" onclick="stopTimerOverlay()">⏹ 終了</button>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:8px">
+      <button class="overlay-pause" id="overlay-pause-btn" onclick="togglePause()">⏸ 一時停止</button>
+      <button class="overlay-pause" onclick="startBreakFromTimer()" style="background:rgba(255,255,255,0.15)">☕ 休憩</button>
+    </div>
+    <button class="overlay-stop" onclick="stopTimerOverlay()">✕ 終了</button>
   </div>
 </div>
 <div class="app">
@@ -621,7 +623,7 @@ function buildStudyAddList(key){
     // List header with bulk add button
     html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
     html+='<span style="font-size:11px;font-weight:700;color:'+sl.color+'">📚 '+sl.name+'</span>';
-    html+='<button onclick="addAllStudyAsTask(this)" data-key="'+key+'" data-li="'+li+'" data-name="'+sl.name.replace(/"/g,'&quot;')+'" data-color="'+sl.color+'" style="padding:2px 8px;border-radius:8px;background:'+sl.color+'22;border:1px solid '+sl.color+';color:'+sl.color+';font-size:10px;cursor:pointer">一括追加</button>';
+    html+='<button onclick="addAllStudyAsTask(this)" data-key="'+key+'" data-li="'+li+'" data-name="'+sl.name.replace(/"/g,'&quot;').replace(/'/g,'&#39;')+'" data-color="'+sl.color+'" style="padding:2px 8px;border-radius:8px;background:'+sl.color+'22;border:1px solid '+sl.color+';color:'+sl.color+';font-size:10px;cursor:pointer">一括追加</button>';
     html+='</div>';
     // Individual items
     pending.forEach((it,ii)=>{
@@ -688,21 +690,119 @@ function saveDayMemo(key,val){
 function openTaskMemo(key,id){
   const t=(tasks[key]||[]).find(x=>x.id===id);
   if(!t)return;
+  const col=t.color||'#2D6A8F';
+  const st=t.startTime?strToTime(t.startTime):0;
+  const et=t.endTime?strToTime(t.endTime):st+2;
+  const slotMins=Math.round((et-st)*60)||60;
   const wrap=document.getElementById('modal-wrap');
   wrap.innerHTML=
     '<div class="modal-bg" onclick="closeModal(event)">'+
-    '<div class="modal">'+
+    '<div class="modal" style="max-height:88vh;overflow-y:auto">'+
     '<button class="modal-close" onclick="closeModal()">×</button>'+
-    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'+
-    '<span style="font-size:14px;font-weight:600;flex:1">'+t.label+'</span>'+
-    (t.startTime?'<span style="font-size:11px;color:var(--mu)">'+t.startTime+(t.endTime?'〜'+t.endTime:'')+'</span>':'')+
+    // Header with gear button
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'+
+    '<span style="font-size:14px;font-weight:700;flex:1">'+t.label+'</span>'+
+    '<button onclick="openSlotTaskEdit(this)" data-key="'+key+'" data-id="'+id+'" style="font-size:18px;background:none;border:none;cursor:pointer;padding:4px" title="編集">⚙️</button>'+
     '</div>'+
+    (t.startTime?'<div style="font-size:11px;color:var(--mu);margin-bottom:12px">⏰ '+t.startTime+(t.endTime?'〜'+t.endTime:'〜未定')+'</div>':'<div style="margin-bottom:12px"></div>')+
+    // Memo
     '<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:6px">📝 メモ</div>'+
     '<textarea id="task-memo-input" class="memo-box" style="min-height:80px" placeholder="メモを追加...">'+((t.memo||'').replace(/</g,'&lt;'))+'</textarea>'+
-    '<button class="abtn" style="width:100%;margin-top:8px" onclick="saveTaskMemo(this.dataset.k,this.dataset.id)" data-k="'+key+'" data-id="'+id+'">保存</button>'+
+    '<button onclick="saveTaskMemo(this)" data-k="'+key+'" data-id="'+id+'" class="abtn" style="width:100%;margin-top:8px;margin-bottom:14px">保存</button>'+
+    // Timer section
+    '<div style="border-top:1px solid var(--bd);padding-top:12px">'+
+    '<div style="font-size:13px;font-weight:700;margin-bottom:10px">⏱ 集中タイマー</div>'+
+    '<div style="display:flex;gap:4px;margin-bottom:10px;background:var(--bg);border-radius:8px;padding:3px">'+
+    '<button id="memo-mode-pomo" onclick="switchMemoMode(this.dataset.m)" data-m="pomo" style="flex:1;padding:6px;border-radius:6px;border:none;font-size:12px;cursor:pointer;background:var(--ac);color:white;font-weight:600">🍅 ポモドーロ</button>'+
+    '<button id="memo-mode-focus" onclick="switchMemoMode(this.dataset.m)" data-m="focus" style="flex:1;padding:6px;border-radius:6px;border:none;font-size:12px;cursor:pointer;background:transparent;color:var(--mu)">🎯 集中</button>'+
+    '</div>'+
+    // Pomodoro
+    '<div id="memo-timer-pomo">'+
+    '<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">'+
+    '<div style="display:flex;align-items:center;gap:6px"><span style="font-size:12px;color:var(--mu)">集中</span><input id="memo-pomo-focus" type="number" value="25" min="5" max="90" oninput="updateMemoPomoCalc('+slotMins+')" style="width:50px;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:13px;text-align:center;outline:none;background:var(--bg)"><span style="font-size:12px;color:var(--mu)">分</span></div>'+
+    '<div style="display:flex;align-items:center;gap:6px"><span style="font-size:12px;color:var(--mu)">休憩</span><input id="memo-pomo-break" type="number" value="5" min="1" max="30" oninput="updateMemoPomoCalc('+slotMins+')" style="width:50px;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:13px;text-align:center;outline:none;background:var(--bg)"><span style="font-size:12px;color:var(--mu)">分</span></div>'+
+    '</div>'+
+    '<div id="memo-pomo-calc" style="font-size:12px;color:var(--sub);background:var(--sur);border-radius:8px;padding:8px;margin-bottom:10px"></div>'+
+    '</div>'+
+    // Focus
+    '<div id="memo-timer-focus" style="display:none">'+
+    '<div style="background:var(--ac)18;border-radius:8px;padding:8px;margin-bottom:8px;text-align:center">'+
+    '<span style="font-size:18px;font-weight:700;color:var(--ac)">'+slotMins+'</span><span style="font-size:12px;color:var(--mu)">分間 集中</span>'+
+    '</div>'+
+    '<div style="font-size:11px;color:var(--mu);margin-bottom:6px">終了前に通知</div>'+
+    '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap" id="memo-notif-row">'+
+    ['なし','5分前','10分前','15分前'].map((v,i)=>
+      '<button onclick="selectMemoNotif(this)" data-notif="'+[0,5,10,15][i]+'" style="padding:5px 10px;border-radius:20px;background:'+(i===0?'var(--ac)':'var(--sur)')+';border:1px solid var(--bd);color:'+(i===0?'white':'var(--tx)')+';font-size:11px;cursor:pointer">'+v+'</button>'
+    ).join('')+
+    '</div>'+
+    '</div>'+
+    '<button onclick="startMemoTimer(this)" data-key="'+key+'" data-id="'+id+'" data-mins="'+slotMins+'" style="width:100%;padding:12px;border-radius:12px;background:var(--ac);color:white;border:none;font-size:15px;font-weight:700;cursor:pointer">▶ 集中スタート</button>'+
+    '</div>'+
     '</div></div>';
-  setTimeout(()=>document.getElementById('task-memo-input')?.focus(),100);
+  setTimeout(()=>{
+    document.getElementById('task-memo-input')?.focus();
+    updateMemoPomoCalc(slotMins);
+  },100);
 }
+
+function switchMemoMode(mode){
+  ['pomo','focus'].forEach(m=>{
+    const el=document.getElementById('memo-timer-'+m);
+    const btn=document.getElementById('memo-mode-'+m);
+    if(el)el.style.display=m===mode?'block':'none';
+    if(btn){btn.style.background=m===mode?'var(--ac)':'transparent';btn.style.color=m===mode?'white':'var(--mu)';}
+  });
+  if(mode==='pomo'){
+    const mins=parseInt(document.querySelector('[data-mins]')?.getAttribute('data-mins')||'60');
+    updateMemoPomoCalc(mins);
+  }
+}
+
+function updateMemoPomoCalc(totalMins){
+  const f=parseInt(document.getElementById('memo-pomo-focus')?.value||'25');
+  const b=parseInt(document.getElementById('memo-pomo-break')?.value||'5');
+  const sets=Math.floor(totalMins/(f+b));
+  const extra=Math.min(totalMins-(sets*(f+b)),f);
+  const el=document.getElementById('memo-pomo-calc');
+  if(el)el.innerHTML='🍅 '+f+'分集中→☕'+b+'分休憩 × '+sets+'セット<br>⏱ 合計集中: '+(sets*f+extra)+'分';
+}
+
+function selectMemoNotif(btn){
+  btn.closest('div').querySelectorAll('[data-notif]').forEach(b=>{
+    b.style.background='var(--sur)';b.style.color='var(--tx)';
+  });
+  btn.style.background='var(--ac)';btn.style.color='white';
+}
+
+function startMemoTimer(btn){
+  const key=btn.getAttribute('data-key');
+  const id=btn.getAttribute('data-id');
+  const slotMins=parseInt(btn.getAttribute('data-mins')||'25');
+  const isPomo=document.getElementById('memo-mode-pomo')?.style.background.includes('var(--ac)');
+  const focusMins=isPomo?parseInt(document.getElementById('memo-pomo-focus')?.value||'25'):slotMins;
+  const breakMins=isPomo?parseInt(document.getElementById('memo-pomo-break')?.value||'5'):5;
+  const notifBtn=document.querySelector('#memo-notif-row [style*="var(--ac)"]');
+  const notifMins=parseInt(notifBtn?.getAttribute('data-notif')||'0');
+  const tk=(tasks[key]||[]).find(t=>t.id===id);
+  const label=tk?.label||'集中中';
+  closeModal();
+  if(timerRunning)stopTimer();
+  timerActiveItem={listIdx:-1,itemIdx:-1,isBreak:false,pomoCycle:1,breakMins,studyMins:focusMins,isPomo};
+  timerRunning=true;timerPaused=false;
+  timerSeconds=0;timerTotal=focusMins*60;
+  timerInterval=setInterval(timerTick,1000);
+  showOverlay(isPomo?'🍅 '+label:'🎯 '+label);
+  if(notifMins>0&&'Notification' in window){
+    Notification.requestPermission().then(p=>{
+      if(p==='granted'){
+        const delay=Math.max(0,(slotMins-notifMins)*60*1000);
+        setTimeout(()=>new Notification('⏰ まもなく終了',{body:notifMins+'分後に終了です'}),delay);
+      }
+    });
+  }
+  render();
+}
+
 
 function saveTaskMemo(elOrKey,id){
   const key=typeof elOrKey==='string'?elOrKey:elOrKey.getAttribute('data-k');
@@ -933,7 +1033,7 @@ function openTimeSlotFromClick(e,key,startH,hourH){
   openTimeSlot(key,tClamped);
 }
 
-function openTimeSlot(key,t){
+function openTimeSlot(key,t,initTab){
   const [ky,km,kd]=key.split('-').map(Number);
   const d=new Date(ky,km-1,kd);
   const dow=d.getDay();
@@ -943,159 +1043,450 @@ function openTimeSlot(key,t){
   const now=new Date();
   const nowT=now.getHours()+(now.getMinutes()/60);
   if(isToday&&t<nowT){
-    // Round up to current time (nearest 30min)
     t=Math.ceil(nowT*2)/2;
   }
 
   const dayEvs=schedule.filter(e=>e.days.includes(dow)&&!isEventCancelled(key,e.id));
-  
-  // Find free block: next event after t
-  const nextEv=dayEvs.filter(e=>e.start>t).sort((a,b)=>a.start-b.start)[0];
-  const freeUntil=nextEv?nextEv.start:23;
+  const dayTasks=(tasks[key]||[]).filter(tk=>tk.startTime);
+
+  // Collect all time blockers after t
+  const blockerTimes=[];
+  dayEvs.forEach(e=>{if(e.start>t)blockerTimes.push(e.start);});
+  dayTasks.forEach(tk=>{
+    const st=strToTime(tk.startTime);
+    if(st>t)blockerTimes.push(st);
+    // Also check if task's END blocks earlier
+    if(tk.endTime){const et=strToTime(tk.endTime);if(et>t)blockerTimes.push(et);}
+  });
+  blockerTimes.sort((a,b)=>a-b);
+  const nextBlockTime=blockerTimes[0];
+  const freeUntil=nextBlockTime||Math.min(24,Math.max(t+2,22));
   const freeHours=Math.round((freeUntil-t)*10)/10;
-  
-  // Is this slot busy?
-  const busyNow=dayEvs.some(e=>e.start<=t&&e.end>t);
-  if(busyNow){
-    openDayModal(key);
-    return;
-  }
-  
-  // If no free time left
-  if(freeHours<=0){
-    openDayModal(key);
-    return;
-  }
-  
+
+  // Check if this slot is already busy
+  const busyEv=dayEvs.some(e=>e.start<=t&&e.end>t);
+  const busyTask=dayTasks.some(tk=>{
+    const st=strToTime(tk.startTime);
+    const et=tk.endTime?strToTime(tk.endTime):st+0.5;
+    return st<=t&&et>t;
+  });
+
+  // If busy with schedule event (not task), open day modal
+  if(busyEv&&!busyTask){openDayModal(key);return;}
+  if(freeHours<=0&&!busyTask){openDayModal(key);return;}
+
   const timeStr=timeToStr(t);
   const untilStr=timeToStr(freeUntil);
-  
-  // Build all suggestions
-  const studySuggestions=[];
-  studyLists.forEach(sl=>{
-    sl.items.filter(it=>!it.done).forEach(it=>{
-      studySuggestions.push({label:sl.name+' — '+it.label,listIdx:studyLists.indexOf(sl),itemIdx:sl.items.indexOf(it),color:sl.color,type:'study'});
-    });
-  });
-  
-  const taskSuggestions=(tasks[key]||[]).filter(t2=>!t2.done).map(t2=>({
-    label:t2.label,id:t2.id,color:t2.color||'#10B981',type:'task'
-  }));
-  
-  const dreamSuggestions=[];
-  (dreamData.dreams||[]).forEach(d=>{
-    (d.cats||[]).forEach(cat=>{
-      (cat.items||[]).filter(it=>!it.doneToday).forEach(it=>{
-        dreamSuggestions.push({label:d.icon+' '+it.label+' ('+d.text+')',color:d.color||'#9B6AD4',type:'dream',dreamLabel:it.label});
-      });
-    });
-  });
-
-  // End time options
-  const endOptions=[];
-  for(let h=t+0.5;h<=freeUntil+0.01;h+=0.5){
-    endOptions.push(Math.round(h*2)/2);
-  }
-
-  const wrap=document.getElementById('modal-wrap');
-  let html='<div class="modal-bg" onclick="closeModal(event)">';
-  html+='<div class="modal" style="max-height:85vh;overflow-y:auto">';
-  html+='<button class="modal-close" onclick="closeModal()">×</button>';
-  html+='<div style="text-align:center;margin-bottom:14px">';
-  html+='<div style="font-size:24px">🕐</div>';
   const tH=Math.floor(t),tM=Math.round((t%1)*60);
   const tInputVal=String(tH).padStart(2,'0')+':'+String(tM).padStart(2,'0');
-  html+='<div style="font-size:16px;font-weight:700;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:6px">';
-  html+='<input id="free-start-time" type="time" value="'+tInputVal+'" style="padding:4px 8px;border-radius:8px;border:1px solid var(--bd);font-size:14px;font-weight:700;background:var(--bg);outline:none;width:90px"> 〜 '+untilStr+'</div>';
-  html+='<div style="font-size:12px;color:var(--mu);margin-top:2px">空き時間 約'+freeHours+'時間</div>';
-  html+='</div>';
+  const isFuture=!isToday;
 
-  // Tab switcher
-  html+='<div style="display:flex;gap:4px;margin-bottom:12px;background:var(--bg);border-radius:10px;padding:4px" id="free-tabs">';
-  html+='<button onclick="switchFreeTab(this.dataset.tab)" data-tab="study" id="ftab-study" style="flex:1;padding:7px;border-radius:8px;border:none;font-size:12px;cursor:pointer;background:var(--ac);color:white;font-weight:600">📚 学習</button>';
-  html+='<button onclick="switchFreeTab(this.dataset.tab)" data-tab="task" id="ftab-task" style="flex:1;padding:7px;border-radius:8px;border:none;font-size:12px;cursor:pointer;background:transparent;color:var(--mu)">📝 タスク</button>';
-  html+='<button onclick="switchFreeTab(this.dataset.tab)" data-tab="dream" id="ftab-dream" style="flex:1;padding:7px;border-radius:8px;border:none;font-size:12px;cursor:pointer;background:transparent;color:var(--mu)">🌟 夢</button>';
+  const wrap=document.getElementById('modal-wrap');
+  let html='<div class="modal-bg" onclick="closeModal(event)"><div class="modal" style="max-height:88vh;overflow-y:auto">';
+  html+='<button class="modal-close" onclick="closeModal()">×</button>';
+
+  // Header
+  const untilH=Math.floor(freeUntil),untilM=Math.round((freeUntil%1)*60);
+  const untilInputVal=String(untilH).padStart(2,'0')+':'+String(untilM).padStart(2,'0');
+  html+=`<div style="background:var(--ac)18;border-radius:12px;padding:12px;margin-bottom:14px">
+    <div style="font-size:11px;color:var(--mu);text-align:center;margin-bottom:6px">
+      🕐 <span style="color:var(--ac);font-weight:600">${timeStr}〜${untilStr}</span> が空いています（約${freeHours}時間）
+    </div>
+    <div style="font-size:10px;color:var(--mu);text-align:center;margin-bottom:8px">↓ 使う時間帯を選ぶ（全タブで共有）</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px">
+      <div style="text-align:center">
+        <div style="font-size:10px;color:var(--mu);margin-bottom:2px">開始</div>
+        <input id="free-start-time" type="time" value="${tInputVal}" onchange="updateSlotTime()" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--ac);font-size:16px;font-weight:700;background:var(--bg);outline:none;width:96px;text-align:center">
+      </div>
+      <div style="font-size:18px;color:var(--mu);font-weight:300;padding-top:14px">〜</div>
+      <div style="text-align:center">
+        <div style="font-size:10px;color:var(--mu);margin-bottom:2px">終了</div>
+        <input id="free-end-time" type="time" value="${untilInputVal}" onchange="updateSlotTime()" style="padding:6px 8px;border-radius:8px;border:1.5px solid var(--ac);font-size:16px;font-weight:700;background:var(--bg);outline:none;width:96px;text-align:center">
+        <div style="margin-top:3px">
+          <button onclick="toggleEndTimeUndefined()" id="end-time-undef-btn" style="font-size:9px;padding:2px 6px;border-radius:4px;background:var(--sur);border:1px solid var(--bd);color:var(--mu);cursor:pointer">未定にする</button>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--ac);text-align:center;margin-top:6px;font-weight:600" id="slot-duration-label">→ ${Math.round(freeHours*60)}分間</div>
+  </div>`;
+
+  // Tabs: タスク / 学習 / タイマー
+  html+=`<div style="display:flex;gap:3px;margin-bottom:12px;background:var(--bg);border-radius:8px;padding:3px">
+    <button onclick="switchSlotTab('task')" id="slot-tab-task" style="flex:1;padding:6px;border-radius:6px;border:none;font-size:12px;cursor:pointer;background:var(--ac);color:white;font-weight:600">📝 タスク</button>
+    <button onclick="switchSlotTab('study')" id="slot-tab-study" style="flex:1;padding:6px;border-radius:6px;border:none;font-size:12px;cursor:pointer;background:transparent;color:var(--mu)">📚 学習</button>
+    <button onclick="switchSlotTab(this.dataset.tab)" data-tab="timer" id="slot-tab-timer" style="flex:1;padding:6px;border-radius:6px;border:none;font-size:12px;cursor:pointer;background:transparent;color:var(--mu)">⏱ タイマー</button>
+  </div>`;
+
+  // Task tab
+  html+='<div id="slot-panel-task">';
+  const allKeyTasks=(tasks[key]||[]);
+  if(allKeyTasks.length>0){
+    html+='<div style="font-size:11px;color:var(--mu);margin-bottom:6px">📋 このスロットのタスク</div>';
+    allKeyTasks.forEach((tk)=>{
+      if(!tk||!tk.label)return;
+      const col=tk.color||'#2D6A8F';
+      const safeId=tk.id||'';
+      html+='<div style="border-radius:10px;border:1.5px solid '+col+';background:var(--sur);margin-bottom:6px">';
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:8px 10px">';
+      html+='<div style="flex:1;min-width:0">';
+      html+='<div style="font-size:13px;font-weight:600">'+tk.label+'</div>';
+      if(tk.startTime)html+='<div style="font-size:10px;color:var(--mu)">⏰ '+tk.startTime+(tk.endTime?'〜'+tk.endTime:'〜未定')+'</div>';
+      html+='</div>';
+      html+='<button onclick="openSlotTaskEdit(this)" data-key="'+key+'" data-id="'+safeId+'" style="font-size:11px;padding:4px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--bd);color:var(--mu);cursor:pointer">編集</button>';
+      html+='</div>';
+      html+='</div>';
+    });
+    html+='<div style="height:1px;background:var(--bd);margin:8px 0"></div>';
+  }
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:6px">新しく追加</div>';
+  html+='<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">';
+  html+='<input id="slot-task-inp" placeholder="タスク名..." style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)" data-key="'+key+'" data-t="'+t+'">';
+  html+='<input id="slot-task-color" type="color" value="#2D6A8F" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--bd);cursor:pointer;padding:1px;flex-shrink:0">';
+  html+='</div>';
+  html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+  html+='<span style="font-size:11px;color:var(--mu);flex-shrink:0">終了時間</span>';
+  html+='<input id="slot-task-end" type="time" style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)">';
+  html+='<button onclick="clearSlotTaskEnd()" style="font-size:11px;padding:4px 8px;border-radius:6px;background:var(--sur);border:1px solid var(--bd);color:var(--mu);cursor:pointer">未定</button>';
+  html+='</div>';
+  html+='<button onclick="addSlotTask(this)" data-key="'+key+'" data-t="'+t+'" class="abtn" style="width:100%;margin-bottom:8px">追加</button>';
   html+='</div>';
 
   // Study tab
-  html+='<div id="free-tab-study" style="display:block">';
+  html+='<div id="slot-panel-study" style="display:none;max-height:240px;overflow-y:auto">';
   studyLists.forEach((sl,li)=>{
     const pending=sl.items.filter(it=>!it.done);
     if(pending.length===0)return;
     html+='<div style="margin-bottom:10px">';
     html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
     html+='<span style="font-size:11px;font-weight:700;color:'+sl.color+'">📚 '+sl.name+'</span>';
-    html+='<button onclick="selectFreeItemBulk(this)" data-name="'+sl.name+'" data-li="'+li+'" data-color="'+sl.color+'" style="padding:2px 8px;border-radius:8px;background:'+sl.color+'22;border:1px solid '+sl.color+';color:'+sl.color+';font-size:10px;cursor:pointer;margin-left:auto">一括選択</button>';
+    html+='<button onclick="addSlotStudyBulk(this)" data-key="'+key+'" data-li="'+li+'" data-name="'+sl.name.replace(/"/g,'&quot;').replace(/'/g,'&#39;')+'" data-color="'+sl.color+'" data-t="'+t+'" style="padding:2px 8px;border-radius:8px;background:'+sl.color+'22;border:1px solid '+sl.color+';color:'+sl.color+';font-size:10px;cursor:pointer;margin-left:auto">一括追加</button>';
     html+='</div>';
-    pending.forEach((it)=>{
-      const fullLabel=sl.name+' — '+it.label;
+    pending.forEach(it=>{
       const ii=sl.items.indexOf(it);
-      html+='<button onclick="selectFreeItem(this)" data-label="'+fullLabel.replace(/"/g,"&quot;")+'" data-li="'+li+'" data-ii="'+ii+'" data-color="'+sl.color+'" data-type="study" style="width:100%;padding:7px 12px;border-radius:8px;background:'+sl.color+'18;border:1.5px solid var(--bd);text-align:left;font-size:12px;cursor:pointer;color:var(--tx);margin-bottom:4px;display:flex;align-items:center;gap:8px"><span style="width:7px;height:7px;border-radius:50%;background:'+sl.color+';flex-shrink:0;display:inline-block"></span>'+it.label+'</button>';
+      const safeLabel=(sl.name+' — '+it.label).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+      html+='<div style="display:flex;align-items:center;gap:4px;margin-bottom:4px">';
+      html+='<button onclick="addSlotStudyItem(this)" '
+        +'data-key="'+key+'" data-li="'+li+'" data-ii="'+ii+'" '
+        +'data-label="'+safeLabel+'" data-color="'+sl.color+'" data-t="'+t+'" '
+        +'style="flex:1;padding:7px 12px;border-radius:8px;background:'+sl.color+'18;border:1.5px solid var(--bd);text-align:left;font-size:12px;cursor:pointer;color:var(--tx);display:flex;align-items:center;gap:8px">'
+        +'<span style="width:7px;height:7px;border-radius:50%;background:'+sl.color+';flex-shrink:0;display:inline-block"></span>'
+        +it.label
+        +'</button>';
+      html+='<button onclick="addSlotStudyItem(this)" '
+        +'data-key="'+key+'" data-li="'+li+'" data-ii="'+ii+'" '
+        +'data-label="'+safeLabel+'" data-color="'+sl.color+'" data-t="'+t+'" '
+        +'style="padding:6px 10px;border-radius:8px;background:'+sl.color+';color:white;border:none;font-size:11px;cursor:pointer;white-space:nowrap;font-weight:600">+ 追加</button>';
+      html+='</div>';
     });
     html+='</div>';
   });
-  html+='<button onclick="selectFreeItem(this)" data-label="" data-li="-1" data-ii="-1" data-color="#888" data-type="custom" style="width:100%;padding:9px 12px;border-radius:10px;background:var(--sur);border:1.5px solid var(--bd);text-align:left;font-size:13px;cursor:pointer;color:var(--mu);margin-bottom:6px">✏️ 自由に入力...</button>';
   html+='</div>';
-
-
-  // Task tab
-  html+='<div id="free-tab-task" style="display:none">';
-  if(taskSuggestions.length>0){
-    taskSuggestions.forEach((s,i)=>{
-      html+='<button onclick="selectFreeItem(this)" data-label="'+s.label.replace(/"/g,'&quot;')+'" data-li="-1" data-ii="-1" data-color="'+s.color+'" data-type="task" style="width:100%;padding:9px 12px;border-radius:10px;background:'+s.color+'18;border:1.5px solid var(--bd);text-align:left;font-size:13px;cursor:pointer;color:var(--tx);margin-bottom:6px;display:flex;align-items:center;gap:8px">'+
-        '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+s.color+';flex-shrink:0"></span>'+s.label+'</button>';
-    });
-  } else {
-    html+='<div style="padding:16px;text-align:center;color:var(--mu);font-size:13px">今日のタスクはありません</div>';
+  if(isToday){
+    html+='<button onclick="switchSlotTab(this.dataset.tab)" data-tab="timer" style="width:100%;padding:10px;border-radius:10px;background:var(--ac)22;border:1px solid var(--ac);color:var(--ac);font-size:13px;cursor:pointer;font-weight:600;margin-top:8px">⏱ この時間帯で集中・ポモドーロ →</button>';
   }
-  html+='<button onclick="selectFreeItem(this)" data-label="" data-li="-1" data-ii="-1" data-color="#888" data-type="custom" style="width:100%;padding:9px 12px;border-radius:10px;background:var(--sur);border:1.5px solid var(--bd);text-align:left;font-size:13px;cursor:pointer;color:var(--mu);margin-bottom:6px">✏️ 自由に入力...</button>';
+
+  // Timer tab
+  html+='<div id="slot-panel-timer" style="display:none">';
+  const totalFreeMins2=Math.round(freeHours*60);
+  html+=`<div style="padding:4px 0">
+    <div style="background:var(--ac)18;border-radius:10px;padding:10px;margin-bottom:12px;text-align:center">
+      <span style="font-size:22px;font-weight:700;color:var(--ac)" id="slot-total-mins">${totalFreeMins2}</span>
+      <span style="font-size:13px;color:var(--mu)">分間 集中できます</span>
+      <div style="font-size:11px;color:var(--mu);margin-top:2px">${timeStr} 〜 ${untilStr}</div>
+    </div>
+
+    <!-- Mode toggle -->
+    <div style="display:flex;gap:4px;margin-bottom:12px;background:var(--bg);border-radius:8px;padding:3px">
+      <button id="mode-pomo" onclick="switchTimerMode('pomo')" style="flex:1;padding:7px;border-radius:6px;border:none;font-size:13px;cursor:pointer;background:var(--ac);color:white;font-weight:600">🍅 ポモドーロ</button>
+      <button id="mode-focus" onclick="switchTimerMode('focus')" style="flex:1;padding:7px;border-radius:6px;border:none;font-size:13px;cursor:pointer;background:transparent;color:var(--mu)">🎯 集中</button>
+    </div>
+
+    <!-- Pomodoro settings -->
+    <div id="timer-mode-pomo">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:12px;color:var(--mu)">集中</span>
+          <input id="pomo-focus-mins" type="number" value="25" min="5" max="90" style="width:52px;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:14px;text-align:center;outline:none;background:var(--bg)" oninput="updatePomoCalc()">
+          <span style="font-size:12px;color:var(--mu)">分</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:12px;color:var(--mu)">休憩</span>
+          <input id="pomo-break-mins" type="number" value="5" min="1" max="30" style="width:52px;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:14px;text-align:center;outline:none;background:var(--bg)" oninput="updatePomoCalc()">
+          <span style="font-size:12px;color:var(--mu)">分</span>
+        </div>
+      </div>
+      <div id="pomo-calc" style="font-size:12px;color:var(--sub);background:var(--sur);border-radius:8px;padding:8px 12px;margin-bottom:12px;line-height:1.8"></div>
+    </div>
+
+    <!-- Focus settings -->
+    <div id="timer-mode-focus" style="display:none">
+      <div style="font-size:11px;color:var(--mu);margin-bottom:6px">終了の何分前に通知？</div>
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+        ${['なし','5分前','10分前','15分前'].map((v,i)=>
+          '<button onclick="selectSlotNotif(this)" data-notif="'+[0,5,10,15][i]+'" id="slot-notif-'+i+'" style="padding:5px 10px;border-radius:20px;background:'+(i===0?'var(--ac)':'var(--sur)')+';border:1px solid var(--bd);color:'+(i===0?'white':'var(--tx)')+';font-size:11px;cursor:pointer">'+v+'</button>'
+        ).join('')}
+      </div>
+    </div>
+
+    <button onclick="startSlotTimer('${key}',${t},${freeUntil})" style="width:100%;padding:12px;border-radius:12px;background:var(--ac);color:white;border:none;font-size:15px;font-weight:700;cursor:pointer">▶ スタート</button>
+  </div>`;
   html+='</div>';
 
-  // Dream tab
-  html+='<div id="free-tab-dream" style="display:none">';
-  if(dreamSuggestions.length>0){
-    dreamSuggestions.forEach((s,i)=>{
-      html+='<button onclick="selectFreeItem(this)" data-label="'+s.label.replace(/"/g,'&quot;')+'" data-li="-1" data-ii="-1" data-color="'+s.color+'" data-type="dream" style="width:100%;padding:9px 12px;border-radius:10px;background:'+s.color+'18;border:1.5px solid var(--bd);text-align:left;font-size:13px;cursor:pointer;color:var(--tx);margin-bottom:6px;display:flex;align-items:center;gap:8px">'+
-        '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+s.color+';flex-shrink:0"></span>'+s.label+'</button>';
-    });
-  } else {
-    html+='<div style="padding:16px;text-align:center;color:var(--mu);font-size:13px">夢のタスクがありません</div>';
-  }
-  html+='<button onclick="selectFreeItem(this)" data-label="" data-li="-1" data-ii="-1" data-color="#888" data-type="custom" style="width:100%;padding:9px 12px;border-radius:10px;background:var(--sur);border:1.5px solid var(--bd);text-align:left;font-size:13px;cursor:pointer;color:var(--mu);margin-bottom:6px">✏️ 自由に入力...</button>';
-  html+='</div>';
-
-  html+='<div id="custom-input-area" style="display:none;margin-bottom:12px">';
-  html+='<input id="free-study-label" placeholder="何をしますか？" oninput="checkSessionReady()" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg);box-sizing:border-box">';
-  html+='</div>';
-  
-  // End time selector
-  html+='<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:8px">⏰ 何時まで？</div>';
-  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">終了前に通知: '+
-    '<select id="notify-mins-sel" style="padding:2px 6px;border-radius:6px;border:1px solid var(--bd);font-size:11px;background:var(--bg)">'+
-    '<option value="5">5分前</option>'+
-    '<option value="10">10分前</option>'+
-    '<option value="15">15分前</option>'+
-    '<option value="0">なし</option>'+
-    '</select></div>';
-  html+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px" id="end-time-opts">';
-  endOptions.forEach(h=>{
-    html+='<button onclick="selectEndTime('+h+')" id="et-'+h+'" style="padding:6px 12px;border-radius:20px;background:var(--sur);border:1.5px solid var(--bd);font-size:13px;cursor:pointer;color:var(--tx)">〜'+timeToStr(h)+'</button>';
-  });
-  html+='</div>';
-  
-  html+='<button onclick="startFreeTimeSession(this,'+t+')" id="session-start-btn" style="width:100%;padding:12px;border-radius:12px;background:var(--ac);color:white;border:none;font-size:15px;font-weight:700;cursor:pointer;opacity:0.5" disabled>🎯 タイマースタート</button>';
-  
-  html+='<div style="margin-top:10px;border-top:1px solid var(--bd);padding-top:10px">';
-  html+='<button onclick="openDayModal(this.dataset.key)\" data-key="'+key+'\" style="width:100%;padding:8px;background:none;border:none;color:var(--mu);font-size:12px;cursor:pointer">📝 通常のタスク追加はこちら</button>';
-  html+='</div>';
-  
   html+='</div></div>';
   wrap.innerHTML=html;
+  // Initialize pomodoro calc
+  // Switch to requested tab
+  if(initTab){setTimeout(()=>switchSlotTab(initTab),10);}
+  setTimeout(()=>updatePomoCalc(),50);
 }
 
-let freeSessionLabel='';
-let freeSessionEndTime=null;
-let freeSessionStudyIdx={li:-1,ii:-1};
+function clearSlotTaskEnd(){
+  const el=document.getElementById('slot-task-end');
+  if(el)el.value='';
+}
+
+function toggleEndTimeUndefined(){
+  const endEl=document.getElementById('free-end-time');
+  const btn=document.getElementById('end-time-undef-btn');
+  if(!endEl||!btn)return;
+  if(endEl.disabled){
+    // Re-enable
+    endEl.disabled=false;
+    endEl.style.opacity='1';
+    btn.textContent='未定にする';
+    btn.style.background='var(--sur)';
+  } else {
+    // Disable = undefined
+    endEl.disabled=true;
+    endEl.style.opacity='0.3';
+    btn.textContent='✓ 未定';
+    btn.style.background='var(--ac)22';
+    btn.style.color='var(--ac)';
+  }
+  updateSlotTime();
+}
+
+function updateSlotTime(){
+  const startEl=document.getElementById('free-start-time');
+  const endEl=document.getElementById('free-end-time');
+  if(!startEl)return;
+  const label=document.getElementById('slot-duration-label');
+  const totalLabel=document.getElementById('slot-total-mins');
+  if(endEl&&endEl.disabled){
+    if(label){label.innerHTML='→ 終了未定';label.style.color='var(--mu)';}
+    if(totalLabel)totalLabel.textContent='?';
+    return;
+  }
+  const [sh,sm]=(startEl.value||'0:0').split(':').map(Number);
+  const [eh,em]=(endEl?.value||'0:0').split(':').map(Number);
+  const mins=Math.round(((eh+em/60)-(sh+sm/60))*60);
+  if(label){
+    if(mins<=0){label.innerHTML='⚠️ 終了が開始より前です';label.style.color='#DC2626';}
+    else{label.innerHTML='→ <strong>'+mins+'分間</strong>';label.style.color='var(--ac)';}
+  }
+  if(totalLabel&&mins>0)totalLabel.textContent=mins;
+  updatePomoCalc();
+}
+
+function getSlotTimes(){
+  const startEl=document.getElementById('free-start-time');
+  const endEl=document.getElementById('free-end-time');
+  if(!startEl||!endEl)return{startT:0,endT:0,startStr:'',endStr:''};
+  const [sh,sm]=startEl.value.split(':').map(Number);
+  const [eh,em]=endEl.value.split(':').map(Number);
+  return{startT:sh+sm/60,endT:eh+em/60,startStr:startEl.value,endStr:endEl.value};
+}
+
+function switchSlotTab(tab){
+  ['task','study','timer'].forEach(t=>{
+    const el=document.getElementById('slot-panel-'+t);
+    const btn=document.getElementById('slot-tab-'+t);
+    if(el)el.style.display=t===tab?'block':'none';
+    if(btn){btn.style.background=t===tab?'var(--ac)':'transparent';btn.style.color=t===tab?'white':'var(--mu)';}
+  });
+}
+
+function addSlotTask(btn){
+  const key=btn.getAttribute('data-key');
+  const t=parseFloat(btn.getAttribute('data-t'));
+  const inp=document.getElementById('slot-task-inp');
+  const col=document.getElementById('slot-task-color')?.value||'';
+  if(!inp||!inp.value.trim())return;
+  // Use shared time header inputs
+  const startStr=document.getElementById('free-start-time')?.value||timeToStr(t);
+  const customEnd=document.getElementById('slot-task-end')?.value||'';
+  const sharedEnd=document.getElementById('free-end-time')?.value||'';
+  const endStr=customEnd||sharedEnd||''; // custom end > shared end > none
+  if(!tasks[key])tasks[key]=[];
+  const task={id:'t'+Date.now(),label:inp.value.trim(),done:false,
+    color:col!=='#2D6A8F'?col:undefined,startTime:startStr};
+  if(endStr)task.endTime=endStr;
+  tasks[key].push(task);
+  inp.value='';
+  const endEl=document.getElementById('slot-task-end');
+  if(endEl)endEl.value='';
+  const addedLabel=task.label;
+  save();playPing();
+  toast('✅ '+addedLabel+' を追加！');
+  // Re-render just the task list without full modal rebuild
+  openTimeSlot(key,t,'task');
+}
+
+function addSlotStudyItem(btn){
+  try{
+    const key=btn.getAttribute('data-key');
+    const t=parseFloat(btn.getAttribute('data-t')||'0');
+    const label=btn.getAttribute('data-label');
+    const color=btn.getAttribute('data-color')||'#2D6A8F';
+    if(!key||!label){toast('エラー：データが取得できません');return;}
+    const startStr=document.getElementById('free-start-time')?.value||timeToStr(t);
+    const endEl=document.getElementById('free-end-time');
+    const endStr=endEl&&endEl.value&&!endEl.disabled?endEl.value:'';
+    if(!tasks[key])tasks[key]=[];
+    const shortLabel=label.includes('—')?label.split('—').pop().trim():label;
+    const alreadyAdded=tasks[key].some(tk=>tk.label===label);
+    if(!alreadyAdded){
+      const task={id:'t'+Date.now(),label,done:false,color,startTime:startStr,studyRef:true};
+      if(endStr)task.endTime=endStr;
+      tasks[key].push(task);
+      save();
+      playPing();
+      toast('📚 '+shortLabel+' を追加！');
+    } else {
+      toast('📚 '+shortLabel+' はすでに追加済みです');
+    }
+    // Visual feedback
+    btn.textContent='✓ 追加済';
+    btn.style.opacity='0.6';
+    setTimeout(()=>{btn.textContent='+ 追加';btn.style.opacity='1';},1500);
+  }catch(e){
+    toast('エラー: '+e.message);
+    console.error(e);
+  }
+}
+
+function addSlotStudyBulk(btn){
+  try{
+    const key=btn.getAttribute('data-key');
+    const t=parseFloat(btn.getAttribute('data-t')||'0');
+    const li=parseInt(btn.getAttribute('data-li'));
+    const name=btn.getAttribute('data-name');
+    const color=btn.getAttribute('data-color')||'#2D6A8F';
+    if(!key){toast('エラー：キーが取得できません');return;}
+    const sl=studyLists[li];
+    if(!sl){toast('エラー：リストが見つかりません');return;}
+    const startStr=document.getElementById('free-start-time')?.value||timeToStr(t);
+    const endEl=document.getElementById('free-end-time');
+    const endStr=endEl&&endEl.value&&!endEl.disabled?endEl.value:'';
+    if(!tasks[key])tasks[key]=[];
+    let added=0;
+    sl.items.filter(it=>!it.done).forEach(it=>{
+      const label=name+' — '+it.label;
+      if(!tasks[key].some(tk=>tk.label===label)){
+        const task={id:'t'+Date.now()+Math.random(),label,done:false,color,startTime:startStr,studyRef:true};
+        if(endStr)task.endTime=endStr;
+        tasks[key].push(task);
+        added++;
+      }
+    });
+    save();playPing();
+    toast('📚 '+name+' を'+added+'件追加！');
+    btn.textContent='✓ '+added+'件追加済';
+    btn.style.opacity='0.7';
+    setTimeout(()=>{btn.textContent='一括追加';btn.style.opacity='1';},2000);
+  }catch(e){
+    toast('エラー: '+e.message);
+    console.error(e);
+  }
+}
+
+function deleteSlotTask(key,idx){
+  if(!tasks[key])return;
+  tasks[key].splice(idx,1);
+  save();
+  // Refresh task list in modal
+  const t=parseFloat(document.getElementById('free-start-time')?.value?.split(':').reduce((h,m,i)=>i===0?+h:+h+ +m/60,0)||0);
+  openTimeSlot(key,t,'task');
+}
+
+function selectSlotMins(btn){
+  document.getElementById('slot-timer-mins').value=btn.getAttribute('data-m');
+  btn.closest('div').querySelectorAll('button[data-m]').forEach(b=>{
+    b.style.background='var(--sur)';b.style.color='var(--tx)';
+  });
+  btn.style.background='var(--ac)';btn.style.color='white';
+}
+
+function switchTimerMode(mode){
+  document.getElementById('timer-mode-pomo').style.display=mode==='pomo'?'block':'none';
+  document.getElementById('timer-mode-focus').style.display=mode==='focus'?'block':'none';
+  document.getElementById('mode-pomo').style.background=mode==='pomo'?'var(--ac)':'transparent';
+  document.getElementById('mode-pomo').style.color=mode==='pomo'?'white':'var(--mu)';
+  document.getElementById('mode-focus').style.background=mode==='focus'?'var(--ac)':'transparent';
+  document.getElementById('mode-focus').style.color=mode==='focus'?'white':'var(--mu)';
+  if(mode==='pomo')updatePomoCalc();
+}
+
+function updatePomoCalc(){
+  const totalEl=document.getElementById('slot-total-mins');
+  const totalMins=parseInt(totalEl?.textContent||'60');
+  const focusMins=parseInt(document.getElementById('pomo-focus-mins')?.value||'25');
+  const breakMins=parseInt(document.getElementById('pomo-break-mins')?.value||'5');
+  const cycleLen=focusMins+breakMins;
+  const sets=Math.floor(totalMins/cycleLen);
+  const remaining=totalMins-(sets*cycleLen);
+  const extraFocus=Math.min(remaining,focusMins);
+  const totalFocus=sets*focusMins+extraFocus;
+  const el=document.getElementById('pomo-calc');
+  if(el&&sets>=0){
+    el.innerHTML=
+      '🍅 '+focusMins+'分集中 → ☕ '+breakMins+'分休憩 × '+sets+'セット<br>'+
+      '⏱ 合計集中時間: 約'+totalFocus+'分<br>'+
+      (extraFocus>0?'➕ 最後に'+extraFocus+'分の集中タイム':'');
+  }
+}
+
+function selectSlotNotif(btn){
+  btn.closest('div').querySelectorAll('button[data-notif]').forEach(b=>{
+    b.style.background='var(--sur)';b.style.color='var(--tx)';
+  });
+  btn.style.background='var(--ac)';btn.style.color='white';
+}
+
+function startSlotTimer(key,t,until){
+  const {startT,endT}=getSlotTimes();
+  const resolvedUntil=endT>startT?endT:until;
+  const resolvedStart=startT||t;
+  const totalMins=Math.round((resolvedUntil-resolvedStart)*60);
+  const focusMins=Math.max(5,totalMins);
+  const breakMins=5;
+  const notifBtn=Array.from(document.querySelectorAll('[id^="slot-notif-"]')).find(b=>b.style.background.includes('var(--ac)'))||document.getElementById('slot-notif-0');
+  const notifMins=parseInt(notifBtn?.getAttribute('data-notif')||'0');
+  closeModal();
+  if(timerRunning)stopTimer();
+  timerActiveItem={listIdx:-1,itemIdx:-1,isBreak:false,pomoCycle:1,breakMins,studyMins:focusMins};
+  timerRunning=true;timerPaused=false;
+  timerSeconds=0;timerTotal=focusMins*60;
+  timerInterval=setInterval(timerTick,1000);
+  showOverlay('集中中');
+  if(notifMins>0&&'Notification' in window){
+    Notification.requestPermission().then(p=>{
+      if(p==='granted'){
+        const notifDelay=Math.max(0,(focusMins-notifMins)*60*1000);
+        setTimeout(()=>{new Notification('⏰ まもなく次のタスク',{body:notifMins+'分後に次のタスクが始まります'});},notifDelay);
+      }
+    });
+  }
+  renderStudy();
+}
+
+function startTimerFromTask(btn){
+  const label=btn.getAttribute('data-label');
+  const t=parseFloat(btn.getAttribute('data-t')||'0');
+  const until=parseFloat(btn.getAttribute('data-until')||'0');
+  startTimerForSlotTask(label,null,t,until);
+}
+
 
 function switchFreeTab(tabOrEl){
   const tab=typeof tabOrEl==='string'?tabOrEl:tabOrEl.dataset?.tab||tabOrEl;
@@ -3311,6 +3702,7 @@ function renderToday(){
 }
 
 function timeToStr(t){
+  if(t==null||isNaN(t))return '--:--';
   const h=Math.floor(t),m=Math.round((t%1)*60);
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
 }
@@ -5132,6 +5524,143 @@ function addStudyList(){
 checkWeeklyReset();
 
 render();
+
+
+function openSlotTaskEdit(elOrKey,id){
+  const key=typeof elOrKey==='string'?elOrKey:elOrKey.getAttribute('data-key');
+  if(typeof elOrKey!=='string')id=elOrKey.getAttribute('data-id');
+  const taskList=tasks[key]||[];
+  const tk=taskList.find(t=>t.id===id);
+  if(!tk)return;
+  const col=tk.color||'#2D6A8F';
+  const isToday=key===dk(new Date());
+  // Calculate free time for timer
+  const st=tk.startTime?strToTime(tk.startTime):0;
+  const et=tk.endTime?strToTime(tk.endTime):st+2;
+  const slotMins=Math.round((et-st)*60)||60;
+
+  const wrap=document.getElementById('modal-wrap');
+  let html='<div class="modal-bg" onclick="closeModal(event)"><div class="modal" style="max-height:88vh;overflow-y:auto">';
+  html+='<button class="modal-close" onclick="closeModal()">×</button>';
+  html+='<div style="font-size:16px;font-weight:700;margin-bottom:14px">📝 '+tk.label+'</div>';
+
+  // Edit fields
+  html+='<div style="margin-bottom:10px">';
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:4px">タスク名</div>';
+  html+='<input id="edit-task-label" value="'+tk.label.replace(/"/g,'&quot;')+'" style="width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--bd);font-size:14px;outline:none;background:var(--bg);box-sizing:border-box">';
+  html+='</div>';
+  html+='<div style="display:flex;gap:10px;margin-bottom:10px">';
+  html+='<div style="flex:1"><div style="font-size:11px;color:var(--mu);margin-bottom:4px">開始</div>';
+  html+='<input id="edit-task-start" type="time" value="'+(tk.startTime||'')+'" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg)"></div>';
+  html+='<div style="flex:1"><div style="font-size:11px;color:var(--mu);margin-bottom:4px">終了（任意）</div>';
+  html+='<input id="edit-task-end" type="time" value="'+(tk.endTime||'')+'" placeholder="未定" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg)"></div>';
+  html+='</div>';
+  html+='<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">';
+  html+='<span style="font-size:11px;color:var(--mu)">色</span>';
+  html+='<input id="edit-task-color" type="color" value="'+col+'" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--bd);cursor:pointer;padding:1px">';
+  html+='</div>';
+  html+='<button onclick="saveSlotTaskEdit(this)" data-key="'+key+'" data-id="'+id+'" class="abtn" style="width:100%;padding:11px;font-size:14px;margin-bottom:10px">💾 保存</button>';
+
+  // Timer section
+  html+='<div style="border-top:1px solid var(--bd);padding-top:12px;margin-top:4px">';
+  html+='<div style="font-size:13px;font-weight:700;margin-bottom:10px">⏱ 集中タイマー</div>';
+  // Mode toggle
+  html+='<div style="display:flex;gap:4px;margin-bottom:10px;background:var(--bg);border-radius:8px;padding:3px">';
+  html+='<button id="edit-mode-pomo" onclick="switchEditMode(this.dataset.m)" data-m="pomo" style="flex:1;padding:6px;border-radius:6px;border:none;font-size:12px;cursor:pointer;background:var(--ac);color:white;font-weight:600">🍅 ポモドーロ</button>';
+  html+='<button id="edit-mode-focus" onclick="switchEditMode(this.dataset.m)" data-m="focus" style="flex:1;padding:6px;border-radius:6px;border:none;font-size:12px;cursor:pointer;background:transparent;color:var(--mu)">🎯 集中</button>';
+  html+='</div>';
+  // Pomodoro settings
+  html+='<div id="edit-timer-pomo">';
+  html+='<div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">';
+  html+='<div style="display:flex;align-items:center;gap:6px"><span style="font-size:12px;color:var(--mu)">集中</span><input id="edit-pomo-focus" type="number" value="25" min="5" max="90" style="width:50px;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:13px;text-align:center;outline:none;background:var(--bg)" oninput="updateEditPomoCalc('+slotMins+')"><span style="font-size:12px;color:var(--mu)">分</span></div>';
+  html+='<div style="display:flex;align-items:center;gap:6px"><span style="font-size:12px;color:var(--mu)">休憩</span><input id="edit-pomo-break" type="number" value="5" min="1" max="30" style="width:50px;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:13px;text-align:center;outline:none;background:var(--bg)" oninput="updateEditPomoCalc('+slotMins+')"><span style="font-size:12px;color:var(--mu)">分</span></div>';
+  html+='</div>';
+  html+='<div id="edit-pomo-calc" style="font-size:12px;color:var(--sub);background:var(--sur);border-radius:8px;padding:8px;margin-bottom:10px"></div>';
+  html+='</div>';
+  // Focus settings
+  html+='<div id="edit-timer-focus" style="display:none">';
+  html+='<div style="background:var(--ac)18;border-radius:8px;padding:8px;margin-bottom:8px;text-align:center">';
+  html+='<span style="font-size:18px;font-weight:700;color:var(--ac)">'+slotMins+'</span><span style="font-size:12px;color:var(--mu)">分間 集中</span>';
+  html+='</div>';
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:6px">終了前に通知</div>';
+  html+='<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">';
+  ['なし','5分前','10分前','15分前'].forEach((v,i)=>{
+    html+='<button onclick="selectEditNotif(this)" data-notif="'+[0,5,10,15][i]+'" style="padding:5px 10px;border-radius:20px;background:'+(i===0?'var(--ac)':'var(--sur)')+';border:1px solid var(--bd);color:'+(i===0?'white':'var(--tx)')+';font-size:11px;cursor:pointer">'+v+'</button>';
+  });
+  html+='</div>';
+  html+='</div>';
+  html+='<button onclick="startEditTimer(this)" data-key="'+key+'" data-id="'+id+'" data-mins="'+slotMins+'" style="width:100%;padding:12px;border-radius:12px;background:var(--ac);color:white;border:none;font-size:15px;font-weight:700;cursor:pointer">▶ 集中スタート</button>';
+  html+='</div>';
+
+  html+='<div style="border-top:1px solid var(--bd);padding-top:10px;margin-top:10px">';
+  html+='<button onclick="deleteSlotTask(this.dataset.key,this.dataset.id);closeModal()" data-key="'+key+'" data-id="'+id+'" style="width:100%;padding:10px;border-radius:10px;background:#DC262622;border:1px solid #DC2626;color:#DC2626;font-size:13px;cursor:pointer">🗑 削除</button>';
+  html+='</div>';
+  html+='</div></div>';
+  wrap.innerHTML=html;
+  setTimeout(()=>updateEditPomoCalc(slotMins),50);
+}
+
+function switchEditMode(mode){
+  ['pomo','focus'].forEach(m=>{
+    const el=document.getElementById('edit-timer-'+m);
+    const btn=document.getElementById('edit-mode-'+m);
+    if(el)el.style.display=m===mode?'block':'none';
+    if(btn){btn.style.background=m===mode?'var(--ac)':'transparent';btn.style.color=m===mode?'white':'var(--mu)';}
+  });
+  if(mode==='pomo'){
+    const mins=parseInt(document.querySelector('[data-mins]')?.getAttribute('data-mins')||'60');
+    updateEditPomoCalc(mins);
+  }
+}
+
+function updateEditPomoCalc(totalMins){
+  const f=parseInt(document.getElementById('edit-pomo-focus')?.value||'25');
+  const b=parseInt(document.getElementById('edit-pomo-break')?.value||'5');
+  const cycle=f+b;
+  const sets=Math.floor(totalMins/cycle);
+  const extra=Math.min(totalMins-(sets*cycle),f);
+  const el=document.getElementById('edit-pomo-calc');
+  if(el)el.innerHTML='🍅 '+f+'分集中→☕'+b+'分休憩 × '+sets+'セット<br>⏱ 合計集中: '+(sets*f+extra)+'分';
+}
+
+function selectEditNotif(btn){
+  btn.closest('div').querySelectorAll('[data-notif]').forEach(b=>{
+    b.style.background='var(--sur)';b.style.color='var(--tx)';
+  });
+  btn.style.background='var(--ac)';btn.style.color='white';
+}
+
+function startEditTimer(btn){
+  const id=btn.getAttribute('data-id');
+  const key=btn.getAttribute('data-key');
+  const slotMins=parseInt(btn.getAttribute('data-mins')||'25');
+  const isPomo=document.getElementById('edit-mode-pomo')?.style.background.includes('var(--ac)');
+  const focusMins=isPomo?parseInt(document.getElementById('edit-pomo-focus')?.value||'25'):slotMins;
+  const breakMins=isPomo?parseInt(document.getElementById('edit-pomo-break')?.value||'5'):5;
+  const notifBtn=document.querySelector('[data-notif][style*="var(--ac)"]');
+  const notifMins=parseInt(notifBtn?.getAttribute('data-notif')||'0');
+  const tk=(tasks[key]||[]).find(t=>t.id===id);
+  const label=tk?.label||'集中中';
+  closeModal();
+  if(timerRunning)stopTimer();
+  timerActiveItem={listIdx:-1,itemIdx:-1,isBreak:false,pomoCycle:1,breakMins,studyMins:focusMins,isPomo};
+  timerRunning=true;timerPaused=false;
+  timerSeconds=0;timerTotal=focusMins*60;
+  timerInterval=setInterval(timerTick,1000);
+  showOverlay(isPomo?'🍅 '+label:'🎯 '+label);
+  if(notifMins>0&&'Notification' in window){
+    Notification.requestPermission().then(p=>{
+      if(p==='granted'){
+        const delay=Math.max(0,(slotMins-notifMins)*60*1000);
+        setTimeout(()=>new Notification('⏰ まもなく終了',{body:notifMins+'分後に終了です'}),delay);
+      }
+    });
+  }
+  render();
+}
+
+
+
 </script>
 </body>
 </html>
