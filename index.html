@@ -656,10 +656,36 @@ function openDayModal(key){
   const wrap=document.getElementById('modal-wrap');
   const uhEv2=UH_CALENDAR[key]||'';
   const customEvs2=(customEvents[key]||[]);
+  const dow2=d.getDay();
+  const isCancelled=cancelledDays[key]==='all';
+  const cancelledEvIds=Array.isArray(cancelledDays[key])?cancelledDays[key]:[];
+  // isCancelled kept for backward compat but UI simplified
+  const daySchItems=schedule.filter(e=>e.days.includes(dow2));
+  let schHtml='';
+  if(daySchItems.length>0){
+    schHtml='<div style="margin-bottom:10px">';
+    schHtml+='<div style="font-size:11px;font-weight:600;color:var(--sub);margin-bottom:6px">📅 この日のスケジュール <span style="font-size:10px;font-weight:400;color:var(--mu)">（消したいものは「この日だけ消す」）</span></div>';
+    daySchItems.forEach(e=>{
+      const hidden=isCancelled||cancelledEvIds.includes(e.id);
+      schHtml+='<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:'+e.bg+';margin-bottom:6px;border-left:3px solid '+e.color+';opacity:'+(hidden?'0.4':'1')+'">'+
+        '<div style="flex:1">'+
+          '<div style="font-size:12px;color:'+e.color+';font-weight:600;'+(hidden?'text-decoration:line-through':'')+'">'+e.label+'</div>'+
+          '<div style="font-size:10px;color:'+e.color+';opacity:0.8">'+timeToStr(e.start)+'〜'+timeToStr(e.end)+'</div>'+
+        '</div>'+
+        '<button onclick="toggleCancelEvent(this)" data-key="'+key+'" data-eid="'+e.id+'" data-modal-key="'+key+'" style="font-size:11px;padding:4px 10px;border-radius:8px;background:'+(hidden?'#DC2626':'var(--bg)')+';color:'+(hidden?'white':'var(--mu)')+';border:1px solid '+(hidden?'#DC2626':'var(--bd)')+';cursor:pointer;white-space:nowrap">'+
+        (hidden?'✓ 非表示中':'この日だけ消す')+'</button>'+
+        '</div>';
+    });
+    schHtml+='</div>';
+  }
   wrap.innerHTML=`<div class="modal-bg" onclick="closeModal(event)">
     <div class="modal" style="position:relative">
       <button class="modal-close" onclick="closeModal()">×</button>
-      <h3>${d.getMonth()+1}月${d.getDate()}日 ${DJ[d.getDay()]}曜日</h3>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <h3 style="margin:0">${d.getMonth()+1}月${d.getDate()}日 ${DJ[d.getDay()]}曜日</h3>
+
+      </div>
+      ${schHtml}
       ${uhEv2?('<div style="display:inline-block;padding:3px 8px;border-radius:20px;background:#EBF3F8;color:#2D6A8F;font-size:11px;margin-bottom:6px">📌 '+uhEv2+'</div>'):''}
       ${customEvs2.map(e=>'<div style="display:inline-block;padding:3px 8px;border-radius:20px;background:'+e.color+'22;color:'+e.color+';font-size:11px;margin-bottom:6px;margin-right:4px">● '+e.name+'</div>').join('')}
       <div class="card" id="modal-tasks">${taskHtml}</div>
@@ -797,7 +823,7 @@ function openTimeSlot(key,t){
   const dow=d.getDay();
   
   // Find what's scheduled around this time
-  const dayEvs=schedule.filter(e=>e.days.includes(dow));
+  const dayEvs=schedule.filter(e=>e.days.includes(dow)&&!isEventCancelled(key,e.id));
   
   // Find free block: next event after t
   const nextEv=dayEvs.filter(e=>e.start>t).sort((a,b)=>a.start-b.start)[0];
@@ -1061,6 +1087,42 @@ let eventTemplates=JSON.parse(localStorage.getItem('yp_ev_templates')||'null')||
   {id:'et5',name:'楽しいイベント',color:'#9B6AD4'},
 ];
 let customEvents=JSON.parse(localStorage.getItem('yp_custom_ev')||'{}');
+let cancelledDays=JSON.parse(localStorage.getItem('yp_cancelled_days')||'{}');
+function saveCancelledDays(){localStorage.setItem('yp_cancelled_days',JSON.stringify(cancelledDays));}
+
+function isEventCancelled(key,eventId){
+  const c=cancelledDays[key];
+  if(!c)return false;
+  if(c==='all')return true;
+  if(Array.isArray(c)&&c.includes(eventId))return true;
+  return false;
+}
+
+function toggleCancelDay(key){
+  if(cancelledDays[key]==='all'){
+    delete cancelledDays[key];
+  } else {
+    cancelledDays[key]='all';
+  }
+  saveCancelledDays();
+  render();
+  openDayModal(key);
+}
+
+function toggleCancelEvent(el){
+  const key=el.getAttribute('data-key');
+  const eventId=el.getAttribute('data-eid');
+  const modalKey=el.getAttribute('data-modal-key');
+  if(!cancelledDays[key])cancelledDays[key]=[];
+  if(cancelledDays[key]==='all')return;
+  const arr=cancelledDays[key];
+  const idx=arr.indexOf(eventId);
+  if(idx>=0){arr.splice(idx,1);if(arr.length===0)delete cancelledDays[key];}
+  else arr.push(eventId);
+  saveCancelledDays();
+  render();
+  openDayModal(modalKey);
+}
 
 function saveCustomEvents(){
   localStorage.setItem('yp_custom_ev',JSON.stringify(customEvents));
@@ -2184,7 +2246,7 @@ function renderToday(){
       return false;
     });
     // スケジュールから現在時刻に合うイベント
-    const nowEvs=schedule.filter(e=>e.days.includes(dow)&&e.start<=nowT+0.5&&e.end>=nowT-0.25);
+    const nowEvs=schedule.filter(e=>e.days.includes(dow)&&e.start<=nowT+0.5&&e.end>=nowT-0.25&&!isEventCancelled(key,e.id));
     
     if(autoTasks.length>0||nowEvs.length>0){
       // スケジュールイベント表示
@@ -2299,7 +2361,7 @@ function renderToday(){
     for(let half=0;half<2;half++){
       const t=hr+(half*0.5);
       const slotEnd=t+0.5;
-      const evs=schedule.filter(e=>e.days.includes(dow)&&e.start<slotEnd&&e.end>t);
+      const evs=schedule.filter(e=>e.days.includes(dow)&&e.start<slotEnd&&e.end>t&&!isEventCancelled(key,e.id));
       const label=half===0?`${hr}:00`:`${hr}:30`;
       const isHourBorder=half===0&&hr>6;
       h+=`<div class="tlr"><div class="tt">${half===0?hr+':00':''}</div><div class="tc${isHourBorder?' hb':''}">`;
@@ -2514,7 +2576,7 @@ function renderWeek(){
   dates.forEach(d=>{
     const k=dk(d),dow=d.getDay();
     const isT=k===today;
-    const dayEvs=schedule.filter(e=>e.days.includes(dow));
+    const dayEvs=schedule.filter(e=>e.days.includes(dow)&&!isEventCancelled(k,e.id));
     const dayTasks=(tasks[k]||[]).filter(t=>!t.done&&t.startTime);
     const dayStudy=(studyBlocks[k]||[]);
 
