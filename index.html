@@ -578,31 +578,69 @@ function switchModalTab(tab){
 
 function buildStudyAddList(key){
   let html='';
+  if(!studyLists||studyLists.length===0){
+    return '<div style="padding:12px;color:var(--mu);font-size:13px;text-align:center">学習リストが空です</div>';
+  }
   studyLists.forEach((sl,li)=>{
     const pending=sl.items.filter(it=>!it.done);
     if(pending.length===0)return;
-    html+='<div style="margin-bottom:8px">';
-    html+='<div style="font-size:11px;font-weight:600;color:'+sl.color+';margin-bottom:4px">'+sl.name+'</div>';
+    html+='<div style="margin-bottom:10px">';
+    // List header with bulk add button
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+    html+='<span style="font-size:11px;font-weight:700;color:'+sl.color+'">📚 '+sl.name+'</span>';
+    html+='<button onclick="addAllStudyAsTask(this)" data-key="'+key+'" data-li="'+li+'" data-name="'+sl.name.replace(/"/g,'&quot;')+'" data-color="'+sl.color+'" style="padding:2px 8px;border-radius:8px;background:'+sl.color+'22;border:1px solid '+sl.color+';color:'+sl.color+';font-size:10px;cursor:pointer">一括追加</button>';
+    html+='</div>';
+    // Individual items
     pending.forEach((it,ii)=>{
-      html+='<button onclick="addStudyAsTask(this)" data-key="'+key+'" data-label="'+it.label.replace(/"/g,'&quot;')+'" data-color="'+sl.color+'" data-li="'+li+'" data-ii="'+sl.items.indexOf(it)+'" style="width:100%;padding:7px 10px;border-radius:8px;background:'+sl.color+'18;border:1px solid var(--bd);text-align:left;font-size:12px;cursor:pointer;margin-bottom:4px;color:var(--tx);display:flex;align-items:center;gap:8px">'+
-        '<span style="width:8px;height:8px;border-radius:50%;background:'+sl.color+';flex-shrink:0;display:inline-block"></span>'+it.label+
-        '</button>';
+      const fullLabel=sl.name+' — '+it.label;
+      html+='<button onclick="addStudyAsTask(this)" data-key="'+key+'" data-label="'+fullLabel.replace(/"/g,'&quot;')+'" data-color="'+sl.color+'" style="width:100%;padding:7px 10px;border-radius:8px;background:'+sl.color+'18;border:1px solid var(--bd);text-align:left;font-size:12px;cursor:pointer;margin-bottom:4px;color:var(--tx);display:flex;align-items:center;gap:8px">'+
+        '<span style="width:8px;height:8px;border-radius:50%;background:'+sl.color+';flex-shrink:0;display:inline-block"></span>'+it.label+'</button>';
     });
     html+='</div>';
   });
-  return html||'<div style="color:var(--mu);font-size:13px">学習リストが空です</div>';
+  return html||'<div style="padding:12px;color:var(--mu);font-size:13px;text-align:center">未完了の学習項目がありません</div>';
 }
 
+
 function addStudyAsTask(btn){
-  const key=btn.getAttribute('data-key');
+  const key=btn.getAttribute('data-key')||dk(new Date());
   const label=btn.getAttribute('data-label');
   const color=btn.getAttribute('data-color');
   if(!tasks[key])tasks[key]=[];
   tasks[key].push({id:'t'+Date.now(),label,done:false,color,studyRef:true});
   save();
-  openDayModal(key);
-  toast('📚 '+label+' をタスクに追加！');
+  playPing();
+  // Flash the button
+  btn.style.background=color+'44';
+  btn.style.border='1.5px solid '+color;
+  setTimeout(()=>{btn.style.background=color+'18';btn.style.border='1px solid var(--bd)';},600);
+  // Refresh today tab in background
+  if(tab==='today')renderToday();
+  toast('📚 追加しました！');
 }
+
+function addAllStudyAsTask(btn){
+  const key=btn.getAttribute('data-key')||dk(new Date());
+  const li=parseInt(btn.getAttribute('data-li'));
+  const name=btn.getAttribute('data-name');
+  const color=btn.getAttribute('data-color');
+  const sl=studyLists[li];
+  if(!sl)return;
+  const pending=sl.items.filter(it=>!it.done);
+  if(!tasks[key])tasks[key]=[];
+  pending.forEach(it=>{
+    const label=name+' — '+it.label;
+    // Avoid duplicates
+    if(!tasks[key].some(t=>t.label===label)){
+      tasks[key].push({id:'t'+Date.now()+Math.random(),label,done:false,color,studyRef:true});
+    }
+  });
+  save();
+  playPing();
+  if(tab==='today')renderToday();
+  toast('📚 '+name+' を'+pending.length+'件追加！');
+}
+
 
 function saveDayMemo(key,val){
   localStorage.setItem('yp_day_memo_'+key,val);
@@ -2348,11 +2386,11 @@ function renderToday(){
     </div>
     <!-- 学習タブ -->
     <div id="tadd-panel-study" style="display:none;max-height:200px;overflow-y:auto">
-      ${buildStudyAddList('${key}')}
+      ${buildStudyAddList(key)}
     </div>
     <!-- 習慣タブ -->
     <div id="tadd-panel-habit" style="display:none">
-      ${buildHabitAddList('${key}')}
+      ${buildHabitAddList(key)}
     </div>
   </div></div>
   <div class="sec"><span>スケジュール</span><span class="sec-edit" onclick="openSchEdit()">編集</span></div>
@@ -3973,12 +4011,13 @@ function renderStudy(){
   const isBreak=timerActiveItem&&timerActiveItem.isBreak;
   const pomoCycle=(timerActiveItem&&timerActiveItem.pomoCycle)||1;
   html+=`<div class="card" style="padding:20px;text-align:center;margin-bottom:12px">
-    ${timerRunning?'<div style="display:flex;gap:6px;justify-content:center;margin-bottom:10px">'+
-      '<button onclick="toggleStudyNoise(this.dataset.t)" data-t="none" id="snoise-none" style="padding:4px 8px;border-radius:10px;background:var(--ac);color:white;border:none;font-size:11px;cursor:pointer">🔇 なし</button>'+
-      '<button onclick="toggleStudyNoise(this.dataset.t)" data-t="rain" id="snoise-rain" style="padding:4px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--bd);font-size:11px;cursor:pointer">🌧️ 雨</button>'+
-      '<button onclick="toggleStudyNoise(this.dataset.t)" data-t="cafe" id="snoise-cafe" style="padding:4px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--bd);font-size:11px;cursor:pointer">☕ カフェ</button>'+
-      '<button onclick="toggleStudyNoise(this.dataset.t)" data-t="wave" id="snoise-wave" style="padding:4px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--bd);font-size:11px;cursor:pointer">🌊 波</button>'+
-      '</div>':''}
+    <div style="display:flex;gap:6px;justify-content:center;margin-bottom:10px">
+      <button onclick="toggleStudyNoise(this.dataset.t)" data-t="none" id="snoise-none" style="padding:4px 8px;border-radius:10px;background:var(--ac);color:white;border:none;font-size:11px;cursor:pointer">🔇 なし</button>
+      <button onclick="toggleStudyNoise(this.dataset.t)" data-t="rain" id="snoise-rain" style="padding:4px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--bd);font-size:11px;cursor:pointer">🌧️ 雨</button>
+      <button onclick="toggleStudyNoise(this.dataset.t)" data-t="cafe" id="snoise-cafe" style="padding:4px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--bd);font-size:11px;cursor:pointer">☕ カフェ</button>
+      <button onclick="toggleStudyNoise(this.dataset.t)" data-t="wave" id="snoise-wave" style="padding:4px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--bd);font-size:11px;cursor:pointer">🌊 波</button>
+      <button onclick="toggleStudyNoise(this.dataset.t)" data-t="white" id="snoise-white" style="padding:4px 8px;border-radius:10px;background:var(--bg);border:1px solid var(--bd);font-size:11px;cursor:pointer">〰️ WN</button>
+    </div>
     <div style="font-size:12px;color:var(--mu);margin-bottom:4px">${timerRunning?(isBreak?'☕ 休憩中':'⏱ '+activeLabel):'ポモドーロタイマー'}</div>
     ${timerRunning?`<div style="font-size:10px;color:var(--mu);margin-bottom:8px">${isBreak?'休憩':'集中'} #${pomoCycle}</div>`:''}
     <div class="timer-circle" id="timer-circle" style="background:conic-gradient(${isBreak?'#10B981':'var(--ac)'} ${pctDeg}deg,var(--bd) ${pctDeg}deg)">
