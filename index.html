@@ -785,13 +785,23 @@ function startMemoTimer(btn){
   const notifMins=parseInt(notifBtn?.getAttribute('data-notif')||'0');
   const tk=(tasks[key]||[]).find(t=>t.id===id);
   const label=tk?.label||'集中中';
+  // Set deadline from task end time
+  timerDeadline=null;
+  let actualMins=isPomo?focusMins:slotMins;
+  if(!isPomo&&tk?.endTime){
+    const [eh,em]=tk.endTime.split(':').map(Number);
+    const now=new Date();
+    const deadline=new Date(now);
+    deadline.setHours(eh,em,0,0);
+    if(deadline>now){timerDeadline=deadline.getTime();actualMins=Math.max(1,Math.round((deadline-now)/60000));}
+  }
   closeModal();
   if(timerRunning)stopTimer();
-  timerActiveItem={listIdx:-1,itemIdx:-1,isBreak:false,pomoCycle:1,breakMins,studyMins:focusMins,isPomo};
+  timerActiveItem={listIdx:-1,itemIdx:-1,isBreak:false,pomoCycle:1,breakMins,studyMins:actualMins,isPomo};
   timerRunning=true;timerPaused=false;
-  timerSeconds=0;timerTotal=focusMins*60;
+  timerSeconds=0;timerTotal=actualMins*60;
   timerInterval=setInterval(timerTick,1000);
-  showOverlay(isPomo?'🍅 '+label:'🎯 '+label);
+  showOverlay(isPomo?'🍅 '+label:(timerDeadline?'🎯 '+tk.endTime+'まで':'🎯 ')+label);
   if(notifMins>0&&'Notification' in window){
     Notification.requestPermission().then(p=>{
       if(p==='granted'){
@@ -5178,7 +5188,7 @@ function updateOverlay(){
   const el=document.getElementById('overlay-time');
   const bar=document.getElementById('overlay-bar');
   if(!el)return;
-  const remaining=timerTotal-timerSeconds;
+  const remaining=Math.max(0,timerTotal-timerSeconds);
   const m=Math.floor(remaining/60);
   const s=remaining%60;
   el.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
@@ -5222,6 +5232,13 @@ function timerTick(){
   const today=dk(new Date());
   studyLog[today]=(studyLog[today]||0)+1;
   saveStudy();
+  // Deadline mode: check real clock
+  if(timerDeadline){
+    const now=Date.now();
+    const remaining=Math.max(0,Math.round((timerDeadline-now)/1000));
+    timerTotal=timerSeconds+remaining; // keep total in sync
+    if(now>=timerDeadline)timerSeconds=timerTotal; // force finish
+  }
   updateTimerDisplay();
   updateOverlay();
   if(timerSeconds>=timerTotal){
@@ -5306,18 +5323,33 @@ function startPomoBreak(li,ii,cycle,focusMins,breakMins){
   renderStudy();
 }
 
+function clearPomoEndTime(){
+  const el=document.getElementById('pomo-end-time');
+  if(el)el.value='';
+}
+
 function startTimerFromPomo(){
-  // Start timer from pomodoro card without specific study item
   const customMins=parseInt(document.getElementById('timer-mins')?.value||'25');
   const breakMins=parseInt(document.getElementById('break-mins')?.value||'5');
+  const endTimeVal=document.getElementById('pomo-end-time')?.value||'';
   if(timerRunning)stopTimer();
-  timerActiveItem={listIdx:-1,itemIdx:-1,isBreak:false,pomoCycle:1,breakMins,studyMins:customMins};
-  timerRunning=true;
-  timerPaused=false;
-  timerSeconds=0;
-  timerTotal=customMins*60;
+  // Set deadline if end time specified
+  timerDeadline=null;
+  let focusMins=customMins;
+  if(endTimeVal){
+    const [eh,em]=endTimeVal.split(':').map(Number);
+    const now=new Date();
+    const deadline=new Date(now);
+    deadline.setHours(eh,em,0,0);
+    if(deadline<=now)deadline.setDate(deadline.getDate()+1); // next day if past
+    timerDeadline=deadline.getTime();
+    focusMins=Math.max(1,Math.round((deadline-now)/60000));
+  }
+  timerActiveItem={listIdx:-1,itemIdx:-1,isBreak:false,pomoCycle:1,breakMins,studyMins:focusMins};
+  timerRunning=true;timerPaused=false;
+  timerSeconds=0;timerTotal=focusMins*60;
   timerInterval=setInterval(timerTick,1000);
-  showOverlay('集中中');
+  showOverlay(endTimeVal?'🎯 '+endTimeVal+'まで集中':'集中中');
   renderStudy();
 }
 
@@ -5340,6 +5372,7 @@ function startTimer(listIdx,itemIdx){
 
 function stopTimer(){
   clearInterval(timerInterval);
+  timerDeadline=null;
   // Record study block to timeline
   if(timerActiveItem&&timerActiveItem.studyStartTime&&!timerActiveItem.isBreak&&timerSeconds>60){
     const startT=timerActiveItem.studyStartTime;
@@ -5370,10 +5403,17 @@ function stopTimerOverlay(){
 function updateTimerDisplay(){
   const el=document.getElementById('timer-display');
   if(!el)return;
-  const remaining=timerTotal-timerSeconds;
+  const remaining=Math.max(0,timerTotal-timerSeconds);
   const m=Math.floor(remaining/60);
   const s=remaining%60;
   el.textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  // Show end time if deadline mode
+  const endLabel=document.getElementById('timer-end-label');
+  if(endLabel&&timerDeadline){
+    const d=new Date(timerDeadline);
+    endLabel.textContent='→ '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+'に終了';
+    endLabel.style.display='block';
+  } else if(endLabel){endLabel.style.display='none';}
   const pct=(timerSeconds/timerTotal)*360;
   const circle=document.getElementById('timer-circle');
   if(circle)circle.style.background=`conic-gradient(var(--ac) ${pct}deg, var(--bd) ${pct}deg)`;
@@ -5418,6 +5458,7 @@ function renderStudy(){
     <div class="timer-circle" id="timer-circle" style="background:conic-gradient(${isBreak?'#10B981':'var(--ac)'} ${pctDeg}deg,var(--bd) ${pctDeg}deg)">
       <div class="timer-inner">
         <div class="timer-time" id="timer-display">${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</div>
+        <div id="timer-end-label" style="font-size:11px;color:var(--ac);margin-top:2px;display:none"></div>
         <div class="timer-label" style="color:${isBreak?'#10B981':'var(--sub)'}">${timerRunning?(isBreak?'☕ 休憩':'集中中'):'準備OK'}</div>
       </div>
     </div>
@@ -5434,7 +5475,14 @@ function renderStudy(){
           '<label style="font-size:12px;color:var(--mu)">分　休憩</label>'+
           '<input id="break-mins" type="number" value="5" min="1" max="30" style="width:50px;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:14px;text-align:center;outline:none">'+
           '<label style="font-size:12px;color:var(--mu)">分</label>'+
-          '<button onclick="startTimerFromPomo()" style="padding:8px 16px;border-radius:10px;background:var(--ac);color:white;border:none;font-size:14px;cursor:pointer;font-weight:600">▶ 開始</button>'+
+          '</div>'+
+          '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">'+
+          '<label style="font-size:12px;color:var(--mu)">終了時刻（任意）</label>'+
+          '<input id="pomo-end-time" type="time" style="padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">'+
+          '<button onclick="clearPomoEndTime()" style="font-size:11px;padding:4px 8px;border-radius:6px;background:var(--sur);border:1px solid var(--bd);color:var(--mu);cursor:pointer">なし</button>'+
+          '</div>'+
+          '<div style="margin-top:10px">'+
+          '<button onclick="startTimerFromPomo()" style="width:100%;padding:10px 16px;border-radius:10px;background:var(--ac);color:white;border:none;font-size:14px;cursor:pointer;font-weight:600">▶ 開始</button>'+
           '</div>'
       }
     </div>
@@ -5628,6 +5676,27 @@ function selectEditNotif(btn){
     b.style.background='var(--sur)';b.style.color='var(--tx)';
   });
   btn.style.background='var(--ac)';btn.style.color='white';
+}
+
+function saveSlotTaskEdit(btn){
+  const key=btn.getAttribute('data-key');
+  const id=btn.getAttribute('data-id');
+  if(!tasks[key])return;
+  const tk=tasks[key].find(t=>t.id===id);
+  if(!tk){toast('タスクが見つかりません');return;}
+  const newLabel=document.getElementById('edit-task-label')?.value.trim();
+  const newStart=document.getElementById('edit-task-start')?.value||'';
+  const newEnd=document.getElementById('edit-task-end')?.value||'';
+  const newColor=document.getElementById('edit-task-color')?.value||tk.color;
+  if(!newLabel){toast('タスク名を入力してください');return;}
+  tk.label=newLabel;
+  tk.startTime=newStart||undefined;
+  tk.endTime=newEnd||undefined;
+  tk.color=newColor;
+  save();
+  toast('💾 保存しました！');
+  closeModal();
+  render();
 }
 
 function startEditTimer(btn){
