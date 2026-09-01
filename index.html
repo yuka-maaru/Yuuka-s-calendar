@@ -377,7 +377,11 @@ function applyRecurringTasks(force=false){
         const k=dk(target);
         if(!tasks[k])tasks[k]=[];
         if(!tasks[k].some(t=>t.recurringId===rt.id)){
-          tasks[k].push({id:'r'+rt.id+'_'+k,label:rt.label,done:false,recurringId:rt.id});
+          // Restore done state from localStorage
+          const rdKey='yp_rd_'+rt.id+'_'+k;
+          const savedDone=localStorage.getItem(rdKey);
+          const done=savedDone==='1';
+          tasks[k].push({id:'r'+rt.id+'_'+k,label:rt.label,done,recurringId:rt.id});
         }
       });
     });
@@ -462,6 +466,22 @@ function skipHabitDay(hid,key,btn){
     btn.style.border='1px solid '+(sk?'var(--bd)':'#DC2626');
     btn.style.color=sk?'var(--tx)':'#DC2626';
   }
+}
+
+let failedHabits=JSON.parse(localStorage.getItem('yp_failed')||'{}');
+function saveFailedHabits(){localStorage.setItem('yp_failed',JSON.stringify(failedHabits));}
+function isFailed(hid,key){return (failedHabits[key]||[]).includes(hid);}
+
+function markFailedHabit(hid,key){
+  if(!failedHabits[key])failedHabits[key]=[];
+  if(failedHabits[key].includes(hid)){
+    failedHabits[key]=failedHabits[key].filter(x=>x!==hid);
+  } else {
+    // Remove done state if marking failed
+    if(data[key])data[key][hid]=false;
+    failedHabits[key].push(hid);
+  }
+  saveFailedHabits();save();render();
 }
 
 function toggleH(hid,key){
@@ -829,7 +849,16 @@ function saveTaskMemo(elOrKey,id){
 function toggleT(key,tid){
   if(!tasks[key])return;
   const t=tasks[key].find(x=>x.id===tid);
-  if(t){t.done=!t.done;if(t.done)playPing();save();render();}
+  if(t){
+    t.done=!t.done;
+    if(t.done)playPing();
+    // Save recurring task done state separately
+    if(t.recurringId){
+      const rdKey='yp_rd_'+t.recurringId+'_'+key;
+      localStorage.setItem(rdKey, t.done?'1':'0');
+    }
+    save();render();
+  }
 }
 
 function delT(key,tid){
@@ -2336,11 +2365,17 @@ function renderMealRecord(){
         <input value="${val}" placeholder="未定" data-day="${d.key}" data-slot="${key}"
           oninput="saveMealInput(this)"
           style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">
+        ${val?`<button onclick="addToShopFromMeal('${val.replace(/'/g,"&#39;")}の材料')" style="font-size:10px;padding:4px 8px;border-radius:6px;background:var(--sur);border:1px solid var(--bd);cursor:pointer" title="材料を買い物リストへ">🛒</button>`:''}
       </div>`;
     });
     const note=(meal['メモ']||'').replace(/</g,'&lt;');
     html+=`<textarea placeholder="メモ（作り置き・レシピなど）" data-day="${d.key}" data-slot="メモ" oninput="saveMealInput(this)"
-      style="width:100%;min-height:40px;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg);box-sizing:border-box;resize:none">${note}</textarea>
+      style="width:100%;min-height:40px;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg);box-sizing:border-box;resize:none">${note}</textarea>`;
+    // Recipe shopping add
+    html+=`<div style="display:flex;gap:6px;margin-top:8px">
+      <input id="recipe-shop-inp-${d.key}" placeholder="🛒 材料を買い物リストに追加..." style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter'){addToShopFromMeal(this.value);this.value='';}">
+      <button onclick="const el=document.getElementById('recipe-shop-inp-${d.key}');if(el&&el.value.trim()){addToShopFromMeal(el.value.trim());el.value='';}" style="padding:7px 10px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:12px;cursor:pointer">追加</button>
+    </div>
     </div>`;
   });
 
