@@ -861,6 +861,20 @@ function toggleT(key,tid){
   }
 }
 
+function moveTaskToTmr(key,tid){
+  const t=(tasks[key]||[]).find(x=>x.id===tid);
+  if(!t)return;
+  const tmr=new Date();tmr.setDate(tmr.getDate()+1);
+  const tKey=dk(tmr);
+  if(!tasks[tKey])tasks[tKey]=[];
+  // Add to tomorrow
+  tasks[tKey].push({...t,id:'t'+Date.now(),done:false,startTime:undefined,endTime:undefined});
+  // Remove from today
+  tasks[key]=tasks[key].filter(x=>x.id!==tid);
+  save();render();
+  toast('→ 明日のタスクに移動しました！');
+}
+
 function delT(key,tid){
   if(!tasks[key])return;
   tasks[key]=tasks[key].filter(x=>x.id!==tid);
@@ -3656,6 +3670,7 @@ function renderToday(){
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       </button>
       <span class="tlb" onclick="openTaskMemo('${key}','${t.id}')" style="cursor:pointer">${t.color?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+t.color+';margin-right:4px;vertical-align:middle"></span>':''}<span style="font-size:11px;color:var(--sub)">${timeStr}</span>${t.label}${t.memo?'<span style="font-size:9px;color:var(--mu);margin-left:4px">📝</span>':''}</span>
+      ${!t.done?`<button onclick="moveTaskToTmr('${key}','${t.id}')" style="font-size:10px;padding:2px 6px;border-radius:6px;background:var(--bg);border:1px solid var(--bd);color:var(--mu);cursor:pointer;white-space:nowrap">→明日</button>`:''}
       <button class="tdl" onclick="delT('${key}','${t.id}')">×</button>
     </div>`;
   });
@@ -5074,17 +5089,24 @@ function autoResize(el){
 
 // 毎週月曜日に自動リセット
 function checkWeeklyReset(){
-  const lastReset=localStorage.getItem('yp_last_reset');
-  const now=new Date();
-  const monday=new Date(now);
-  monday.setDate(now.getDate()-(now.getDay()===0?6:now.getDay()-1));
-  monday.setHours(0,0,0,0);
-  const mondayStr=dk(monday);
-  if(lastReset!==mondayStr){
-    studyLists.forEach(sl=>sl.items.forEach(item=>item.done=false));
-    localStorage.setItem('yp_last_reset',mondayStr);
-    saveStudy();
-  }
+  // 自動リセットなし - 手動リセットのみ
+}
+
+function resetStudyList(li){
+  if(!studyLists[li])return;
+  if(!confirm(studyLists[li].name+' をリセットしますか？'))return;
+  studyLists[li].items.forEach(item=>item.done=false);
+  saveStudy();
+  renderStudy();
+  toast('🔄 '+studyLists[li].name+' をリセットしました！');
+}
+
+function resetAllStudyLists(){
+  if(!confirm('全ての学習リストをリセットしますか？'))return;
+  studyLists.forEach(sl=>sl.items.forEach(item=>item.done=false));
+  saveStudy();
+  renderStudy();
+  toast('🔄 全リストをリセットしました！');
 }
 
 function saveStudy(){
@@ -5524,7 +5546,7 @@ function renderStudy(){
   </div>`;
 
   // チェックリスト
-  html+=`<div class="sec"><span>今週のチェックリスト</span><span class="sec-edit" onclick="studyOpenList='edit';renderStudy()">編集</span></div>`;
+  html+=`<div class="sec"><span>学習チェックリスト</span><span class="sec-edit" onclick="studyOpenList='edit';renderStudy()">編集</span><span class="sec-edit" onclick="resetAllStudyLists()" style="margin-left:6px">🔄 全リセット</span></div>`;
 
   if(studyOpenList==='edit'){
     html+=`<div style="margin-bottom:8px"><button onclick="studyOpenList=null;renderStudy()" style="padding:6px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:12px;cursor:pointer">← 戻る</button></div>`;
@@ -5559,6 +5581,7 @@ function renderStudy(){
           <div style="width:10px;height:10px;border-radius:50%;background:${sl.color};flex-shrink:0"></div>
           <span style="font-size:13px;font-weight:600;flex:1">${sl.name}</span>
           <span style="font-size:11px;color:var(--mu)">${done}/${total}</span>
+          <button onclick="resetStudyList(${li})" style="font-size:10px;padding:2px 7px;border-radius:6px;background:var(--sur);border:1px solid var(--bd);color:var(--mu);cursor:pointer" title="リセット">🔄</button>
         </div>
         ${sl.items.map((item,ii)=>`
         <div class="study-item">
