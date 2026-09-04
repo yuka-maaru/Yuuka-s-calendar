@@ -444,6 +444,7 @@ let skippedHabits=JSON.parse(localStorage.getItem('yp_skipped')||'{}');
 function saveSkipped(){localStorage.setItem('yp_skipped',JSON.stringify(skippedHabits));}
 function isSkipped(hid,key){return (skippedHabits[key]||[]).includes(hid);}
 
+function skipHabitTodayById(hid){skipHabitToday(hid);}
 function skipHabitToday(hid){
   const key=dk(new Date());
   if(!skippedHabits[key])skippedHabits[key]=[];
@@ -472,7 +473,9 @@ let failedHabits=JSON.parse(localStorage.getItem('yp_failed')||'{}');
 function saveFailedHabits(){localStorage.setItem('yp_failed',JSON.stringify(failedHabits));}
 function isFailed(hid,key){return (failedHabits[key]||[]).includes(hid);}
 
-function markFailedHabit(hid,key){
+function markFailedHabit(elOrHid,key){
+  const hid=typeof elOrHid==='string'?elOrHid:elOrHid.getAttribute('data-hid');
+  if(typeof elOrHid!=='string')key=elOrHid.getAttribute('data-key');
   if(!failedHabits[key])failedHabits[key]=[];
   if(failedHabits[key].includes(hid)){
     failedHabits[key]=failedHabits[key].filter(x=>x!==hid);
@@ -484,7 +487,9 @@ function markFailedHabit(hid,key){
   saveFailedHabits();save();render();
 }
 
-function toggleH(hid,key){
+function toggleH(elOrHid,key){
+  const hid=typeof elOrHid==='string'?elOrHid:elOrHid.getAttribute('data-hid');
+  if(typeof elOrHid!=='string')key=elOrHid.getAttribute('data-key');
   // Special: plantmrw opens Plan Tomorrow modal
   if(hid==='plantmrw'&&key===dk(new Date())){
     openPlanTomorrow();
@@ -2693,7 +2698,9 @@ function memoDrop(i){
 }
 function memoDragEnd(){memoDragIdx=null;const rows=document.querySelectorAll('[id^=memo-row-]');rows.forEach(r=>r.style.background='');}
 
-function openHabitModal(hid,key){
+function openHabitModal(elOrHid,key){
+  const hid=typeof elOrHid==='string'?elOrHid:elOrHid.getAttribute('data-hid');
+  if(typeof elOrHid!=='string')key=elOrHid.getAttribute('data-key');
   const hb=habits.find(h=>h.id===hid);
   if(!hb)return;
   const done=!!(data[key]&&data[key][hid]);
@@ -3584,7 +3591,7 @@ function renderToday(){
     const now=new Date();
     const nowT=now.getHours()+(now.getMinutes()/60);
     // 自動マッチ：時間指定タスク（±1時間以内）+ urgent設定タスク
-    const autoTasks=dayTasks.filter(t=>{
+    const autoTasks=isT?dayTasks.filter(t=>{
       if(t.done)return false;
       if(t.urgent)return true; // 手動設定
       if(t.startTime){
@@ -3592,9 +3599,9 @@ function renderToday(){
         return st>=nowT-0.5&&st<=nowT+1.5; // ±1.5時間
       }
       return false;
-    });
+    }):[];
     // スケジュールから現在時刻に合うイベント
-    const nowEvs=schedule.filter(e=>e.days.includes(dow)&&e.start<=nowT+0.5&&e.end>=nowT-0.25&&!isEventCancelled(key,e.id));
+    const nowEvs=isT?schedule.filter(e=>e.days.includes(dow)&&e.start<=nowT+0.5&&e.end>=nowT-0.25&&!isEventCancelled(key,e.id)):[];
     
     if(autoTasks.length>0||nowEvs.length>0){
       // スケジュールイベント表示
@@ -3819,6 +3826,50 @@ function addSchItem(){
   save();openSchEdit();
 }
 
+function buildHabitRow(hb,key,done,s,skipped,failed){
+  const id=hb.id;
+  let r='';
+  r+='<div class="hrow'+(skipped||failed?' dt':'')+'" ';
+  r+='onclick="openHabitModal(this.dataset.hid,this.dataset.key)" ';
+  r+='data-hid="'+id+'" data-key="'+key+'" ';
+  r+='style="'+(skipped?'opacity:0.4':failed?'opacity:0.6':'')+'">';
+  r+='<div class="hic" style="background:'+(failed?'#DC262622':hb.color+'22')+'">'+(failed?'✕':hb.icon)+'</div>';
+  r+='<div class="hin">';
+  r+='<div class="hn">'+hb.name;
+  if(skipped)r+='<span style="font-size:10px;color:var(--mu);margin-left:6px">スキップ</span>';
+  if(failed)r+='<span style="font-size:10px;color:#DC2626;margin-left:6px">できなかった</span>';
+  r+='</div>';
+  r+='<div class="hs">'+(s>0?'🔥 '+s+'日連続':'今日からスタート')+(hb.timerMins?' · ⏱'+hb.timerMins+'分':'')+'</div>';
+  r+='</div>';
+  if(!skipped&&!failed&&hb.timerMins&&!done)r+=buildHabitTimerBtn(hb,key);
+  if(!skipped&&!failed){
+    r+='<button class="hck'+(done?' done':'')+'" ';
+    r+='style="'+(done?'background:'+hb.color+';border-color:'+hb.color:'')+'" ';
+    r+='onclick="event.stopPropagation();toggleH(this.dataset.hid,this.dataset.key)" ';
+    r+='data-hid="'+id+'" data-key="'+key+'" aria-label="'+hb.name+'">';
+    r+='<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></button>';
+  }
+  if(!done){
+    const fbg=failed?'#DC262622':'var(--bg)';
+    const fbd=failed?'#DC2626':'var(--bd)';
+    const fcol=failed?'#DC2626':'var(--mu)';
+    const ftxt=failed?'↩':'✕';
+    r+='<button onclick="event.stopPropagation();markFailedHabit(this.dataset.hid,this.dataset.key)" ';
+    r+='data-hid="'+id+'" data-key="'+key+'" ';
+    r+='style="font-size:11px;padding:3px 7px;border-radius:6px;background:'+fbg+';border:1px solid '+fbd+';color:'+fcol+';cursor:pointer;flex-shrink:0">'+ftxt+'</button>';
+  }
+  const sbg=skipped?'#DC262622':'var(--bg)';
+  const sbd=skipped?'#DC2626':'var(--bd)';
+  const scol=skipped?'#DC2626':'var(--mu)';
+  const stxt=skipped?'↩':'⊘';
+  r+='<button onclick="event.stopPropagation();skipHabitTodayById(this.dataset.hid)" ';
+  r+='data-hid="'+id+'" ';
+  r+='style="font-size:11px;padding:3px 7px;border-radius:6px;background:'+sbg+';border:1px solid '+sbd+';color:'+scol+';cursor:pointer;flex-shrink:0">'+stxt+'</button>';
+  r+='</div>';
+  return r;
+}
+
+
 function renderHabits(){
   const d=getD(dayOff),key=dk(d),today=dk(new Date());
   const groups=habitGroupConfig;
@@ -3860,21 +3911,11 @@ function renderHabits(){
       const done=!!(data[key]&&data[key][hb.id]),s=streak(hb.id);
       const globalIdx=habits.indexOf(hb);
       const skipped=isSkipped(hb.id,key);
-      h+=`<div class="hrow${skipped?' dt':''}" onclick="openHabitModal('${hb.id}','${key}')" style="${skipped?'opacity:0.4':''}">
-        <div class="hic" style="background:${hb.color}22">${hb.icon}</div>
-        <div class="hin">
-          <div class="hn">${hb.name}${skipped?'<span style="font-size:10px;color:var(--mu);margin-left:6px">今日スキップ</span>':''}</div>
-          <div class="hs">${s>0?'🔥 '+s+'日連続':'今日からスタート'}${hb.timerMins?' · ⏱'+hb.timerMins+'分':''}</div>
-        </div>
-        ${!skipped&&hb.timerMins&&!done?buildHabitTimerBtn(hb,key):''}
-        ${!skipped?`<button class="hck${done?' done':''}" style="${done?'background:'+hb.color+';border-color:'+hb.color:''}" onclick="event.stopPropagation();toggleH('${hb.id}','${key}')" aria-label="${hb.name}">
-          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-        </button>`:''}
-        <button onclick="event.stopPropagation();skipHabitToday('${hb.id}')" style="font-size:10px;padding:2px 6px;border-radius:6px;background:${skipped?'#DC262622':'var(--bg)'};border:1px solid ${skipped?'#DC2626':'var(--bd)'};color:${skipped?'#DC2626':'var(--mu)'};cursor:pointer;flex-shrink:0" title="今日スキップ">${skipped?'↩':'⊘'}</button>
-      </div>`;
+      const failed=isFailed(hb.id,key);
+      h+=buildHabitRow(hb,key,done,s,skipped,failed);
     });
     h+=`</div></div>`;
-  });
+  });  // end groups.forEach
 
   document.getElementById('view-habits').innerHTML=h;
 }
@@ -4389,27 +4430,32 @@ applyRecurringTasks();
 // Study data
 let studyLists=JSON.parse(localStorage.getItem('yp_study_lists')||'null')||[
   {id:'sl1',name:'PHIL 770 荘子',color:'#2D6A8F',items:[
-    {id:'i1',label:'日本語で読む',done:false},
-    {id:'i2',label:'英語で読む',done:false},
-    {id:'i3',label:'リフレクション書く',done:false},
-    {id:'i4',label:'授業コメント準備',done:false},
+    {id:'i1',label:'① AIで全体像・骨組みを把握（日本語あらすじ・概念リスト）',done:false},
+    {id:'i2',label:'② YouTube視聴 & シャドーイング（英語リズムを掴む）',done:false},
+    {id:'i3',label:'③ Ziporyn訳・Fraser訳の並行読書（訳の違いを1箇所見つける）',done:false},
+    {id:'i4',label:'④ Geminiと事前ディスカッション（論点の壁打ち）',done:false},
+    {id:'i5',label:'⑤ リフレクション執筆（200〜300語・火曜24:00までに投稿）',done:false},
+    {id:'i6',label:'⑥ 授業用「先手必勝カンペ」作成（質問英文1〜2文）',done:false},
+    {id:'i7',label:'⑦ ゼミ本番：冒頭10分以内に発言・議論メモ',done:false},
+    {id:'i8',label:'⑧ ノート集約（期末論文への蓄積）',done:false},
   ]},
   {id:'sl2',name:'PHIL 414B ギリシャ',color:'#6A3A8F',items:[
-    {id:'i5',label:'テキスト読む',done:false},
-    {id:'i6',label:'クイズ準備',done:false},
-    {id:'i7',label:'コメント準備',done:false},
+    {id:'i9',label:'① AIで全体像・骨組みを把握（あらすじ・概念日英対訳）',done:false},
+    {id:'i10',label:'② YouTube視聴 & シャドーイング（Sadler等）',done:false},
+    {id:'i11',label:'③ 原典スキミング（重要箇所に印をつける）',done:false},
+    {id:'i12',label:'④ 記述解答「2文ストック」作成（予想論点5〜7個）',done:false},
+    {id:'i13',label:'⑤ Geminiで模擬クイズ（3問・2文で即答・採点）',done:false},
+    {id:'i14',label:'⑥ 白紙再現テスト（スペルミスゼロを確認）',done:false},
+    {id:'i15',label:'⑦ 授業・記述クイズ本番（キーワード加点を狙う）',done:false},
+    {id:'i16',label:'⑧ 期末チートシートへ蓄積（両面1枚比較まとめ）',done:false},
   ]},
   {id:'sl3',name:'PHIL 725 プロセミナー',color:'#1A2E3A',items:[
-    {id:'i8',label:'文献読む',done:false},
-    {id:'i9',label:'ライティング練習',done:false},
+    {id:'i17',label:'文献読む',done:false},
+    {id:'i18',label:'ライティング練習',done:false},
   ]},
   {id:'sl4',name:'PHIL 111 数学',color:'#9B6AD4',items:[
-    {id:'i10',label:'HWを解く',done:false},
-    {id:'i11',label:'解答確認',done:false},
-  ]},
-  {id:'sl5',name:'ELI 111 英語',color:'#E8856A',items:[
-    {id:'i12',label:'授業参加',done:false},
-    {id:'i13',label:'英語100語書く',done:false},
+    {id:'i19',label:'HWを解く',done:false},
+    {id:'i20',label:'解答確認',done:false},
   ]},
 ];
 
@@ -5092,6 +5138,31 @@ function checkWeeklyReset(){
   // 自動リセットなし - 手動リセットのみ
 }
 
+let studyDragSrc={li:-1,ii:-1};
+
+function studyItemDragStart(e,li,ii){
+  studyDragSrc={li,ii};
+  e.dataTransfer.effectAllowed='move';
+}
+
+function studyItemDragOver(e,li,ii){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+}
+
+function studyItemDrop(e,li,ii){
+  e.preventDefault();
+  if(studyDragSrc.li!==li)return; // different list, ignore
+  const src=studyDragSrc.ii;
+  const dst=ii;
+  if(src===dst)return;
+  const items=studyLists[li].items;
+  const moved=items.splice(src,1)[0];
+  items.splice(dst,0,moved);
+  saveStudy();
+  renderStudy();
+}
+
 function resetStudyList(li){
   if(!studyLists[li])return;
   if(!confirm(studyLists[li].name+' をリセットしますか？'))return;
@@ -5108,6 +5179,51 @@ function resetAllStudyLists(){
   renderStudy();
   toast('🔄 全リストをリセットしました！');
 }
+
+// Force update study lists to latest version
+(function(){
+  const STUDY_VERSION='2026-09-03-v2';
+  if(localStorage.getItem('yp_study_version')!==STUDY_VERSION){
+    const defaultLists=[
+      {id:'sl1',name:'PHIL 770 荘子',color:'#2D6A8F',items:[
+        {id:'i1',label:'① AIで全体像・骨組みを把握（日本語あらすじ・概念リスト）',done:false},
+        {id:'i2',label:'② YouTube視聴 & シャドーイング（英語リズムを掴む）',done:false},
+        {id:'i3',label:'③ Ziporyn訳・Fraser訳の並行読書（訳の違いを1箇所見つける）',done:false},
+        {id:'i4',label:'④ Geminiと事前ディスカッション（論点の壁打ち）',done:false},
+        {id:'i5',label:'⑤ リフレクション執筆（200〜300語・火曜24:00までに投稿）',done:false},
+        {id:'i6',label:'⑥ 授業用「先手必勝カンペ」作成（質問英文1〜2文）',done:false},
+        {id:'i7',label:'⑦ ゼミ本番：冒頭10分以内に発言・議論メモ',done:false},
+        {id:'i8',label:'⑧ ノート集約（期末論文への蓄積）',done:false},
+      ]},
+      {id:'sl2',name:'PHIL 414B ギリシャ',color:'#6A3A8F',items:[
+        {id:'i9',label:'① AIで全体像・骨組みを把握（あらすじ・概念日英対訳）',done:false},
+        {id:'i10',label:'② YouTube視聴 & シャドーイング（Sadler等）',done:false},
+        {id:'i11',label:'③ 原典スキミング（重要箇所に印をつける）',done:false},
+        {id:'i12',label:'④ 記述解答「2文ストック」作成（予想論点5〜7個）',done:false},
+        {id:'i13',label:'⑤ Geminiで模擬クイズ（3問・2文で即答・採点）',done:false},
+        {id:'i14',label:'⑥ 白紙再現テスト（スペルミスゼロを確認）',done:false},
+        {id:'i15',label:'⑦ 授業・記述クイズ本番（キーワード加点を狙う）',done:false},
+        {id:'i16',label:'⑧ 期末チートシートへ蓄積（両面1枚比較まとめ）',done:false},
+      ]},
+    ];
+    // Update only sl1 and sl2, keep other lists
+    defaultLists.forEach(dl=>{
+      const idx=studyLists.findIndex(sl=>sl.id===dl.id);
+      if(idx>=0){
+        // Keep done states where possible
+        dl.items.forEach(di=>{
+          const existing=studyLists[idx].items.find(ei=>ei.label===di.label);
+          if(existing)di.done=existing.done;
+        });
+        studyLists[idx]=dl;
+      } else {
+        studyLists.push(dl);
+      }
+    });
+    localStorage.setItem('yp_study_lists',JSON.stringify(studyLists));
+    localStorage.setItem('yp_study_version',STUDY_VERSION);
+  }
+})();
 
 function saveStudy(){
   localStorage.setItem('yp_study_lists',JSON.stringify(studyLists));
@@ -5584,7 +5700,12 @@ function renderStudy(){
           <button onclick="resetStudyList(${li})" style="font-size:10px;padding:2px 7px;border-radius:6px;background:var(--sur);border:1px solid var(--bd);color:var(--mu);cursor:pointer" title="リセット">🔄</button>
         </div>
         ${sl.items.map((item,ii)=>`
-        <div class="study-item">
+        <div class="study-item" draggable="true"
+          ondragstart="studyItemDragStart(event,${li},${ii})"
+          ondragover="studyItemDragOver(event,${li},${ii})"
+          ondrop="studyItemDrop(event,${li},${ii})"
+          style="cursor:default">
+          <span style="color:var(--mu);font-size:16px;cursor:grab;padding:0 4px;-webkit-user-select:none;user-select:none" title="ドラッグで並び替え">⠿</span>
           <button class="study-check${item.done?' done':''}" onclick="toggleStudyItem(${li},${ii})" aria-label="${item.label}">
             <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
