@@ -1414,9 +1414,11 @@ function addSlotStudyItem(btn){
       toast('📚 '+shortLabel+' はすでに追加済みです');
     }
     // Visual feedback
-    btn.textContent='✓ 追加済';
-    btn.style.opacity='0.6';
-    setTimeout(()=>{btn.textContent='+ 追加';btn.style.opacity='1';},1500);
+    btn.textContent='✓ 追加！';
+    btn.style.background=color;
+    btn.style.color='white';
+    setTimeout(()=>{btn.textContent='+ 追加';btn.style.background=color;btn.style.color='white';btn.style.opacity='1';},1500);
+    toast('📚 '+shortLabel+' を追加しました！');
   }catch(e){
     toast('エラー: '+e.message);
     console.error(e);
@@ -1440,12 +1442,10 @@ function addSlotStudyBulk(btn){
     let added=0;
     sl.items.filter(it=>!it.done).forEach(it=>{
       const label=name+' — '+it.label;
-      if(!tasks[key].some(tk=>tk.label===label)){
-        const task={id:'t'+Date.now()+Math.random(),label,done:false,color,startTime:startStr,studyRef:true};
-        if(endStr)task.endTime=endStr;
-        tasks[key].push(task);
-        added++;
-      }
+      const task={id:'t'+Date.now()+Math.random(),label,done:false,color,startTime:startStr,studyRef:true};
+      if(endStr)task.endTime=endStr;
+      tasks[key].push(task);
+      added++;
     });
     save();playPing();
     toast('📚 '+name+' を'+added+'件追加！');
