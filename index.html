@@ -4430,24 +4430,24 @@ applyRecurringTasks();
 // Study data
 let studyLists=JSON.parse(localStorage.getItem('yp_study_lists')||'null')||[
   {id:'sl1',name:'PHIL 770 荘子',color:'#2D6A8F',items:[
-    {id:'i1',label:'① AIで全体像・骨組みを把握（日本語あらすじ・概念リスト）',done:false},
-    {id:'i2',label:'② YouTube視聴 & シャドーイング（英語リズムを掴む）',done:false},
-    {id:'i3',label:'③ Ziporyn訳・Fraser訳の並行読書（訳の違いを1箇所見つける）',done:false},
-    {id:'i4',label:'④ Geminiと事前ディスカッション（論点の壁打ち）',done:false},
-    {id:'i5',label:'⑤ リフレクション執筆（200〜300語・火曜24:00までに投稿）',done:false},
-    {id:'i6',label:'⑥ 授業用「先手必勝カンペ」作成（質問英文1〜2文）',done:false},
-    {id:'i7',label:'⑦ ゼミ本番：冒頭10分以内に発言・議論メモ',done:false},
-    {id:'i8',label:'⑧ ノート集約（期末論文への蓄積）',done:false},
+    {id:'i1',label:'① AI：寓話あらすじ・逆説・重要概念（道/天/徳/無為）日英対訳リスト',done:false},
+    {id:'i2',label:'② YouTube視聴 & シャドーイング（議論の接続表現を口慣らし）',done:false},
+    {id:'i3',label:'③ Ziporyn訳・Fraser訳の並行読書（訳の違い1箇所に付箋）',done:false},
+    {id:'i4',label:'④ リフレクション自力執筆（提示70語→問い90語→見解90語）',done:false},
+    {id:'i5',label:'⑤ Geminiで文法校正 & 反論壁打ち→火曜24:00までに投稿（300語超過厳禁）',done:false},
+    {id:'i6',label:'⑥ 先手必勝カンペ作成（授業冒頭で読む質問英文1〜2文）',done:false},
+    {id:'i7',label:'⑦ ゼミ本番：開始10分以内に発言→教授コメント・論点メモ',done:false},
+    {id:'i8',label:'⑧ ノート集約（リフレクション+壁打ち+授業メモ→期末論文母体）',done:false},
   ]},
   {id:'sl2',name:'PHIL 414B ギリシャ',color:'#6A3A8F',items:[
-    {id:'i9',label:'① AIで全体像・骨組みを把握（あらすじ・概念日英対訳）',done:false},
-    {id:'i10',label:'② YouTube視聴 & シャドーイング（Sadler等）',done:false},
-    {id:'i11',label:'③ 原典スキミング（重要箇所に印をつける）',done:false},
-    {id:'i12',label:'④ 記述解答「2文ストック」作成（予想論点5〜7個）',done:false},
-    {id:'i13',label:'⑤ Geminiで模擬クイズ（3問・2文で即答・採点）',done:false},
-    {id:'i14',label:'⑥ 白紙再現テスト（スペルミスゼロを確認）',done:false},
-    {id:'i15',label:'⑦ 授業・記述クイズ本番（キーワード加点を狙う）',done:false},
-    {id:'i16',label:'⑧ 期末チートシートへ蓄積（両面1枚比較まとめ）',done:false},
+    {id:'i9',label:'① AI：歴史背景・登場人物・ギリシャ語概念（nomos/dikē/aretē）日英対訳',done:false},
+    {id:'i10',label:'② YouTube視聴 & シャドーイング（Sadler等・主張説明フレーズ）',done:false},
+    {id:'i11',label:'③ 原典スキミング（人名・節番号を目印に重要箇所に印）',done:false},
+    {id:'i12',label:'④ 2文ストック作成（予想論点5〜7個・S+V+O型20〜30語）',done:false},
+    {id:'i13',label:'⑤ Geminiで模擬クイズ（3問・2文即答・採点キーワード確認）',done:false},
+    {id:'i14',label:'⑥ 白紙再現テスト（人名・専門用語スペルミスゼロ確認）',done:false},
+    {id:'i15',label:'⑦ 授業・クイズ本番（ストック2文でキーワード加点・比較論点メモ）',done:false},
+    {id:'i16',label:'⑧ 期末チートシートへ蓄積（両面1枚比較まとめシートに清書）',done:false},
   ]},
   {id:'sl3',name:'PHIL 725 プロセミナー',color:'#1A2E3A',items:[
     {id:'i17',label:'文献読む',done:false},
@@ -5182,28 +5182,28 @@ function resetAllStudyLists(){
 
 // Force update study lists to latest version
 (function(){
-  const STUDY_VERSION='2026-09-03-v2';
+  const STUDY_VERSION='2026-09-04-v3';
   if(localStorage.getItem('yp_study_version')!==STUDY_VERSION){
     const defaultLists=[
       {id:'sl1',name:'PHIL 770 荘子',color:'#2D6A8F',items:[
-        {id:'i1',label:'① AIで全体像・骨組みを把握（日本語あらすじ・概念リスト）',done:false},
-        {id:'i2',label:'② YouTube視聴 & シャドーイング（英語リズムを掴む）',done:false},
-        {id:'i3',label:'③ Ziporyn訳・Fraser訳の並行読書（訳の違いを1箇所見つける）',done:false},
-        {id:'i4',label:'④ Geminiと事前ディスカッション（論点の壁打ち）',done:false},
-        {id:'i5',label:'⑤ リフレクション執筆（200〜300語・火曜24:00までに投稿）',done:false},
-        {id:'i6',label:'⑥ 授業用「先手必勝カンペ」作成（質問英文1〜2文）',done:false},
-        {id:'i7',label:'⑦ ゼミ本番：冒頭10分以内に発言・議論メモ',done:false},
-        {id:'i8',label:'⑧ ノート集約（期末論文への蓄積）',done:false},
+        {id:'i1',label:'① AI：寓話あらすじ・逆説・重要概念（道/天/徳/無為）日英対訳リスト',done:false},
+        {id:'i2',label:'② YouTube視聴 & シャドーイング（議論の接続表現を口慣らし）',done:false},
+        {id:'i3',label:'③ Ziporyn訳・Fraser訳の並行読書（訳の違い1箇所に付箋）',done:false},
+        {id:'i4',label:'④ リフレクション自力執筆（提示70語→問い90語→見解90語）',done:false},
+        {id:'i5',label:'⑤ Geminiで文法校正 & 反論壁打ち→火曜24:00までに投稿（300語超過厳禁）',done:false},
+        {id:'i6',label:'⑥ 先手必勝カンペ作成（授業冒頭で読む質問英文1〜2文）',done:false},
+        {id:'i7',label:'⑦ ゼミ本番：開始10分以内に発言→教授コメント・論点メモ',done:false},
+        {id:'i8',label:'⑧ ノート集約（リフレクション+壁打ち+授業メモ→期末論文母体）',done:false},
       ]},
       {id:'sl2',name:'PHIL 414B ギリシャ',color:'#6A3A8F',items:[
-        {id:'i9',label:'① AIで全体像・骨組みを把握（あらすじ・概念日英対訳）',done:false},
-        {id:'i10',label:'② YouTube視聴 & シャドーイング（Sadler等）',done:false},
-        {id:'i11',label:'③ 原典スキミング（重要箇所に印をつける）',done:false},
-        {id:'i12',label:'④ 記述解答「2文ストック」作成（予想論点5〜7個）',done:false},
-        {id:'i13',label:'⑤ Geminiで模擬クイズ（3問・2文で即答・採点）',done:false},
-        {id:'i14',label:'⑥ 白紙再現テスト（スペルミスゼロを確認）',done:false},
-        {id:'i15',label:'⑦ 授業・記述クイズ本番（キーワード加点を狙う）',done:false},
-        {id:'i16',label:'⑧ 期末チートシートへ蓄積（両面1枚比較まとめ）',done:false},
+        {id:'i9',label:'① AI：歴史背景・登場人物・ギリシャ語概念（nomos/dikē/aretē）日英対訳',done:false},
+        {id:'i10',label:'② YouTube視聴 & シャドーイング（Sadler等・主張説明フレーズ）',done:false},
+        {id:'i11',label:'③ 原典スキミング（人名・節番号を目印に重要箇所に印）',done:false},
+        {id:'i12',label:'④ 2文ストック作成（予想論点5〜7個・S+V+O型20〜30語）',done:false},
+        {id:'i13',label:'⑤ Geminiで模擬クイズ（3問・2文即答・採点キーワード確認）',done:false},
+        {id:'i14',label:'⑥ 白紙再現テスト（人名・専門用語スペルミスゼロ確認）',done:false},
+        {id:'i15',label:'⑦ 授業・クイズ本番（ストック2文でキーワード加点・比較論点メモ）',done:false},
+        {id:'i16',label:'⑧ 期末チートシートへ蓄積（両面1枚比較まとめシートに清書）',done:false},
       ]},
     ];
     // Update only sl1 and sl2, keep other lists
