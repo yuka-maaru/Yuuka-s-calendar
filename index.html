@@ -1458,13 +1458,20 @@ function addSlotStudyBulk(btn){
   }
 }
 
-function deleteSlotTask(key,idx){
+function deleteSlotTask(key,id){
   if(!tasks[key])return;
-  tasks[key].splice(idx,1);
+  tasks[key]=tasks[key].filter(t=>t.id!==id);
+  // Immediate save
+  const tasksToSave={};
+  Object.keys(tasks).forEach(k=>{
+    const nr=(tasks[k]||[]).filter(t=>!t.recurringId);
+    if(nr.length>0)tasksToSave[k]=nr;
+  });
+  localStorage.setItem('yp_t',JSON.stringify(tasksToSave));
   save();
-  // Refresh task list in modal
-  const t=parseFloat(document.getElementById('free-start-time')?.value?.split(':').reduce((h,m,i)=>i===0?+h:+h+ +m/60,0)||0);
-  openTimeSlot(key,t,'task');
+  render();
+  closeModal();
+  toast('🗑 削除しました');
 }
 
 function selectSlotMins(btn){
