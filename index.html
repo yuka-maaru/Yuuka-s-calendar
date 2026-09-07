@@ -1459,17 +1459,26 @@ function addSlotStudyBulk(btn){
 }
 
 function deleteSlotTask(key,id){
-  if(!tasks[key])return;
+  console.log('deleteSlotTask called:', key, id);
+  if(!tasks[key]){toast('タスクが見つかりません(key)');return;}
+  const before=tasks[key].length;
   tasks[key]=tasks[key].filter(t=>t.id!==id);
+  const after=tasks[key].length;
+  console.log('Tasks before/after:', before, after);
+  if(before===after){
+    // ID didn't match - try string comparison
+    tasks[key]=tasks[key].filter(t=>String(t.id)!==String(id));
+    console.log('After string comparison:', tasks[key].length);
+  }
   if(tasks[key].length===0)delete tasks[key];
-  // Immediate save only
+  // Immediate save
   const tasksToSave={};
   Object.keys(tasks).forEach(k=>{
     const nr=(tasks[k]||[]).filter(t=>!t.recurringId);
     if(nr.length>0)tasksToSave[k]=nr;
   });
   localStorage.setItem('yp_t',JSON.stringify(tasksToSave));
-  clearTimeout(saveTimer); // cancel any pending debounced save
+  clearTimeout(saveTimer);
   render();
   closeModal();
   toast('🗑 削除しました');
