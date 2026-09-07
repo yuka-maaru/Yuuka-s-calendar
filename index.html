@@ -243,7 +243,7 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
       <div class="ni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>学習
     </button>
     <button onclick="sw('dream')">
-      <div class="ni"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>夢
+      <div class="ni">🌿</div>習慣
     </button>
     <button onclick="sw('memo')">
       <div class="ni"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>メモ
@@ -1839,7 +1839,7 @@ function render(){
   else if(tab==='week')renderWeek();
   else if(tab==='month')renderMonth();
   else if(tab==='study')renderStudy();
-  else if(tab==='dream')renderDream();
+  else if(tab==='dream')renderDreamAsTracker();
   else if(tab==='memo')renderMemo();
   else renderSettings();
 }
@@ -1857,6 +1857,8 @@ function getMemoPages(){
     {id:'p5',title:'✅ やることリスト',content:'_TODO_LIST_'},
     {id:'p6',title:'🛒 ショッピングリスト',content:'_SHOPPING_LIST_'},
     {id:'p7',title:'🍱 ごはん記録',content:'_MEAL_RECORD_'},
+    {id:'p8',title:'🌿 習慣トラッカー',content:'_HABIT_TRACKER_'},
+    {id:'p9',title:'🌳 夢の木',content:'_DREAM_TREE_'},
     ];
   }
   // Auto-add special pages if missing
@@ -1865,6 +1867,8 @@ function getMemoPages(){
     {id:'p6',title:'🛒 ショッピングリスト',content:'_SHOPPING_LIST_'},
     {id:'p7',title:'🍱 ごはん記録',content:'_MEAL_RECORD_'},
     {id:'p4',title:'📅 年間スケジュール 2026-2027',content:'_YEARLY_CALENDAR_'},
+    {id:'p8',title:'🌿 習慣トラッカー',content:'_HABIT_TRACKER_'},
+    {id:'p9',title:'🌳 夢の木',content:'_DREAM_TREE_'},
   ];
   specialPages.forEach(sp=>{
     if(!pages.find(p=>p.id===sp.id)){
@@ -1908,6 +1912,34 @@ function renderMemo(){
         <span style="font-size:16px;font-weight:700">🛒 ショッピングリスト</span>
       </div>
       ${renderShoppingList()}`;
+      document.getElementById('view-memo').innerHTML=html2;
+      return;
+    }
+
+    // Special: dream tree
+    if(p.content==='_DREAM_TREE_'){
+      let html2='<div style="padding-top:8px"></div>';
+      html2+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">';
+      html2+='<button onclick="memoOpenIndex=null;renderMemo()" style="padding:6px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">← 戻る</button>';
+      html2+='<span style="font-size:16px;font-weight:700">🌳 夢の木</span>';
+      html2+='</div>';
+      // Render dream content inline
+      const dreamEl=document.createElement('div');
+      renderDream();
+      const dreamView=document.getElementById('view-dream');
+      html2+=(dreamView?dreamView.innerHTML:'');
+      document.getElementById('view-memo').innerHTML=html2;
+      return;
+    }
+
+    // Special: habit tracker
+    if(p.content==='_HABIT_TRACKER_'){
+      const html2='<div style="padding-top:8px"></div>'
+        +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">'
+        +'<button onclick="memoOpenIndex=null;renderMemo()" style="padding:6px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">← 戻る</button>'
+        +'<span style="font-size:16px;font-weight:700">🌿 習慣トラッカー</span>'
+        +'</div>'
+        +renderHabitTracker();
       document.getElementById('view-memo').innerHTML=html2;
       return;
     }
@@ -2299,6 +2331,129 @@ function renderShoppingList(){
   </div></div>`;
   return html;
 }
+
+function renderHabitTracker(){
+  const now=new Date();
+  const year=now.getFullYear();
+  const month=now.getMonth();
+  const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const today=now.getDate();
+
+  // Month selector
+  let html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
+  html+='<button onclick="trackerMonthOff--;renderMemoContent()" style="width:32px;height:32px;border-radius:50%;background:var(--sur);border:1px solid var(--bd);font-size:18px;cursor:pointer">‹</button>';
+  html+='<span style="font-size:15px;font-weight:700;color:#5A7A4A">'+monthNames[month]+' '+year+'</span>';
+  html+='<button onclick="trackerMonthOff++;renderMemoContent()" style="width:32px;height:32px;border-radius:50%;background:var(--sur);border:1px solid var(--bd);font-size:18px;cursor:pointer">›</button>';
+  html+='</div>';
+
+  // Build table
+  html+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">';
+  html+='<table style="width:100%;border-collapse:collapse;font-size:11px">';
+
+  // Header row with day numbers
+  html+='<tr>';
+  html+='<td style="padding:6px 8px;font-weight:700;color:#5A7A4A;font-size:11px;white-space:nowrap;min-width:80px">HABITS</td>';
+  for(let d=1;d<=daysInMonth;d++){
+    const isToday=d===today&&month===now.getMonth()&&year===now.getFullYear();
+    html+='<td style="text-align:center;padding:2px;font-weight:'+(isToday?'700':'400')+';color:'+(isToday?'var(--ac)':'var(--mu)')+';font-size:10px;min-width:20px">'+d+'</td>';
+  }
+  html+='</tr>';
+
+  // Habit rows
+  habits.forEach(hb=>{
+    html+='<tr>';
+    html+='<td style="padding:5px 8px;white-space:nowrap;display:flex;align-items:center;gap:5px">';
+    html+='<span style="font-size:14px">'+hb.icon+'</span>';
+    html+='<span style="color:var(--tx);font-size:11px;font-weight:600">'+hb.name+'</span>';
+    html+='</td>';
+
+    for(let d=1;d<=daysInMonth;d++){
+      const dateKey=year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      const done=!!(data[dateKey]&&data[dateKey][hb.id]);
+      const skipped=(skippedHabits[dateKey]||[]).includes(hb.id);
+      const failed=(failedHabits[dateKey]||[]).includes(hb.id);
+      const isFuture=new Date(year,month,d)>now&&d!==today;
+
+      let dot='';
+      let bg='transparent';
+      if(done){
+        bg=hb.color;
+        dot='✓';
+      } else if(failed){
+        bg='#DC262633';
+        dot='✕';
+      } else if(skipped){
+        bg='#88888822';
+        dot='⊘';
+      } else if(!isFuture){
+        bg='var(--bd)';
+        dot='·';
+      }
+
+      html+='<td style="text-align:center;padding:2px">';
+      if(!isFuture||done||failed||skipped){
+        html+='<div style="width:18px;height:18px;border-radius:50%;background:'+bg+';display:inline-flex;align-items:center;justify-content:center;font-size:8px;color:'+(done?'white':failed?'#DC2626':skipped?'var(--mu)':'var(--mu)')+'">'+dot+'</div>';
+      } else {
+        html+='<div style="width:18px;height:18px;border-radius:50%;background:transparent;display:inline-flex;align-items:center;justify-content:center"></div>';
+      }
+      html+='</td>';
+    }
+    html+='</tr>';
+  });
+
+  html+='</table></div>';
+
+  // Legend
+  html+='<div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap;justify-content:center">';
+  html+='<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--mu)"><div style="width:12px;height:12px;border-radius:50%;background:#5A7A4A"></div>できた</div>';
+  html+='<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--mu)"><div style="width:12px;height:12px;border-radius:50%;background:#DC262633;display:flex;align-items:center;justify-content:center;font-size:7px;color:#DC2626">✕</div>できなかった</div>';
+  html+='<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--mu)"><div style="width:12px;height:12px;border-radius:50%;background:#88888822"></div>スキップ</div>';
+  html+='<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--mu)"><div style="width:12px;height:12px;border-radius:50%;background:var(--bd)"></div>未記録</div>';
+  html+='</div>';
+
+  // Progress summary
+  html+='<div style="margin-top:16px;background:linear-gradient(135deg,#5A7A4A22,#9B6AD422);border-radius:12px;padding:12px">';
+  html+='<div style="font-size:12px;font-weight:600;color:#5A7A4A;margin-bottom:8px">今月の達成率</div>';
+  habits.slice(0,6).forEach(hb=>{
+    let doneCount=0,total=0;
+    for(let d=1;d<=today;d++){
+      const dateKey=year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      const skipped=(skippedHabits[dateKey]||[]).includes(hb.id);
+      if(!skipped)total++;
+      if(!!(data[dateKey]&&data[dateKey][hb.id]))doneCount++;
+    }
+    const pct=total>0?Math.round((doneCount/total)*100):0;
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+    html+='<span style="font-size:12px;width:20px">'+hb.icon+'</span>';
+    html+='<span style="font-size:11px;flex:1;color:var(--tx)">'+hb.name+'</span>';
+    html+='<div style="width:80px;height:6px;border-radius:3px;background:var(--bd);overflow:hidden">';
+    html+='<div style="width:'+pct+'%;height:100%;background:'+hb.color+';border-radius:3px;transition:width 0.5s"></div>';
+    html+='</div>';
+    html+='<span style="font-size:10px;color:var(--mu);width:28px;text-align:right">'+pct+'%</span>';
+    html+='</div>';
+  });
+  html+='</div>';
+
+  return html;
+}
+
+function renderMemoContent(){
+  const pages=getMemoPages();
+  const p=pages[memoOpenIndex];
+  if(!p)return;
+  if(p.content==='_HABIT_TRACKER_'){
+    const html2='<div style="padding-top:8px"></div>'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">'
+      +'<button onclick="memoOpenIndex=null;renderMemo()" style="padding:6px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">← 戻る</button>'
+      +'<span style="font-size:16px;font-weight:700">🌿 習慣トラッカー</span>'
+      +'</div>'
+      +renderHabitTracker();
+    document.getElementById('view-memo').innerHTML=html2;
+  }
+}
+
+let trackerMonthOff=0;
 
 function renderMealRecord(){
   const today=dk(new Date());
@@ -4464,6 +4619,13 @@ let studyLists=JSON.parse(localStorage.getItem('yp_study_lists')||'null')||[
     {id:'i19',label:'HWを解く',done:false},
     {id:'i20',label:'解答確認',done:false},
   ]},
+  {id:'sl6',name:'✍️ 作家修行',color:'#E8856A',items:[
+    {id:'iw1',label:'英語エッセイを書く（週1本）',done:false},
+    {id:'iw2',label:'日本語エッセイを書く（週1本）',done:false},
+    {id:'iw3',label:'好きな作家・文章を1つ読む',done:false},
+    {id:'iw4',label:'noteに投稿する',done:false},
+    {id:'iw5',label:'リフレクションをエッセイに発展させる',done:false},
+  ]},
 ];
 
 let studyLog=JSON.parse(localStorage.getItem('yp_study_log')||'{}');
@@ -4720,6 +4882,15 @@ function drawTree(progress){
 
   svg+='</svg>';
   return svg;
+}
+
+function renderDreamAsTracker(){
+  const el=document.getElementById('view-dream');
+  if(!el)return;
+  let html='<div style="padding-top:8px"></div>';
+  html+='<div style="font-size:16px;font-weight:700;margin-bottom:16px;text-align:center">🌿 習慣トラッカー</div>';
+  html+=renderHabitTracker();
+  el.innerHTML=html;
 }
 
 function renderDream(){
@@ -5145,6 +5316,25 @@ function checkWeeklyReset(){
   // 自動リセットなし - 手動リセットのみ
 }
 
+let studyListDragSrc=-1;
+
+function studyListDragStart(e,li){
+  studyListDragSrc=li;
+  e.dataTransfer.effectAllowed='move';
+}
+function studyListDragOver(e,li){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+}
+function studyListDrop(e,li){
+  e.preventDefault();
+  if(studyListDragSrc===li)return;
+  const moved=studyLists.splice(studyListDragSrc,1)[0];
+  studyLists.splice(li,0,moved);
+  saveStudy();
+  renderStudy();
+}
+
 let studyDragSrc={li:-1,ii:-1};
 
 function studyItemDragStart(e,li,ii){
@@ -5189,7 +5379,7 @@ function resetAllStudyLists(){
 
 // Force update study lists to latest version
 (function(){
-  const STUDY_VERSION='2026-09-04-v3';
+  const STUDY_VERSION='2026-09-07-v4';
   if(localStorage.getItem('yp_study_version')!==STUDY_VERSION){
     const defaultLists=[
       {id:'sl1',name:'PHIL 770 荘子',color:'#2D6A8F',items:[
@@ -5211,6 +5401,13 @@ function resetAllStudyLists(){
         {id:'i14',label:'⑥ 白紙再現テスト（人名・専門用語スペルミスゼロ確認）',done:false},
         {id:'i15',label:'⑦ 授業・クイズ本番（ストック2文でキーワード加点・比較論点メモ）',done:false},
         {id:'i16',label:'⑧ 期末チートシートへ蓄積（両面1枚比較まとめシートに清書）',done:false},
+      ]},
+      {id:'sl6',name:'✍️ 作家修行',color:'#E8856A',items:[
+        {id:'iw1',label:'英語エッセイを書く（週1本）',done:false},
+        {id:'iw2',label:'日本語エッセイを書く（週1本）',done:false},
+        {id:'iw3',label:'好きな作家・文章を1つ読む',done:false},
+        {id:'iw4',label:'noteに投稿する',done:false},
+        {id:'iw5',label:'リフレクションをエッセイに発展させる',done:false},
       ]},
     ];
     // Update only sl1 and sl2, keep other lists
@@ -5700,7 +5897,12 @@ function renderStudy(){
       const done=sl.items.filter(i=>i.done).length;
       const total=sl.items.length;
       html+=`<div class="card" style="margin-bottom:8px">
-        <div style="padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px"
+        draggable="true"
+        ondragstart="studyListDragStart(event,${li})"
+        ondragover="studyListDragOver(event,${li})"
+        ondrop="studyListDrop(event,${li})">
+          <span style="color:var(--mu);font-size:16px;cursor:grab;padding:0 4px">⠿</span>
           <div style="width:10px;height:10px;border-radius:50%;background:${sl.color};flex-shrink:0"></div>
           <span style="font-size:13px;font-weight:600;flex:1">${sl.name}</span>
           <span style="font-size:11px;color:var(--mu)">${done}/${total}</span>
