@@ -1461,14 +1461,15 @@ function addSlotStudyBulk(btn){
 function deleteSlotTask(key,id){
   if(!tasks[key])return;
   tasks[key]=tasks[key].filter(t=>t.id!==id);
-  // Immediate save
+  if(tasks[key].length===0)delete tasks[key];
+  // Immediate save only
   const tasksToSave={};
   Object.keys(tasks).forEach(k=>{
     const nr=(tasks[k]||[]).filter(t=>!t.recurringId);
     if(nr.length>0)tasksToSave[k]=nr;
   });
   localStorage.setItem('yp_t',JSON.stringify(tasksToSave));
-  save();
+  clearTimeout(saveTimer); // cancel any pending debounced save
   render();
   closeModal();
   toast('🗑 削除しました');
