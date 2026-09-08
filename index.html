@@ -377,10 +377,11 @@ function applyRecurringTasks(force=false){
         const k=dk(target);
         if(!tasks[k])tasks[k]=[];
         if(!tasks[k].some(t=>t.recurringId===rt.id)){
-          // Restore done state from localStorage
+          // Check if cancelled for this day
           const rdKey='yp_rd_'+rt.id+'_'+k;
-          const savedDone=localStorage.getItem(rdKey);
-          const done=savedDone==='1';
+          const savedState=localStorage.getItem(rdKey);
+          if(savedState==='cancelled')return; // skip cancelled
+          const done=savedState==='1';
           tasks[k].push({id:'r'+rt.id+'_'+k,label:rt.label,done,recurringId:rt.id});
         }
       });
@@ -768,6 +769,30 @@ function openTaskMemo(key,id){
     document.getElementById('task-memo-input')?.focus();
     updateMemoPomoCalc(slotMins);
   },100);
+}
+
+function cancelRecurringTaskDay(key,tid){
+  if(!tasks[key])return;
+  const tk=tasks[key].find(t=>t.id===tid);
+  if(!tk)return;
+  // Mark this recurring task as cancelled for this day
+  if(tk.recurringId){
+    const cancelKey='yp_rd_'+tk.recurringId+'_'+key;
+    localStorage.setItem(cancelKey,'cancelled');
+  }
+  // Remove from tasks
+  tasks[key]=tasks[key].filter(t=>t.id!==tid);
+  // Immediate save
+  const tasksToSave={};
+  Object.keys(tasks).forEach(k=>{
+    const nr=(tasks[k]||[]).filter(t=>!t.recurringId);
+    if(nr.length>0)tasksToSave[k]=nr;
+  });
+  localStorage.setItem('yp_t',JSON.stringify(tasksToSave));
+  clearTimeout(saveTimer);
+  render();
+  closeModal();
+  toast('🗑 この日のタスクをキャンセルしました');
 }
 
 function switchMemoMode(mode){
@@ -1725,7 +1750,8 @@ let eventTemplates=JSON.parse(localStorage.getItem('yp_ev_templates')||'null')||
 ];
 let customEvents=JSON.parse(localStorage.getItem('yp_custom_ev')||'{}');
 let cancelledDays=JSON.parse(localStorage.getItem('yp_cancelled_days')||'{}');
-function saveCancelledDays(){localStorage.setItem('yp_cancelled_days',JSON.stringify(cancelledDays));}
+let overriddenTimes=JSON.parse(localStorage.getItem('yp_overrides')||'{}');
+function saveCancelledDays(){localStorage.setItem('yp_cancelled_days',JSON.stringify(cancelledDays));localStorage.setItem('yp_overrides',JSON.stringify(overriddenTimes));}
 
 function isEventCancelled(key,eventId){
   const c=cancelledDays[key];
@@ -2827,9 +2853,67 @@ function openSchItemModal(eid,key){
   html+='<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:6px">📝 メモ</div>';
   html+='<textarea id="sch-note-modal" class="memo-box" style="min-height:100px" placeholder="メモを追加...">'+note.replace(/</g,'&lt;')+'</textarea>';
   html+='<button class="abtn" style="width:100%;margin-top:8px" id="save-sch-note-btn" data-eid="'+eid+'" data-key="'+key+'" onclick="saveSchNoteFromBtn(this)">保存</button>';
+  // この日だけ時間変更
+  const override=overriddenTimes[key]&&overriddenTimes[key][eid];
+  const dispStart=override?override.start:e.start;
+  const dispEnd=override?override.end:e.end;
+  html+='<div style="border-top:1px solid var(--bd);padding-top:12px;margin-top:12px">';
+  html+='<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:8px">📅 この日だけ変更</div>';
+  html+='<div style="display:flex;gap:10px;margin-bottom:8px">';
+  html+='<div style="flex:1"><div style="font-size:11px;color:var(--mu);margin-bottom:3px">開始</div>';
+  html+='<input id="sch-override-start" type="time" value="'+timeToStr(dispStart)+'" style="width:100%;padding:7px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)"></div>';
+  html+='<div style="flex:1"><div style="font-size:11px;color:var(--mu);margin-bottom:3px">終了</div>';
+  html+='<input id="sch-override-end" type="time" value="'+timeToStr(dispEnd)+'" style="width:100%;padding:7px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)"></div>';
+  html+='</div>';
+  html+='<button onclick="saveSchOverride(this)" data-eid="'+eid+'" data-key="'+key+'" style="width:100%;padding:8px;border-radius:8px;background:var(--ac);color:white;border:none;font-size:13px;cursor:pointer;margin-bottom:6px">⏱ この日だけ時間変更</button>';
+  html+='<button onclick="cancelSchDay(this)" data-eid="'+eid+'" data-key="'+key+'" style="width:100%;padding:8px;border-radius:8px;background:#DC262622;border:1px solid #DC2626;color:#DC2626;font-size:13px;cursor:pointer">🗑 この日だけキャンセル</button>';
+  if(override){
+    html+='<button onclick="resetSchOverride(this)" data-eid="'+eid+'" data-key="'+key+'" style="width:100%;padding:6px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);color:var(--mu);font-size:11px;cursor:pointer;margin-top:4px">↩ 元の時間に戻す</button>';
+  }
+  html+='</div>';
   html+='</div></div>';
   wrap.innerHTML=html;
   setTimeout(()=>document.getElementById('sch-note-modal')?.focus(),100);
+}
+
+function saveSchOverride(btn){
+  const eid=btn.getAttribute('data-eid');
+  const key=btn.getAttribute('data-key');
+  const startEl=document.getElementById('sch-override-start');
+  const endEl=document.getElementById('sch-override-end');
+  if(!startEl||!endEl)return;
+  const [sh,sm]=startEl.value.split(':').map(Number);
+  const [eh,em]=endEl.value.split(':').map(Number);
+  if(!overriddenTimes[key])overriddenTimes[key]={};
+  overriddenTimes[key][eid]={start:sh+sm/60,end:eh+em/60};
+  saveCancelledDays();
+  save();
+  toast('⏱ この日の時間を変更しました！');
+  closeModal();
+  render();
+}
+
+function resetSchOverride(btn){
+  const eid=btn.getAttribute('data-eid');
+  const key=btn.getAttribute('data-key');
+  if(overriddenTimes[key])delete overriddenTimes[key][eid];
+  save();
+  toast('↩ 元の時間に戻しました');
+  closeModal();
+  render();
+}
+
+function cancelSchDay(btn){
+  const eid=btn.getAttribute('data-eid');
+  const key=btn.getAttribute('data-key');
+  if(!cancelledDays[key])cancelledDays[key]=[];
+  if(!Array.isArray(cancelledDays[key]))cancelledDays[key]=[];
+  if(!cancelledDays[key].includes(eid))cancelledDays[key].push(eid);
+  saveCancelledDays();
+  save();
+  toast('🗑 この日のスケジュールをキャンセルしました');
+  closeModal();
+  render();
 }
 
 
@@ -3834,6 +3918,10 @@ function renderToday(){
       </div>`;
     }
   }
+  // Time axis - same as week view
+  h+=`<div class="sec"><span>📅 今日のスケジュール</span></div>`;
+  h+=renderTodayTimeAxis(key,dow,isT);
+
   h+=`<div class="sec"><span>タスク${dayTasks.length>0?(' ('+doneT+'/'+dayTasks.length+')'):''}</span></div>
   <div class="card">`;
   if(dayTasks.length===0)h+='<div class="empty">今日のタスクはまだありません</div>';
@@ -4092,6 +4180,85 @@ function renderHabits(){
   document.getElementById('view-habits').innerHTML=h;
 }
 
+function renderTodayTimeAxis(key,dow,isT){
+  const START_H=5,END_H=24,HOUR_H=50,TOTAL_H=END_H-START_H;
+  const now=new Date();
+  const nowT=now.getHours()+(now.getMinutes()/60);
+  const dayEvs=schedule.filter(e=>e.days.includes(dow)&&!isEventCancelled(key,e.id));
+  const dayTasks2=(tasks[key]||[]).filter(t=>!t.done&&t.startTime);
+  let h='';
+
+  // Time labels + column
+  h+=`<div style="display:flex;margin-bottom:12px">`;
+  // Time labels column
+  h+=`<div style="width:32px;flex-shrink:0;position:relative;height:${TOTAL_H*HOUR_H}px">`;
+  for(let hr=START_H;hr<=END_H;hr++){
+    const top=(hr-START_H)*HOUR_H-7;
+    h+=`<div style="position:absolute;top:${top}px;right:2px;font-size:9px;color:var(--mu);line-height:1">${hr}</div>`;
+  }
+  h+=`</div>`;
+
+  // Day column
+  h+=`<div onclick="openTimeSlotFromClick(event,'${key}',${START_H},${HOUR_H})" style="flex:1;position:relative;height:${TOTAL_H*HOUR_H}px;border-left:1px solid var(--bd);cursor:pointer;background:rgba(45,106,143,0.03)">`;
+
+  // Hour grid lines
+  for(let hr=START_H;hr<END_H;hr++){
+    const top=(hr-START_H)*HOUR_H;
+    h+=`<div style="position:absolute;top:${top}px;left:0;right:0;border-top:1px solid var(--bd)22;pointer-events:none"></div>`;
+    h+=`<div style="position:absolute;top:${top+HOUR_H/2}px;left:0;right:0;border-top:1px solid var(--bd)11;pointer-events:none"></div>`;
+  }
+
+  // Schedule events
+  dayEvs.forEach(e=>{
+    const override=overriddenTimes[key]&&overriddenTimes[key][e.id];
+    const evStart=override?override.start:e.start;
+    const evEnd=override?override.end:e.end;
+    const startPx=(evStart-START_H)*HOUR_H;
+    const heightPx=(evEnd-evStart)*HOUR_H;
+    if(startPx<0||startPx>TOTAL_H*HOUR_H)return;
+    h+=`<div onclick="event.stopPropagation();openSchItemModal('${e.id}','${key}')"
+      style="position:absolute;top:${startPx}px;left:2px;right:2px;height:${Math.max(heightPx-3,20)}px;
+      background:${e.bg};border-left:3px solid ${e.color};border-radius:4px;
+      padding:2px 4px;overflow:hidden;cursor:pointer;z-index:2;
+      box-shadow:0 1px 3px rgba(0,0,0,0.1)">
+      <div style="font-size:10px;font-weight:700;color:${e.color};line-height:1.4">${e.label}</div>
+      <div style="font-size:9px;color:${e.color};opacity:0.8">${timeToStr(evStart)}〜${timeToStr(evEnd)}${override?'*':''}</div>
+    </div>`;
+  });
+
+  // Tasks with time
+  dayTasks2.forEach(tk=>{
+    const st=strToTime(tk.startTime);
+    if(isNaN(st)||st<START_H||st>END_H)return;
+    const startPx=(st-START_H)*HOUR_H;
+    const taskColor=tk.color||'#10B981';
+    let heightPx=28;
+    if(tk.endTime){
+      const et=strToTime(tk.endTime);
+      heightPx=Math.max((et-st)*HOUR_H-3,20);
+    }
+    h+=`<div onclick="event.stopPropagation();openTaskMemo('${key}','${tk.id}')"
+      style="position:absolute;top:${startPx}px;left:2px;right:2px;height:${heightPx}px;
+      background:${taskColor}22;border-left:3px solid ${taskColor};border-radius:4px;
+      padding:2px 4px;overflow:hidden;cursor:pointer;z-index:2">
+      <div style="font-size:10px;font-weight:700;color:${taskColor};line-height:1.4;overflow:hidden">${tk.label}</div>
+      ${tk.startTime?`<div style="font-size:9px;color:${taskColor};opacity:0.8">${tk.startTime}${tk.endTime?'〜'+tk.endTime:''}</div>`:''}
+    </div>`;
+  });
+
+  // Current time red line
+  if(isT&&nowT>=START_H&&nowT<=END_H){
+    const topPx=(nowT-START_H)*HOUR_H;
+    h+=`<div style="position:absolute;top:${topPx}px;left:0;right:0;pointer-events:none;z-index:10">
+      <div style="position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:#DC2626"></div>
+      <div style="border-top:2px solid #DC2626;opacity:0.8"></div>
+    </div>`;
+  }
+
+  h+=`</div></div>`;
+  return h;
+}
+
 function renderWeek(){
   const dates=getWk(),today=dk(new Date());
   const wkStart=dates[0],wkEnd=dates[6];
@@ -4156,8 +4323,11 @@ function renderWeek(){
 
     // Schedule events
     dayEvs.forEach(e=>{
-      const startPx=(e.start-START_H)*HOUR_H;
-      const heightPx=(e.end-e.start)*HOUR_H;
+      const override=overriddenTimes[k]&&overriddenTimes[k][e.id];
+      const evStart=override?override.start:e.start;
+      const evEnd=override?override.end:e.end;
+      const startPx=(evStart-START_H)*HOUR_H;
+      const heightPx=(evEnd-evStart)*HOUR_H;
       if(startPx<0||startPx>TOTAL_H*HOUR_H)return;
       h+=`<div onclick="event.stopPropagation();openSchItemModal('${e.id}','${k}')"
         style="position:absolute;top:${startPx}px;left:2px;right:2px;height:${Math.max(heightPx-3,20)}px;
@@ -4165,7 +4335,7 @@ function renderWeek(){
         padding:2px 4px;overflow:hidden;cursor:pointer;z-index:2;
         box-shadow:0 1px 3px rgba(0,0,0,0.1)">
         <div style="font-size:9px;font-weight:700;color:${e.color};line-height:1.3;overflow:hidden">${e.label}</div>
-        <div style="font-size:8px;color:${e.color};opacity:0.8">${timeToStr(e.start)}〜${timeToStr(e.end)}</div>
+        <div style="font-size:8px;color:${e.color};opacity:0.8">${timeToStr(evStart)}〜${timeToStr(evEnd)}${override?'*':''}</div>
       </div>`;
     });
 
