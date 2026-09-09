@@ -1895,6 +1895,7 @@ function getMemoPages(){
     {id:'p7',title:'🍱 ごはん記録',content:'_MEAL_RECORD_'},
     {id:'p8',title:'🌿 習慣トラッカー',content:'_HABIT_TRACKER_'},
     {id:'p9',title:'🌳 夢の木',content:'_DREAM_TREE_'},
+    {id:'p10',title:'🍳 レシピストック',content:'_RECIPE_STOCK_'},
     ];
   }
   // Auto-add special pages if missing
@@ -1905,6 +1906,7 @@ function getMemoPages(){
     {id:'p4',title:'📅 年間スケジュール 2026-2027',content:'_YEARLY_CALENDAR_'},
     {id:'p8',title:'🌿 習慣トラッカー',content:'_HABIT_TRACKER_'},
     {id:'p9',title:'🌳 夢の木',content:'_DREAM_TREE_'},
+    {id:'p10',title:'🍳 レシピストック',content:'_RECIPE_STOCK_'},
   ];
   specialPages.forEach(sp=>{
     if(!pages.find(p=>p.id===sp.id)){
@@ -1913,6 +1915,280 @@ function getMemoPages(){
     }
   });
   return pages;
+}
+
+function renderRecipeIngredientSync(){
+  const ings=JSON.parse(localStorage.getItem('yp_ingredients')||'[]');
+  let h='<div style="margin-bottom:8px">';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
+  h+='<div style="font-size:11px;font-weight:600;color:var(--mu)">🥦 今ある食材（ごはん記録と同期）</div>';
+  h+='</div>';
+  if(ings.length>0){
+    h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">';
+    ings.forEach((ing,i)=>{
+      if(ing.used)return;
+      const sel=ing.selected!==false;
+      h+='<button onclick="toggleRecipeIng('+i+')" style="padding:5px 10px;border-radius:20px;background:'+(sel?'var(--ac)':'var(--sur)')+';border:1px solid '+(sel?'var(--ac)':'var(--bd)')+';color:'+(sel?'white':'var(--tx)')+';font-size:12px;cursor:pointer">'+ing.name+'</button>';
+    });
+    h+='</div>';
+  }
+  // Add ingredient input
+  h+='<div style="display:flex;gap:6px;margin-bottom:12px">';
+  h+='<input id="recipe-ing-inp" placeholder="食材を追加..." style="flex:1;padding:7px;border-radius:8px;border:1px solid var(--bd);font-size:12px;outline:none;background:var(--bg)">';
+  h+='<button onclick="addRecipeIng()" style="padding:7px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:12px;cursor:pointer">追加</button>';
+  h+='</div>';
+  // Condiments sync
+  const conds=JSON.parse(localStorage.getItem('yp_condiments')||'[]');
+  h+='<div style="margin-bottom:4px">';
+  h+='<div style="font-size:11px;font-weight:600;color:var(--mu);margin-bottom:6px">🧂 常備調味料（ごはん記録と同期）</div>';
+  h+='<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">';
+  conds.forEach((c,i)=>{
+    const sel=c.checked!==false;
+    h+='<button onclick="toggleRecipeCond('+i+')" style="padding:4px 9px;border-radius:20px;background:'+(sel?'#9B6AD422':'var(--sur)')+';border:1px solid '+(sel?'#9B6AD4':'var(--bd)')+';color:'+(sel?'#9B6AD4':'var(--tx)')+';font-size:11px;cursor:pointer">'+(sel?'✓ ':'')+c.name+'</button>';
+  });
+  h+='</div>';
+  h+='<div style="display:flex;gap:6px">';
+  h+='<input id="recipe-cond-inp" placeholder="調味料を追加..." style="flex:1;padding:6px;border-radius:8px;border:1px solid var(--bd);font-size:11px;outline:none;background:var(--bg)">';
+  h+='<button onclick="addRecipeCond()" style="padding:6px 10px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:11px;cursor:pointer">追加</button>';
+  h+='</div>';
+  h+='</div>';
+  h+='</div>';
+  return h;
+}
+
+function toggleRecipeInclude(i){
+  const recipes=JSON.parse(localStorage.getItem('yp_recipes')||'[]');
+  if(recipes[i])recipes[i].included=!(recipes[i].included!==false);
+  localStorage.setItem('yp_recipes',JSON.stringify(recipes));
+  const pages=getMemoPages();
+  if(memoOpenIndex!==null)openMemoPage(memoOpenIndex);
+}
+
+function renderRecipeShoppingSync(){
+  let h='<div style="margin-top:12px;border-top:1px solid var(--bd);padding-top:12px">';
+  h+='<div style="font-size:13px;font-weight:700;margin-bottom:10px">🛒 買い物リスト（ショッピングリストと同期）</div>';
+  // Add item input
+  h+='<div style="display:flex;gap:6px;margin-bottom:10px">';
+  h+='<input id="recipe-shop-sync-inp" placeholder="買うものを追加..." style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)">';
+  h+='<button onclick="addRecipeShopItem()" class="abtn">追加</button>';
+  h+='</div>';
+  // Show shopping items
+  const items=shoppingItems.filter(s=>!s.done);
+  if(items.length>0){
+    items.forEach((s,i)=>{
+      const realIdx=shoppingItems.indexOf(s);
+      h+='<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--sur);margin-bottom:5px">';
+      h+='<button onclick="toggleShopItemFromRecipe('+realIdx+')" style="width:18px;height:18px;border-radius:50%;border:2px solid var(--bd);background:transparent;cursor:pointer;flex-shrink:0"></button>';
+      h+='<span style="flex:1;font-size:13px">'+s.label+'</span>';
+      h+='<button onclick="removeShopItemFromRecipe('+realIdx+')" style="color:var(--mu);background:none;border:none;cursor:pointer;font-size:14px">×</button>';
+      h+='</div>';
+    });
+  } else {
+    h+='<div style="text-align:center;color:var(--mu);font-size:12px;padding:12px">買い物リストは空です</div>';
+  }
+  h+='</div>';
+  return h;
+}
+
+function addRecipeShopItem(){
+  const inp=document.getElementById('recipe-shop-sync-inp');
+  if(!inp||!inp.value.trim())return;
+  shoppingItems.unshift({id:'s'+Date.now(),label:inp.value.trim(),done:false});
+  saveShop();
+  inp.value='';
+  const pages=getMemoPages();
+  if(memoOpenIndex!==null)openMemoPage(memoOpenIndex);
+  toast('🛒 追加しました！');
+}
+
+function toggleShopItemFromRecipe(i){
+  if(!shoppingItems[i])return;
+  shoppingItems[i].done=!shoppingItems[i].done;
+  saveShop();
+  const pages=getMemoPages();
+  if(memoOpenIndex!==null)openMemoPage(memoOpenIndex);
+}
+
+function removeShopItemFromRecipe(i){
+  shoppingItems.splice(i,1);
+  saveShop();
+  const pages=getMemoPages();
+  if(memoOpenIndex!==null)openMemoPage(memoOpenIndex);
+}
+
+function toggleRecipeCond(i){
+  const conds=JSON.parse(localStorage.getItem('yp_condiments')||'[]');
+  if(conds[i])conds[i].checked=!(conds[i].checked!==false);
+  localStorage.setItem('yp_condiments',JSON.stringify(conds));
+  if(memoOpenIndex!==null)openMemoPage(memoOpenIndex);
+}
+
+function addRecipeCond(){
+  const inp=document.getElementById('recipe-cond-inp');
+  if(!inp||!inp.value.trim())return;
+  const conds=JSON.parse(localStorage.getItem('yp_condiments')||'[]');
+  conds.push({name:inp.value.trim(),checked:true});
+  localStorage.setItem('yp_condiments',JSON.stringify(conds));
+  inp.value='';
+  if(memoOpenIndex!==null)openMemoPage(memoOpenIndex);
+  toast('🧂 調味料を追加しました！');
+}
+
+function toggleRecipeIng(i){
+  const ings=JSON.parse(localStorage.getItem('yp_ingredients')||'[]');
+  if(ings[i])ings[i].selected=!(ings[i].selected!==false);
+  localStorage.setItem('yp_ingredients',JSON.stringify(ings));
+  // Re-render recipe page
+  const pages=getMemoPages();
+  if(memoOpenIndex!==null)openMemoPage(memoOpenIndex);
+}
+
+function addRecipeIng(){
+  const inp=document.getElementById('recipe-ing-inp');
+  if(!inp||!inp.value.trim())return;
+  const ings=JSON.parse(localStorage.getItem('yp_ingredients')||'[]');
+  ings.push({name:inp.value.trim(),selected:true,used:false});
+  localStorage.setItem('yp_ingredients',JSON.stringify(ings));
+  inp.value='';
+  const pages=getMemoPages();
+  if(memoOpenIndex!==null)openMemoPage(memoOpenIndex);
+  toast('🥦 食材を追加しました！');
+}
+
+function openRecipeDetail(i){
+  const recipes=JSON.parse(localStorage.getItem('yp_recipes')||'[]');
+  const r=recipes[i];
+  if(!r)return;
+  const wrap=document.getElementById('modal-wrap');
+  let html='<div class="modal-bg" onclick="closeModal(event)"><div class="modal">';
+  html+='<button class="modal-close" onclick="closeModal()">×</button>';
+  html+='<div style="font-size:17px;font-weight:700;margin-bottom:16px">🍳 '+r.name+'</div>';
+  // URL
+  html+='<div style="margin-bottom:10px">';
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:4px">🔗 リンク（YouTube・Instagram等）</div>';
+  html+='<input id="recipe-url-inp" value="'+(r.url||'')+'" placeholder="https://..." style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);box-sizing:border-box">';
+  if(r.url){
+    html+='<button onclick="openRecipeUrl(this.dataset.url)" data-url="'+(r.url||'')+'" style="margin-top:6px;padding:6px 12px;border-radius:8px;background:var(--ac)22;border:1px solid var(--ac);color:var(--ac);font-size:12px;cursor:pointer">🔗 リンクを開く</button>';
+  }
+  html+='</div>';
+  // Memo
+  html+='<div style="margin-bottom:14px">';
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:4px">📝 メモ</div>';
+  html+='<textarea id="recipe-memo-inp" placeholder="材料・コツ・感想など..." style="width:100%;min-height:80px;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);box-sizing:border-box;resize:none">'+(r.memo||'')+'</textarea>';
+  html+='</div>';
+  html+='<button onclick="saveRecipeDetail('+i+')" class="abtn" style="width:100%;padding:11px;font-size:14px">💾 保存</button>';
+  html+='</div></div>';
+  wrap.innerHTML=html;
+}
+
+function openRecipeUrl(url){if(url)window.open(url,'_blank');}
+
+function saveRecipeDetail(i){
+  const recipes=JSON.parse(localStorage.getItem('yp_recipes')||'[]');
+  if(!recipes[i])return;
+  recipes[i].url=document.getElementById('recipe-url-inp')?.value.trim()||'';
+  recipes[i].memo=document.getElementById('recipe-memo-inp')?.value.trim()||'';
+  localStorage.setItem('yp_recipes',JSON.stringify(recipes));
+  closeModal();
+  toast('💾 保存しました！');
+  // Re-render recipe page
+  const pages=getMemoPages();
+  if(memoOpenIndex!==null)openMemoPage(memoOpenIndex);
+}
+
+function addRecipe(){
+  const inp=document.getElementById('recipe-inp');
+  if(!inp||!inp.value.trim())return;
+  const recipes=JSON.parse(localStorage.getItem('yp_recipes')||'[]');
+  recipes.push({id:'r'+Date.now(),name:inp.value.trim()});
+  localStorage.setItem('yp_recipes',JSON.stringify(recipes));
+  inp.value='';
+  // Re-render the recipe page
+  const pages=getMemoPages();
+  const p=pages[memoOpenIndex];
+  if(p&&p.content==='_RECIPE_STOCK_'){
+    // Trigger re-render
+    const idx=memoOpenIndex;
+    memoOpenIndex=null;
+    memoOpenIndex=idx;
+    const pages2=getMemoPages();
+    renderMemoPage(pages2[idx]);
+  }
+  playPing();
+  toast('🍳 レシピを追加しました！');
+}
+
+function deleteRecipe(i){
+  const recipes=JSON.parse(localStorage.getItem('yp_recipes')||'[]');
+  recipes.splice(i,1);
+  localStorage.setItem('yp_recipes',JSON.stringify(recipes));
+  const pages=getMemoPages();
+  renderMemoPage(pages[memoOpenIndex]);
+}
+
+function renderMemoPage(p){
+  if(!p)return;
+  // Trigger the memo page render
+  const pages=getMemoPages();
+  const idx=pages.indexOf(p);
+  if(idx>=0){
+    memoOpenIndex=idx;
+    // Re-run the rendering logic
+    const wrap=document.getElementById('view-memo');
+    if(!wrap)return;
+  }
+  // Just re-render the whole memo tab
+  renderMemo();
+  if(memoOpenIndex!==null){
+    // Re-open the page
+    setTimeout(()=>{
+      const pages2=getMemoPages();
+      openMemoPage(memoOpenIndex);
+    },10);
+  }
+}
+
+function generateMealPlanPrompt(){
+  const recipes=JSON.parse(localStorage.getItem('yp_recipes')||'[]');
+  const ings=JSON.parse(localStorage.getItem('yp_ingredients')||'[]');
+  const have=ings.filter(i=>i.selected!==false&&!i.used).map(i=>i.name).join('、');
+  const recipeNames=recipes.map(r=>r.name).join('、');
+  const NL='\n';
+  let prompt='';
+  if(recipeNames){
+    prompt+='以下のレシピを参考に、今週の作り置き献立てを3～4品提案してください。'+NL;
+    prompt+='「参考レシピ」'+recipeNames+NL+NL;
+  } else {
+    prompt+='今週の作り置き献立てを３～４品提案してください。'+NL+NL;
+  }
+  if(have){
+    prompt+='「今ある食材」'+have+NL;
+    const condList=JSON.parse(localStorage.getItem('yp_condiments')||'[]').filter(c=>c.checked!==false).map(c=>c.name).join('、')||'醉油、味噌、みりん、酒、砂糖、塩、こしょう、ごま油など';
+  prompt+='「常備調味料」'+condList+NL+NL;
+    prompt+='条件：'+NL;
+    prompt+='・今ある食材をなるべく使う'+NL;
+    prompt+='・足りない食材は「買い足しリスト」として別途まとめて教えてください'+NL;
+  } else {
+    prompt+='「常備調味料」'+condList+NL+NL;
+    prompt+='条件：'+NL;
+  }
+  prompt+='・一人暮らしで簡単に作れるもの'+NL;
+  prompt+='・まとめて作って週の食事に使いまわせるもの'+NL;
+  prompt+='・バリエーション（和洋中）も意識して'+NL;
+  prompt+='・買い足しが必要な食材はリストにまとめてください';
+
+  navigator.clipboard.writeText(prompt).then(()=>{
+    toast('📋 プロンプトをコピーしました！Claudeに貼り付けてください😊');
+  }).catch(()=>{
+    // Fallback: show in textarea
+    const ta=document.createElement('textarea');
+    ta.value=prompt;
+    ta.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:80%;height:200px;z-index:9999;padding:10px;font-size:12px';
+    document.body.appendChild(ta);
+    ta.select();
+    toast('プロンプトを選択してコピーしてください');
+    setTimeout(()=>ta.remove(),5000);
+  });
 }
 
 function saveMemoPages(pages){
@@ -1948,6 +2224,61 @@ function renderMemo(){
         <span style="font-size:16px;font-weight:700">🛒 ショッピングリスト</span>
       </div>
       ${renderShoppingList()}`;
+      document.getElementById('view-memo').innerHTML=html2;
+      return;
+    }
+
+    // Special: recipe stock
+    if(p.content==='_RECIPE_STOCK_'){
+      const recipes=JSON.parse(localStorage.getItem('yp_recipes')||'[]');
+      let html2='<div style="padding-top:8px"></div>';
+      html2+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">';
+      html2+='<button onclick="memoOpenIndex=null;renderMemo()" style="padding:6px 12px;border-radius:8px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">← 戻る</button>';
+      html2+='<span style="font-size:16px;font-weight:700">🍳 レシピストック</span>';
+      html2+='</div>';
+      // Add recipe input
+      html2+='<div style="display:flex;gap:6px;margin-bottom:12px">';
+      html2+='<input id="recipe-inp" placeholder="レシピ名を追加（例：タンドリーチキン）" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)" onkeydown="if(event.key===&quot;Enter&quot;)addRecipe()">';
+      html2+='<button onclick="addRecipe()" class="abtn">追加</button>';
+      html2+='</div>';
+      // Recipe list
+      if(recipes.length>0){
+        html2+='<div style="margin-bottom:16px">';
+        recipes.forEach((r,i)=>{
+          const included=r.included!==false;
+          html2+='<div style="border-radius:10px;background:var(--sur);margin-bottom:8px;border:1.5px solid '+(included?'var(--ac)':'var(--bd)')+';overflow:hidden;opacity:'+(included?'1':'0.5')+'">';
+          html2+='<div style="display:flex;align-items:center;gap:8px;padding:10px 12px">';
+          // Include toggle
+          html2+='<button onclick="toggleRecipeInclude('+i+')" style="font-size:11px;padding:3px 8px;border-radius:12px;background:'+(included?'var(--ac)':'var(--sur)')+';border:1px solid '+(included?'var(--ac)':'var(--bd)')+';color:'+(included?'white':'var(--mu)')+';cursor:pointer;flex-shrink:0">'+(included?'✓ 含める':'除外')+'</button>';
+          // Recipe info
+          html2+='<div style="flex:1;min-width:0;cursor:pointer" onclick="openRecipeDetail('+i+')">';
+          html2+='<div style="font-size:14px;font-weight:600">'+r.name+'</div>';
+          if(r.url)html2+='<div style="font-size:11px;color:var(--ac);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔗 '+r.url+'</div>';
+          if(r.memo)html2+='<div style="font-size:11px;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 '+r.memo+'</div>';
+          html2+='</div>';
+          html2+='<button onclick="deleteRecipe('+i+')" style="color:var(--mu);background:none;border:none;cursor:pointer;font-size:16px;padding:4px;flex-shrink:0">×</button>';
+          html2+='</div>';
+          html2+='</div>';
+        });
+        html2+='</div>';
+        // Generate prompt button
+        html2+='<div style="background:linear-gradient(135deg,var(--ac)22,#9B6AD422);border-radius:12px;padding:14px;margin-bottom:12px">';
+        html2+='<div style="font-size:13px;font-weight:700;margin-bottom:8px">🛒 作り置き献立プロンプト生成</div>';
+        html2+='<div style="font-size:12px;color:var(--mu);margin-bottom:10px">ストックしたレシピ＋今ある食材でClaudeに献立を聞く</div>';
+        html2+=renderRecipeIngredientSync();
+        html2+='<button onclick="generateMealPlanPrompt()" style="width:100%;padding:11px;border-radius:10px;background:var(--ac);color:white;border:none;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px">📋 プロンプトを生成してコピー</button>';
+        html2+='</div>';
+        html2+=renderRecipeShoppingSync();
+      } else {
+        html2+='<div style="text-align:center;padding:30px;color:var(--mu);font-size:13px">レシピを追加してください😊</div>';
+        // Even without recipes, show simple prompt button
+        html2+='<div style="background:var(--ac)18;border-radius:12px;padding:14px">';
+        html2+='<div style="font-size:13px;font-weight:700;margin-bottom:8px">🛒 作り置き献立を提案してもらう</div>';
+        html2+=renderRecipeIngredientSync();
+        html2+='<button onclick="generateMealPlanPrompt()" style="width:100%;padding:11px;border-radius:10px;background:var(--ac);color:white;border:none;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px">📋 プロンプトを生成してコピー</button>';
+        html2+='</div>';
+        html2+=renderRecipeShoppingSync();
+      }
       document.getElementById('view-memo').innerHTML=html2;
       return;
     }
