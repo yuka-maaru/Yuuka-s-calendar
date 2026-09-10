@@ -4597,6 +4597,10 @@ function renderHabits(){
     h+=`</div></div>`;
   });  // end groups.forEach
 
+  // Add habit tracker below
+  h+='<div style="margin-top:16px">';
+  h+=renderHabitTracker();
+  h+='</div>';
   document.getElementById('view-habits').innerHTML=h;
 }
 
