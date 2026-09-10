@@ -1913,14 +1913,22 @@ function addRecurringTask(){
 }
 
 function render(){
-  if(tab==='today'){try{renderToday();}catch(e){console.error('Today error:',e);}}
-  else if(tab==='habits')renderHabits();
-  else if(tab==='week')renderWeek();
-  else if(tab==='month')renderMonth();
-  else if(tab==='study')renderStudy();
-  else if(tab==='dream'){try{renderDreamAsTracker();}catch(e){console.error('Dream error:',e);document.getElementById('view-dream').innerHTML='<div style="padding:20px;color:var(--mu)">読み込み中...</div>';}}
-  else if(tab==='memo')renderMemo();
-  else renderSettings();
+  const renders={
+    today:renderToday,
+    habits:renderHabits,
+    week:renderWeek,
+    month:renderMonth,
+    study:renderStudy,
+    dream:renderDreamAsTracker,
+    memo:renderMemo,
+    settings:renderSettings
+  };
+  const fn=renders[tab]||renderSettings;
+  try{fn();}catch(e){
+    console.error(tab+' render error:',e);
+    const el=document.getElementById('view-'+tab);
+    if(el)el.innerHTML='<div style="padding:20px;color:var(--mu);font-size:13px">⚠️ 表示エラー: '+e.message+'</div>';
+  }
 }
 
 let memoOpenIndex=null;
