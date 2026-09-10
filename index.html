@@ -706,7 +706,7 @@ function addAllStudyAsTask(btn){
   });
   save();
   playPing();
-  if(tab==='today')renderToday();
+  if(tab==='today'){try{renderToday();}catch(e){console.error('Today error:',e);}}
   toast('📚 '+name+' を'+pending.length+'件追加！');
 }
 
@@ -1913,12 +1913,12 @@ function addRecurringTask(){
 }
 
 function render(){
-  if(tab==='today')renderToday();
+  if(tab==='today'){try{renderToday();}catch(e){console.error('Today error:',e);}}
   else if(tab==='habits')renderHabits();
   else if(tab==='week')renderWeek();
   else if(tab==='month')renderMonth();
   else if(tab==='study')renderStudy();
-  else if(tab==='dream')renderDreamAsTracker();
+  else if(tab==='dream'){try{renderDreamAsTracker();}catch(e){console.error('Dream error:',e);document.getElementById('view-dream').innerHTML='<div style="padding:20px;color:var(--mu)">読み込み中...</div>';}}
   else if(tab==='memo')renderMemo();
   else renderSettings();
 }
@@ -4137,7 +4137,7 @@ function urgentHabitClick(el){
     playPing();
   }
   save();
-  if(tab==='today')renderToday();
+  if(tab==='today'){try{renderToday();}catch(e){console.error('Today error:',e);}}
 }
 
 function addUrgentTask(key){
@@ -4732,9 +4732,11 @@ function renderHabits(){
   });  // end groups.forEach
 
   // Add habit tracker below
-  h+='<div style="margin-top:16px">';
-  h+=renderHabitTracker();
-  h+='</div>';
+  try{
+    h+='<div style="margin-top:16px">';
+    h+=renderHabitTracker();
+    h+='</div>';
+  }catch(e){console.error('Tracker error:',e);}
   document.getElementById('view-habits').innerHTML=h;
 }
 
@@ -6845,7 +6847,7 @@ function stopTimer(){
   timerInterval=null;
   hideOverlay();
   renderStudy();
-  if(tab==='today')renderToday();
+  if(tab==='today'){try{renderToday();}catch(e){console.error('Today error:',e);}}
 }
 
 function stopTimerOverlay(){
