@@ -1776,6 +1776,24 @@ let dreamPillars=JSON.parse(localStorage.getItem('yp_dream_pillars')||'null')||[
 ];
 function saveDreamPillars(){localStorage.setItem('yp_dream_pillars',JSON.stringify(dreamPillars));}
 let overriddenTimes=JSON.parse(localStorage.getItem('yp_overrides')||'{}');
+function addNewHabit(){
+  const inp=document.getElementById('new-habit-inp');
+  if(!inp||!inp.value.trim())return;
+  const name=inp.value.trim();
+  const newHabit={
+    id:'h'+Date.now(),
+    name:name,
+    icon:'⭐',
+    color:'#9B6AD4',
+    group:'morning'
+  };
+  habits.push(newHabit);
+  localStorage.setItem('yp_h',JSON.stringify(habits));
+  inp.value='';
+  renderSettings();
+  toast('✅ 習慣を追加しました！');
+}
+
 function saveCancelledDays(){localStorage.setItem('yp_cancelled_days',JSON.stringify(cancelledDays));localStorage.setItem('yp_overrides',JSON.stringify(overriddenTimes));}
 
 function isEventCancelled(key,eventId){
@@ -2400,10 +2418,10 @@ function renderMemo(){
       ondragend="memoDragEnd()"
       id="memo-row-${i}"
       style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--bd);${i===pages.length-1?'border-bottom:none':''}">
-      <div style="display:flex;flex-direction:column;gap:0px;flex-shrink:0">
-        <button onclick="memoMoveUp(${i})" style="background:none;border:none;color:var(--mu);font-size:14px;cursor:pointer;padding:1px 4px;line-height:1" ${i===0?'disabled':''}>▲</button>
-        <button onclick="memoMoveDown(${i})" style="background:none;border:none;color:var(--mu);font-size:14px;cursor:pointer;padding:1px 4px;line-height:1" ${i===pages.length-1?'disabled':''}>▼</button>
-      </div>
+      <div style="color:var(--mu);font-size:20px;cursor:grab;padding:0 8px;flex-shrink:0;-webkit-user-select:none;user-select:none;touch-action:none"
+        ontouchstart="memoTouchSortStart(event,${i})"
+        ontouchmove="memoTouchSortMove(event)"
+        ontouchend="memoTouchSortEnd(event)">⠿</div>
       <div style="flex:1;min-width:0" ontouchstart="memoTouchStart(event,${i})" ontouchend="memoTouchEnd(event,${i})" ontouchmove="memoTouchMove(event)" onclick="if(!memoTouchMoved){memoOpenIndex=${i};renderMemo()}">
         <div style="font-size:14px;font-weight:600;color:var(--tx)">${p.title}</div>
         <div style="font-size:12px;color:var(--mu);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${preview||'空のページ'}</div>
@@ -3329,6 +3347,122 @@ function memoTouchEnd(e,i){
 }
 
 function memoDragStart(i){memoDragIdx=i;}
+
+let memoSortIdx=null;
+function memoTouchSortStart(e,i){
+  e.stopPropagation();
+  memoSortIdx=i;
+  const el=document.getElementById('memo-row-'+i);
+  if(el){el.style.opacity='0.5';el.style.outline='2px solid var(--ac)';}
+}
+function memoTouchSortMove(e){
+  if(memoSortIdx===null)return;
+  e.preventDefault();
+  const t=e.touches[0];
+  document.querySelectorAll('[id^=memo-row-]').forEach(el=>{
+    const r=el.getBoundingClientRect();
+    const idx=parseInt(el.id.replace('memo-row-',''));
+    if(t.clientY>=r.top&&t.clientY<=r.bottom&&idx!==memoSortIdx){
+      document.querySelectorAll('[id^=memo-row-]').forEach(x=>{if(x.id!=='memo-row-'+memoSortIdx)x.style.outline='';});
+      el.style.outline='2px solid var(--ac)';
+    }
+  });
+}
+function memoTouchSortEnd(e){
+  if(memoSortIdx===null)return;
+  const t=e.changedTouches[0];
+  let dropIdx=null;
+  document.querySelectorAll('[id^=memo-row-]').forEach(el=>{
+    const r=el.getBoundingClientRect();
+    const idx=parseInt(el.id.replace('memo-row-',''));
+    if(t.clientY>=r.top&&t.clientY<=r.bottom&&idx!==memoSortIdx)dropIdx=idx;
+    el.style.outline='';el.style.opacity='';
+  });
+  if(dropIdx!==null){
+    const pages=getMemoPages();
+    const [moved]=pages.splice(memoSortIdx,1);
+    pages.splice(dropIdx,0,moved);
+    saveMemoPages(pages);renderMemo();
+  }
+  memoSortIdx=null;
+}
+
+let studySortLi=null,studySortIi=null;
+function studyTouchSortStart(e,li,ii){
+  e.stopPropagation();
+  studySortLi=li;studySortIi=ii;
+  const el=document.getElementById('study-item-'+li+'-'+ii);
+  if(el){el.style.opacity='0.5';el.style.outline='2px solid var(--ac)';}
+}
+function studyTouchSortMove(e){
+  if(studySortLi===null)return;
+  e.preventDefault();
+  const t=e.touches[0];
+  document.querySelectorAll('[id^=study-item-'+studySortLi+'-]').forEach(el=>{
+    const r=el.getBoundingClientRect();
+    const ii=parseInt(el.id.split('-').pop());
+    if(t.clientY>=r.top&&t.clientY<=r.bottom&&ii!==studySortIi){
+      document.querySelectorAll('[id^=study-item-'+studySortLi+'-]').forEach(x=>{if(x.id!=='study-item-'+studySortLi+'-'+studySortIi)x.style.outline='';});
+      el.style.outline='2px solid var(--ac)';
+    }
+  });
+}
+function studyTouchSortEnd(e){
+  if(studySortLi===null)return;
+  const t=e.changedTouches[0];
+  let dropIi=null;
+  document.querySelectorAll('[id^=study-item-'+studySortLi+'-]').forEach(el=>{
+    const r=el.getBoundingClientRect();
+    const ii=parseInt(el.id.split('-').pop());
+    if(t.clientY>=r.top&&t.clientY<=r.bottom&&ii!==studySortIi)dropIi=ii;
+    el.style.outline='';el.style.opacity='';
+  });
+  if(dropIi!==null){
+    const items=studyLists[studySortLi].items;
+    const [moved]=items.splice(studySortIi,1);
+    items.splice(dropIi,0,moved);
+    saveStudy();renderStudy();
+  }
+  studySortLi=null;studySortIi=null;
+}
+
+let studyListSortIdx=null;
+function studyListTouchSortStart(e,li){
+  e.stopPropagation();
+  studyListSortIdx=li;
+  const el=document.getElementById('study-list-'+li);
+  if(el){el.style.opacity='0.5';el.style.outline='2px solid var(--ac)';}
+}
+function studyListTouchSortMove(e){
+  if(studyListSortIdx===null)return;
+  e.preventDefault();
+  const t=e.touches[0];
+  document.querySelectorAll('[id^=study-list-]').forEach(el=>{
+    const r=el.getBoundingClientRect();
+    const li=parseInt(el.id.replace('study-list-',''));
+    if(t.clientY>=r.top&&t.clientY<=r.bottom&&li!==studyListSortIdx){
+      document.querySelectorAll('[id^=study-list-]').forEach(x=>{if(x.id!=='study-list-'+studyListSortIdx)x.style.outline='';});
+      el.style.outline='2px solid var(--ac)';
+    }
+  });
+}
+function studyListTouchSortEnd(e){
+  if(studyListSortIdx===null)return;
+  const t=e.changedTouches[0];
+  let dropLi=null;
+  document.querySelectorAll('[id^=study-list-]').forEach(el=>{
+    const r=el.getBoundingClientRect();
+    const li=parseInt(el.id.replace('study-list-',''));
+    if(t.clientY>=r.top&&t.clientY<=r.bottom&&li!==studyListSortIdx)dropLi=li;
+    el.style.outline='';el.style.opacity='';
+  });
+  if(dropLi!==null){
+    const [moved]=studyLists.splice(studyListSortIdx,1);
+    studyLists.splice(dropLi,0,moved);
+    saveStudy();renderStudy();
+  }
+  studyListSortIdx=null;
+}
 
 function memoMoveUp(i){
   if(i<=0)return;
@@ -6843,10 +6977,10 @@ function renderStudy(){
         ondragstart="studyListDragStart(event,${li})"
         ondragover="studyListDragOver(event,${li})"
         ondrop="studyListDrop(event,${li})">
-          <div style="display:flex;flex-direction:column;flex-shrink:0">
-            <button onclick="studyListMoveUp(${li})" style="background:none;border:none;color:var(--mu);font-size:12px;cursor:pointer;padding:0 3px;line-height:1">▲</button>
-            <button onclick="studyListMoveDown(${li})" style="background:none;border:none;color:var(--mu);font-size:12px;cursor:pointer;padding:0 3px;line-height:1">▼</button>
-          </div>
+          <div style="color:var(--mu);font-size:18px;cursor:grab;padding:0 6px;-webkit-user-select:none;user-select:none;touch-action:none"
+            ontouchstart="studyListTouchSortStart(event,${li})"
+            ontouchmove="studyListTouchSortMove(event)"
+            ontouchend="studyListTouchSortEnd(event)">⠿</div>
           <div style="width:10px;height:10px;border-radius:50%;background:${sl.color};flex-shrink:0"></div>
           <span style="font-size:13px;font-weight:600;flex:1">${sl.name}</span>
           <span style="font-size:11px;color:var(--mu)">${done}/${total}</span>
@@ -6858,10 +6992,10 @@ function renderStudy(){
           ondragover="studyItemDragOver(event,${li},${ii})"
           ondrop="studyItemDrop(event,${li},${ii})"
           style="cursor:default">
-          <div style="display:flex;flex-direction:column;flex-shrink:0">
-        <button onclick="studyMoveUp(${li},${ii})" style="background:none;border:none;color:var(--mu);font-size:12px;cursor:pointer;padding:0 3px;line-height:1">▲</button>
-        <button onclick="studyMoveDown(${li},${ii})" style="background:none;border:none;color:var(--mu);font-size:12px;cursor:pointer;padding:0 3px;line-height:1">▼</button>
-      </div>
+          <div style="color:var(--mu);font-size:18px;cursor:grab;padding:0 6px;-webkit-user-select:none;user-select:none;touch-action:none"
+        ontouchstart="studyTouchSortStart(event,${li},${ii})"
+        ontouchmove="studyTouchSortMove(event)"
+        ontouchend="studyTouchSortEnd(event)">⠿</div>
           <button class="study-check${item.done?' done':''}" onclick="toggleStudyItem(${li},${ii})" aria-label="${item.label}">
             <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
