@@ -243,7 +243,7 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
       <div class="ni"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>学習
     </button>
     <button onclick="sw('dream')">
-      <div class="ni">🌿</div>習慣
+      <div class="ni">🌿</div>夢
     </button>
     <button onclick="sw('memo')">
       <div class="ni"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>メモ
@@ -268,6 +268,8 @@ let habits=JSON.parse(localStorage.getItem('yp_h')||'null')||[
   {id:'warmwater',name:'Drink warm water',icon:'🫖',color:'#34D399',group:'morning'},
   {id:'affirmation',name:'Affirmation',icon:'💫',color:'#C4882A',timerMins:5,group:'morning'},
   {id:'vocab',name:'Vocabulary practice',icon:'📝',color:'#E8856A',timerMins:15,group:'morning'},
+  {id:'teded',name:'TED-ED shadowing',icon:'🎧',color:'#E8856A',timerMins:15,group:'morning'},
+  {id:'gemini_eng',name:'Talk with Gemini in English',icon:'🤖',color:'#2D6A8F',timerMins:15,group:'morning'},
   {id:'yoga',name:'Morning yoga',icon:'🧘',color:'#5A8A6A',timerMins:45,group:'morning'},
   {id:'med_am',name:'Meditation',icon:'🌿',color:'#2D6A8F',timerMins:20,group:'morning'},
   {id:'clearing',name:'Clearing (morning)',icon:'🧹',color:'#9B6AD4',timerMins:10,group:'morning'},
@@ -1750,6 +1752,29 @@ let eventTemplates=JSON.parse(localStorage.getItem('yp_ev_templates')||'null')||
 ];
 let customEvents=JSON.parse(localStorage.getItem('yp_custom_ev')||'{}');
 let cancelledDays=JSON.parse(localStorage.getItem('yp_cancelled_days')||'{}');
+let dreamPillars=JSON.parse(localStorage.getItem('yp_dream_pillars')||'null')||[
+  {id:'writer',icon:'✍️',name:'作家',color:'#7A4FA0',
+   affirmation:'私は作家だ。毎日書くことで、世界に自分の声を届ける。',
+   habitIds:['writing','vocab','teded','gemini_eng'],
+   studyListIds:['sl6'],
+   expanded:false},
+  {id:'phil',icon:'📚',name:'哲学',color:'#2D6A8F',
+   affirmation:'哲学的探究が、私の思考と表現を深める。',
+   habitIds:[],
+   studyListIds:['sl1','sl2'],
+   expanded:false},
+  {id:'english',icon:'🌍',name:'英語',color:'#E8856A',
+   affirmation:'英語は私の武器。毎日少しずつ、世界と繋がる。',
+   habitIds:['vocab','teded','gemini_eng'],
+   studyListIds:[],
+   expanded:false},
+  {id:'life',icon:'🌱',name:'整える',color:'#5A8A6A',
+   affirmation:'心と体を整えることが、すべての土台になる。',
+   habitIds:['yoga','med_am','clearing','med_pm','yoga_pm','clearing_pm'],
+   studyListIds:[],
+   expanded:false},
+];
+function saveDreamPillars(){localStorage.setItem('yp_dream_pillars',JSON.stringify(dreamPillars));}
 let overriddenTimes=JSON.parse(localStorage.getItem('yp_overrides')||'{}');
 function saveCancelledDays(){localStorage.setItem('yp_cancelled_days',JSON.stringify(cancelledDays));localStorage.setItem('yp_overrides',JSON.stringify(overriddenTimes));}
 
@@ -5114,6 +5139,8 @@ if(localStorage.getItem('yp_habit_ver')!==habitVersion){
     {id:'warmwater',name:'Drink warm water',icon:'🫖',color:'#34D399',group:'morning'},
     {id:'affirmation',name:'Affirmation',icon:'💫',color:'#C4882A',timerMins:5,group:'morning'},
     {id:'vocab',name:'Vocabulary practice',icon:'📝',color:'#E8856A',timerMins:15,group:'morning'},
+  {id:'teded',name:'TED-ED shadowing',icon:'🎧',color:'#E8856A',timerMins:15,group:'morning'},
+  {id:'gemini_eng',name:'Talk with Gemini in English',icon:'🤖',color:'#2D6A8F',timerMins:15,group:'morning'},
     {id:'yoga',name:'Morning yoga',icon:'🧘',color:'#5A8A6A',timerMins:45,group:'morning'},
     {id:'med_am',name:'Meditation',icon:'🌿',color:'#2D6A8F',timerMins:20,group:'morning'},
     {id:'clearing',name:'Clearing (morning)',icon:'🧹',color:'#9B6AD4',timerMins:10,group:'morning'},
@@ -5459,14 +5486,295 @@ function drawTree(progress){
   return svg;
 }
 
+function getDreamPillars(){
+  const defaults=[
+    {
+      id:'writer',icon:'✍️',name:'作家',color:'#7A4FA0',
+      affirmation:'私は作家だ。毎日書くことで、世界に自分の声を届ける。',
+      habitIds:['writing','vocab','teded','gemini_eng'],
+      studyListIds:['sl6'],
+      expanded:false
+    },
+    {
+      id:'philo',icon:'📚',name:'哲学',color:'#2D6A8F',
+      affirmation:'哲学的探究が私の思考を深め、世界を新しい目で見せてくれる。',
+      habitIds:[],
+      studyListIds:['sl1','sl2'],
+      expanded:false
+    },
+    {
+      id:'english',icon:'🌍',name:'英語',color:'#E8856A',
+      affirmation:'英語は私の翼。世界中の人に届く言葉を持っている。',
+      habitIds:['vocab','teded','gemini_eng'],
+      studyListIds:[],
+      expanded:false
+    },
+    {
+      id:'life',icon:'🌱',name:'整える',color:'#5A8A6A',
+      affirmation:'整えた心と体が、本来の自分への道を開く。',
+      habitIds:['yoga','med_am','clearing','yoga_pm','med_pm','clearing_pm'],
+      studyListIds:[],
+      expanded:false
+    },
+  ];
+  return JSON.parse(localStorage.getItem('yp_dream_pillars')||'null')||defaults;
+}
+
+function saveDreamPillars(pillars){
+  localStorage.setItem('yp_dream_pillars',JSON.stringify(pillars));
+}
+
+function toggleDreamPillar(id){
+  const pillars=getDreamPillars();
+  const p=pillars.find(p=>p.id===id);
+  if(p)p.expanded=!p.expanded;
+  saveDreamPillars(pillars);
+  renderDreamAsTracker();
+}
+
+function openDreamPillarEdit(id){
+  const pillars=getDreamPillars();
+  const p=pillars.find(p=>p.id===id);
+  if(!p)return;
+  const wrap=document.getElementById('modal-wrap');
+  let html='<div class="modal-bg" onclick="closeModal(event)"><div class="modal" style="max-height:88vh;overflow-y:auto">';
+  html+='<button class="modal-close" onclick="closeModal()">×</button>';
+  html+='<div style="font-size:16px;font-weight:700;margin-bottom:14px">'+p.icon+' '+p.name+' を編集</div>';
+  // Affirmation
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:4px">アファメーション</div>';
+  html+='<textarea id="dream-affirm-inp" style="width:100%;min-height:70px;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);box-sizing:border-box;resize:none">'+p.affirmation+'</textarea>';
+  // Habit sync
+  html+='<div style="font-size:11px;color:var(--mu);margin:10px 0 6px">同期する習慣</div>';
+  html+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">';
+  habits.forEach(h=>{
+    const sel=p.habitIds.includes(h.id);
+    html+='<input type="checkbox" '+(p.habitIds.includes(hb.id)?'checked':'')+' onchange="toggleDreamHabit('+pi+',this.dataset.hid)" data-hid="'+hb.id+'" style="width:16px;height:16px">';
+
+  });
+  html+='</div>';
+  // Study list sync
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:6px">同期する学習リスト</div>';
+  html+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">';
+  studyLists.forEach(sl=>{
+    const sel=p.studyListIds.includes(sl.id);
+    html+='<input type="checkbox" '+(p.studyListIds.includes(sl.id)?'checked':'')+' onchange="toggleDreamStudy('+pi+',this.dataset.slid)" data-slid="'+sl.id+'" style="width:16px;height:16px">';
+  });
+  html+='</div>';
+  html+='<button onclick="saveDreamPillarEdit('+pi+')" class="abtn" style="width:100%;padding:11px">💾 保存</button>';
+  html+='</div></div>';
+  wrap.innerHTML=html;
+}
+
+function toggleDreamHabit(pillarId,hid){
+  const pillars=getDreamPillars();
+  const p=pillars.find(p=>p.id===pillarId);
+  if(!p)return;
+  const idx=p.habitIds.indexOf(hid);
+  if(idx>=0)p.habitIds.splice(idx,1);
+  else p.habitIds.push(hid);
+  saveDreamPillars(pillars);
+  // Re-render modal
+  openDreamPillarEdit(pillarId);
+}
+
+function toggleDreamStudy(pillarId,slid){
+  const pillars=getDreamPillars();
+  const p=pillars.find(p=>p.id===pillarId);
+  if(!p)return;
+  const idx=p.studyListIds.indexOf(slid);
+  if(idx>=0)p.studyListIds.splice(idx,1);
+  else p.studyListIds.push(slid);
+  saveDreamPillars(pillars);
+  openDreamPillarEdit(pillarId);
+}
+
+function saveDreamPillarEdit(pillarId){
+  const pillars=getDreamPillars();
+  const p=pillars.find(p=>p.id===pillarId);
+  if(!p)return;
+  const affirm=document.getElementById('dream-affirm-inp')?.value.trim();
+  if(affirm)p.affirmation=affirm;
+  saveDreamPillars(pillars);
+  closeModal();
+  renderDreamAsTracker();
+  toast('💾 保存しました！');
+}
+
 function renderDreamAsTracker(){
   const el=document.getElementById('view-dream');
   if(!el)return;
-  let html='<div style="padding-top:8px"></div>';
-  html+='<div style="font-size:16px;font-weight:700;margin-bottom:16px;text-align:center">🌿 習慣トラッカー</div>';
-  html+=renderHabitTracker();
+  const today=dk(new Date());
+  const todayData=data[today]||{};
+
+  let html='<div style="padding:8px 0">';
+
+  // Center be myself
+  html+='<div style="text-align:center;padding:12px 0 16px">';
+  html+='<div style="font-size:20px;font-weight:800;color:var(--ac)">be myself</div>';
+  html+='<div style="font-size:11px;color:var(--mu);margin-top:2px">= do what I truly love</div>';
+  html+='</div>';
+
+  // 4 pillars
+  dreamPillars.forEach((p,pi)=>{
+    // Calculate progress
+    const habitDone=p.habitIds.filter(id=>todayData[id]).length;
+    const habitTotal=p.habitIds.length;
+    const studyDone=p.studyListIds.reduce((a,sid)=>{
+      const sl=studyLists.find(s=>s.id===sid);
+      return a+(sl?sl.items.filter(i=>i.done).length:0);
+    },0);
+    const studyTotal=p.studyListIds.reduce((a,sid)=>{
+      const sl=studyLists.find(s=>s.id===sid);
+      return a+(sl?sl.items.length:0);
+    },0);
+    const total=habitTotal+studyTotal;
+    const done=habitDone+studyDone;
+    const pct=total>0?Math.round((done/total)*100):0;
+
+    html+='<div style="background:var(--sur);border-radius:14px;border:1.5px solid '+p.color+'44;margin-bottom:10px;overflow:hidden">';
+    // Header - tappable
+    html+='<div onclick="toggleDreamPillar('+pi+')" style="padding:14px;cursor:pointer">';
+    html+='<div style="display:flex;align-items:center;gap:10px">';
+    html+='<span style="font-size:22px">'+p.icon+'</span>';
+    html+='<div style="flex:1">';
+    html+='<div style="font-size:14px;font-weight:700;color:'+p.color+'">'+p.name+'</div>';
+    html+='<div style="font-size:11px;color:var(--mu);margin-top:2px;font-style:italic">"'+p.affirmation+'"</div>';
+    html+='</div>';
+    html+='<div style="text-align:right;flex-shrink:0">';
+    html+='<div style="font-size:16px;font-weight:700;color:'+p.color+'">'+pct+'%</div>';
+    html+='<div style="font-size:10px;color:var(--mu)">'+done+'/'+total+'</div>';
+    html+='</div>';
+    html+='</div>';
+    // Progress bar
+    html+='<div style="height:4px;border-radius:2px;background:var(--bd);margin-top:10px;overflow:hidden">';
+    html+='<div style="width:'+pct+'%;height:100%;background:'+p.color+';border-radius:2px;transition:width 0.5s"></div>';
+    html+='</div>';
+    html+='</div>';
+
+    // Expanded tasks
+    if(p.expanded){
+      html+='<div style="border-top:1px solid var(--bd);padding:12px 14px">';
+      // Habits
+      if(p.habitIds.length>0){
+        html+='<div style="font-size:10px;color:var(--mu);margin-bottom:6px">習慣</div>';
+        p.habitIds.forEach(hid=>{
+          const hb=habits.find(h=>h.id===hid);
+          if(!hb)return;
+          const done=!!todayData[hid];
+          html+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0">';
+          html+='<div style="width:16px;height:16px;border-radius:50%;background:'+(done?hb.color:'var(--bd)')+';flex-shrink:0;display:flex;align-items:center;justify-content:center">';
+          if(done)html+='<svg viewBox="0 0 24 24" width="10" height="10"><polyline points="20 6 9 17 4 12" stroke="white" stroke-width="3" fill="none"/></svg>';
+          html+='</div>';
+          html+='<span style="font-size:12px;color:'+(done?'var(--tx)':'var(--mu)')+'">'+hb.icon+' '+hb.name+'</span>';
+          html+='</div>';
+        });
+      }
+      // Study lists
+      if(p.studyListIds.length>0){
+        html+='<div style="font-size:10px;color:var(--mu);margin-top:8px;margin-bottom:6px">学習</div>';
+        p.studyListIds.forEach(sid=>{
+          const sl=studyLists.find(s=>s.id===sid);
+          if(!sl)return;
+          const done=sl.items.filter(i=>i.done).length;
+          html+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0">';
+          html+='<div style="width:16px;height:16px;border-radius:50%;background:'+(done===sl.items.length&&done>0?sl.color:'var(--bd)')+';flex-shrink:0"></div>';
+          html+='<span style="font-size:12px;color:var(--tx)">📚 '+sl.name+' ('+done+'/'+sl.items.length+')</span>';
+          html+='</div>';
+        });
+      }
+      // Edit button
+      html+='<button onclick="openDreamPillarEdit('+pi+')" style="margin-top:10px;width:100%;padding:7px;border-radius:8px;background:var(--bg);border:1px solid var(--bd);font-size:12px;color:var(--mu);cursor:pointer">⚙️ 編集</button>';
+      html+='</div>';
+    }
+    html+='</div>';
+  });
+
+  // Total
+  const allDone=dreamPillars.reduce((a,p)=>{
+    const hd=p.habitIds.filter(id=>(data[today]||{})[id]).length;
+    const sd=p.studyListIds.reduce((x,sid)=>{const sl=studyLists.find(s=>s.id===sid);return x+(sl?sl.items.filter(i=>i.done).length:0);},0);
+    return a+hd+sd;
+  },0);
+  const allTotal=dreamPillars.reduce((a,p)=>{
+    const ht=p.habitIds.length;
+    const st=p.studyListIds.reduce((x,sid)=>{const sl=studyLists.find(s=>s.id===sid);return x+(sl?sl.items.length:0);},0);
+    return a+ht+st;
+  },0);
+  const avgPct=allTotal>0?Math.round((allDone/allTotal)*100):0;
+
+  html+='<div style="background:linear-gradient(135deg,var(--ac)18,#9B6AD422);border-radius:12px;padding:12px;text-align:center;margin-top:4px">';
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:4px">今日の総合達成度</div>';
+  html+='<div style="font-size:28px;font-weight:800;color:var(--ac)">'+avgPct+'%</div>';
+  html+='<div style="font-size:11px;color:var(--mu);margin-top:2px">';
+  if(avgPct>=80)html+='🌟 完璧な一日！';
+  else if(avgPct>=60)html+='✨ よくできてる！';
+  else if(avgPct>=40)html+='💪 着実に進んでいる';
+  else if(avgPct>0)html+='🌱 今日も一歩ずつ';
+  else html+='🌿 今日もやってみよう';
+  html+='</div></div>';
+
+  html+='</div>';
   el.innerHTML=html;
 }
+
+function toggleDreamPillar(pi){
+  dreamPillars[pi].expanded=!dreamPillars[pi].expanded;
+  saveDreamPillars();
+  renderDreamAsTracker();
+}
+
+function openDreamPillarEdit(pi){
+  const p=dreamPillars[pi];
+  const wrap=document.getElementById('modal-wrap');
+  let html='<div class="modal-bg" onclick="closeModal(event)"><div class="modal" style="max-height:88vh;overflow-y:auto">';
+  html+='<button class="modal-close" onclick="closeModal()">×</button>';
+  html+='<div style="font-size:16px;font-weight:700;margin-bottom:14px">'+p.icon+' '+p.name+' を編集</div>';
+  // Affirmation
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:4px">アファメーション</div>';
+  html+='<textarea id="dream-affirmation" style="width:100%;min-height:60px;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);box-sizing:border-box;resize:none;margin-bottom:12px">'+p.affirmation+'</textarea>';
+  // Habits
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:6px">同期する習慣</div>';
+  habits.forEach(hb=>{
+    const checked=p.habitIds.includes(hb.id);
+    html+='<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer">';
+    html+='<input type="checkbox" '+(checked?'checked':'')+' data-hid="'+hb.id+'" onchange="toggleDreamHabit('+pi+',this.dataset.hid)" style="width:16px;height:16px">';
+    html+='<span style="font-size:13px">'+hb.icon+' '+hb.name+'</span>';
+    html+='</label>';
+  });
+  // Study lists
+  html+='<div style="font-size:11px;color:var(--mu);margin-top:10px;margin-bottom:6px">同期する学習リスト</div>';
+  studyLists.forEach(sl=>{
+    const checked=p.studyListIds.includes(sl.id);
+    html+='<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer">';
+    html+='<input type="checkbox" '+(checked?'checked':'')+' data-slid="'+sl.id+'" onchange="toggleDreamStudy('+pi+',this.dataset.slid)" style="width:16px;height:16px">';
+    html+='<span style="font-size:13px">📚 '+sl.name+'</span>';
+    html+='</label>';
+  });
+  html+='<button onclick="saveDreamPillarEdit('+pi+')" class="abtn" style="width:100%;margin-top:14px;padding:11px">💾 保存</button>';
+  html+='</div></div>';
+  wrap.innerHTML=html;
+}
+
+function toggleDreamHabit(pi,hid){
+  const idx=dreamPillars[pi].habitIds.indexOf(hid);
+  if(idx>=0)dreamPillars[pi].habitIds.splice(idx,1);
+  else dreamPillars[pi].habitIds.push(hid);
+}
+
+function toggleDreamStudy(pi,sid){
+  const idx=dreamPillars[pi].studyListIds.indexOf(sid);
+  if(idx>=0)dreamPillars[pi].studyListIds.splice(idx,1);
+  else dreamPillars[pi].studyListIds.push(sid);
+}
+
+function saveDreamPillarEdit(pi){
+  dreamPillars[pi].affirmation=document.getElementById('dream-affirmation')?.value.trim()||dreamPillars[pi].affirmation;
+  saveDreamPillars();
+  closeModal();
+  renderDreamAsTracker();
+  toast('💾 保存しました！');
+}
+
 
 function renderDream(){
   const progress=getTreeProgress();
@@ -6541,7 +6849,7 @@ function renderStudy(){
           <button onclick="resetStudyList(${li})" style="font-size:10px;padding:2px 7px;border-radius:6px;background:var(--sur);border:1px solid var(--bd);color:var(--mu);cursor:pointer" title="リセット">🔄</button>
         </div>
         ${sl.items.map((item,ii)=>`
-        <div class="study-item" draggable="true" data-li="${li}" data-ii="${ii}"
+        <div class="study-item" draggable="true" data-li="${li}" data-ii="${ii}" id="study-item-${li}-${ii}"
           ondragstart="studyItemDragStart(event,${li},${ii})"
           ondragover="studyItemDragOver(event,${li},${ii})"
           ondrop="studyItemDrop(event,${li},${ii})"
