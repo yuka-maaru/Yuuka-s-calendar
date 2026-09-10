@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<!-- v20260910-fix -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Yuka's Planner</title>
 <style>
@@ -393,7 +394,9 @@ function applyRecurringTasks(force=false){
 }
 
 let data=JSON.parse(localStorage.getItem('yp_d')||'{}');
-let tasks=JSON.parse(localStorage.getItem('yp_t')||'{}');
+let tasks=JSON.parse(localStorage.getItem('yp_t')||'{}')
+let studyBlocks=JSON.parse(localStorage.getItem('yp_study_blocks')||'{}');
+let studyLog=JSON.parse(localStorage.getItem('yp_study_log')||'{}');;
 let dayOff=0,monOff=0,weekOff=0,tab='today',selDate=null;
 let saveTimer=null;
 
@@ -5378,8 +5381,6 @@ let studyLists=JSON.parse(localStorage.getItem('yp_study_lists')||'null')||[
   ]},
 ];
 
-let studyLog=JSON.parse(localStorage.getItem('yp_study_log')||'{}');
-let studyBlocks=JSON.parse(localStorage.getItem('yp_study_blocks')||'{}');
 let timerInterval=null;
 let timerSeconds=0;
 let timerTotal=25*60;
@@ -6240,7 +6241,7 @@ function startMandalaTimer(dreamIdx,catIdx,itemIdx){
   timerInterval=setInterval(()=>{
     timerSeconds++;
     const today=dk(new Date());
-    studyLog[today]=(studyLog[today]||0)+1;
+    (typeof studyLog!=="undefined"?studyLog:{})[today]=((typeof studyLog!=="undefined"?studyLog:{})[today]||0)+1;
     saveStudy();
     updateTimerDisplay();
     updateOverlay();
@@ -6607,7 +6608,7 @@ function habitDragEnd(){habitDragIdx=null;document.querySelectorAll('.hrow').for
 
 function getTodayStudyTime(){
   const today=dk(new Date());
-  return studyLog[today]||0;
+  return (typeof studyLog!=="undefined"?studyLog:{})[today]||0;
 }
 
 function getWeekStudyTime(){
@@ -6692,7 +6693,7 @@ function togglePause(){
 function timerTick(){
   timerSeconds++;
   const today=dk(new Date());
-  studyLog[today]=(studyLog[today]||0)+1;
+  (typeof studyLog!=="undefined"?studyLog:{})[today]=((typeof studyLog!=="undefined"?studyLog:{})[today]||0)+1;
   saveStudy();
   // Deadline mode: check real clock
   if(timerDeadline){
