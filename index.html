@@ -2375,7 +2375,10 @@ function renderMemo(){
       ondragend="memoDragEnd()"
       id="memo-row-${i}"
       style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--bd);${i===pages.length-1?'border-bottom:none':''}">
-      <div style="color:var(--mu);font-size:18px;cursor:grab;padding:4px;flex-shrink:0;touch-action:none;user-select:none" ontouchstart="memoHandleTouch(event,${i})" onmousedown="memoDragStart(${i})">⠿</div>
+      <div style="display:flex;flex-direction:column;gap:0px;flex-shrink:0">
+        <button onclick="memoMoveUp(${i})" style="background:none;border:none;color:var(--mu);font-size:14px;cursor:pointer;padding:1px 4px;line-height:1" ${i===0?'disabled':''}>▲</button>
+        <button onclick="memoMoveDown(${i})" style="background:none;border:none;color:var(--mu);font-size:14px;cursor:pointer;padding:1px 4px;line-height:1" ${i===pages.length-1?'disabled':''}>▼</button>
+      </div>
       <div style="flex:1;min-width:0" ontouchstart="memoTouchStart(event,${i})" ontouchend="memoTouchEnd(event,${i})" ontouchmove="memoTouchMove(event)" onclick="if(!memoTouchMoved){memoOpenIndex=${i};renderMemo()}">
         <div style="font-size:14px;font-weight:600;color:var(--tx)">${p.title}</div>
         <div style="font-size:12px;color:var(--mu);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${preview||'空のページ'}</div>
@@ -3301,6 +3304,19 @@ function memoTouchEnd(e,i){
 }
 
 function memoDragStart(i){memoDragIdx=i;}
+
+function memoMoveUp(i){
+  if(i<=0)return;
+  const pages=getMemoPages();
+  const tmp=pages[i];pages[i]=pages[i-1];pages[i-1]=tmp;
+  saveMemoPages(pages);renderMemo();
+}
+function memoMoveDown(i){
+  const pages=getMemoPages();
+  if(i>=pages.length-1)return;
+  const tmp=pages[i];pages[i]=pages[i+1];pages[i+1]=tmp;
+  saveMemoPages(pages);renderMemo();
+}
 
 let memoTouchDragIdx=-1,memoTouchDragEl=null,memoTouchDragClone=null;
 function memoHandleTouch(e,i){
@@ -5896,6 +5912,30 @@ function studyListDrop(e,li){
 
 let studyDragSrc={li:-1,ii:-1};
 
+function studyMoveUp(li,ii){
+  if(!studyLists[li]||ii<=0)return;
+  const items=studyLists[li].items;
+  const tmp=items[ii];items[ii]=items[ii-1];items[ii-1]=tmp;
+  saveStudy();renderStudy();
+}
+function studyMoveDown(li,ii){
+  if(!studyLists[li])return;
+  const items=studyLists[li].items;
+  if(ii>=items.length-1)return;
+  const tmp=items[ii];items[ii]=items[ii+1];items[ii+1]=tmp;
+  saveStudy();renderStudy();
+}
+function studyListMoveUp(li){
+  if(li<=0)return;
+  const tmp=studyLists[li];studyLists[li]=studyLists[li-1];studyLists[li-1]=tmp;
+  saveStudy();renderStudy();
+}
+function studyListMoveDown(li){
+  if(li>=studyLists.length-1)return;
+  const tmp=studyLists[li];studyLists[li]=studyLists[li+1];studyLists[li+1]=tmp;
+  saveStudy();renderStudy();
+}
+
 function studyHandleTouch(e,li,ii){
   e.stopPropagation();
   e.preventDefault();
@@ -6491,7 +6531,10 @@ function renderStudy(){
         ondragstart="studyListDragStart(event,${li})"
         ondragover="studyListDragOver(event,${li})"
         ondrop="studyListDrop(event,${li})">
-          <span style="color:var(--mu);font-size:16px;cursor:grab;padding:0 4px">⠿</span>
+          <div style="display:flex;flex-direction:column;flex-shrink:0">
+            <button onclick="studyListMoveUp(${li})" style="background:none;border:none;color:var(--mu);font-size:12px;cursor:pointer;padding:0 3px;line-height:1">▲</button>
+            <button onclick="studyListMoveDown(${li})" style="background:none;border:none;color:var(--mu);font-size:12px;cursor:pointer;padding:0 3px;line-height:1">▼</button>
+          </div>
           <div style="width:10px;height:10px;border-radius:50%;background:${sl.color};flex-shrink:0"></div>
           <span style="font-size:13px;font-weight:600;flex:1">${sl.name}</span>
           <span style="font-size:11px;color:var(--mu)">${done}/${total}</span>
@@ -6503,7 +6546,10 @@ function renderStudy(){
           ondragover="studyItemDragOver(event,${li},${ii})"
           ondrop="studyItemDrop(event,${li},${ii})"
           style="cursor:default">
-          <span style="color:var(--mu);font-size:16px;cursor:grab;padding:0 4px;-webkit-user-select:none;user-select:none;touch-action:none" title="ドラッグで並び替え" ontouchstart="studyHandleTouch(event,${li},${ii})" onmousedown="studyItemDragStart(event,${li},${ii})">⠿</span>
+          <div style="display:flex;flex-direction:column;flex-shrink:0">
+        <button onclick="studyMoveUp(${li},${ii})" style="background:none;border:none;color:var(--mu);font-size:12px;cursor:pointer;padding:0 3px;line-height:1">▲</button>
+        <button onclick="studyMoveDown(${li},${ii})" style="background:none;border:none;color:var(--mu);font-size:12px;cursor:pointer;padding:0 3px;line-height:1">▼</button>
+      </div>
           <button class="study-check${item.done?' done':''}" onclick="toggleStudyItem(${li},${ii})" aria-label="${item.label}">
             <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
           </button>
