@@ -3337,7 +3337,8 @@ function memoTouchMove(e){
   if(dx>8||dy>8)memoTouchMoved=true;
 }
 function memoTouchEnd(e,i){
-  if(!memoTouchMoved){
+  const newScrollY=window.scrollY||document.documentElement.scrollTop||0;
+  if(Math.abs(newScrollY-memoScrollY)<5){
     memoOpenIndex=i;
     renderMemo();
   }
