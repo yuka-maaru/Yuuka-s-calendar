@@ -633,6 +633,10 @@ function renderIntentionCard(key,dow,d,todayGoal,defaultGoalTxt){
 }
 
 
+function openPlanTomorrow(key){
+  openTimeSlot(key,9,'task');
+}
+
 function openFreeTimeFromToday(key){
   const now=new Date();
   const t=Math.round((now.getHours()+(now.getMinutes()/60))*2)/2;
@@ -1012,7 +1016,7 @@ function openDayModal(key){
           <span onclick="renderTemplateSettings()" style="color:var(--ac);cursor:pointer;font-size:11px">テンプレート編集</span>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          ${eventTemplates.map(t=>'<button onclick="addEventFromTemplate(\'' + key + '\',\''+t.id+'\')" style="padding:5px 10px;border-radius:20px;background:'+t.color+'22;border:1px solid '+t.color+';color:'+t.color+';font-size:11px;cursor:pointer">'+t.name+'</button>').join('')}
+          ${eventTemplates.map((t,ti)=>'<span style="display:inline-flex;align-items:center;gap:3px;margin:2px">'+'<button onclick="addEventFromTemplate(\'' + key + '\',\''+t.id+'\')" style="padding:5px 10px;border-radius:20px;background:'+t.color+'22;border:1px solid '+t.color+';color:'+t.color+';font-size:11px;cursor:pointer">'+t.name+'</button>'+'<button onclick="deleteEventTemplate('+ti+')" style="width:16px;height:16px;border-radius:50%;background:#DC262622;border:none;color:#DC2626;font-size:10px;cursor:pointer;line-height:1">×</button>'+'</span>').join('')}
         </div>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:4px;align-items:center">
@@ -1821,6 +1825,14 @@ function toggleCancelEvent(el){
 function saveCustomEvents(){
   localStorage.setItem('yp_custom_ev',JSON.stringify(customEvents));
   localStorage.setItem('yp_ev_templates',JSON.stringify(eventTemplates));
+}
+
+function deleteEventTemplate(ti){
+  if(!confirm('テンプレートを削除しますか？'))return;
+  eventTemplates.splice(ti,1);
+  localStorage.setItem('yp_ev_templates',JSON.stringify(eventTemplates));
+  render();
+  toast('🗑 テンプレートを削除しました');
 }
 
 function addEventFromTemplate(key,templateId){
@@ -4478,6 +4490,23 @@ h+=`<div class="sec"><span>タスク${dayTasks.length>0?(' ('+doneT+'/'+dayTasks
   </div></div>`;
   h+=`<div class="sec"><span>📅 今日のスケジュール</span></div>`;
   h+=renderTodayTimeAxis(key,dow,isT);
+  h+=`<div class="sec"><span>📋 明日の計画</span><span class="sec-edit" onclick="openPlanTomorrow('${dk(new Date(new Date().setDate(new Date().getDate()+1)))}')">追加</span></div>`;
+  {
+    const tmrKey=dk(new Date(new Date().setDate(new Date().getDate()+1)));
+    const tmrTasks=(tasks[tmrKey]||[]).filter(t=>!t.done);
+    if(tmrTasks.length>0){
+      h+='<div class="card" style="margin-bottom:8px">';
+      tmrTasks.forEach(t=>{
+        h+='<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--bd)">';
+        h+='<div style="width:8px;height:8px;border-radius:50%;background:'+(t.color||'var(--ac)')+';flex-shrink:0"></div>';
+        h+='<span style="font-size:13px;flex:1">'+t.label+'</span>';
+        h+='</div>';
+      });
+      h+='</div>';
+    } else {
+      h+='<div style="padding:8px 14px;font-size:12px;color:var(--mu);margin-bottom:8px">明日のタスクを追加しましょう😊</div>';
+    }
+  }
   h+=`<div class="sec"><span>今日の習慣</span><span class="sec-edit" onclick="sw('settings')">編集</span><span class="sec-edit" onclick="openPlanTomorrow()" style="margin-left:6px;color:#7A4FA0">🌙 明日の準備</span></div><div class="card">`;
   habits.forEach((hb,i)=>{
     const done=!!(data[key]&&data[key][hb.id]),s=streak(hb.id);
