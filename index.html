@@ -393,6 +393,16 @@ function applyRecurringTasks(force=false){
 }
 
 let data=JSON.parse(localStorage.getItem('yp_d')||'{}');
+let eventTemplates=JSON.parse(localStorage.getItem('yp_ev_templates')||'null')||[
+  {id:'et1',name:'授業',color:'#2D6A8F'},
+  {id:'et2',name:'病院・健康',color:'#10B981'},
+  {id:'et3',name:'外出',color:'#E8856A'},
+  {id:'et4',name:'大事な締め切り',color:'#DC2626'},
+  {id:'et5',name:'楽しいイベント',color:'#9B6AD4'},
+];
+let customEvents=JSON.parse(localStorage.getItem('yp_custom_ev')||'{}');
+let cancelledDays=JSON.parse(localStorage.getItem('yp_cancelled_days')||'{}');
+let overriddenTimes=JSON.parse(localStorage.getItem('yp_overrides')||'{}');
 let tasks=JSON.parse(localStorage.getItem('yp_t')||'{}');
 let dayOff=0,monOff=0,weekOff=0,tab='today',selDate=null;
 let saveTimer=null;
@@ -1754,15 +1764,6 @@ function startFreeTimeSession(elOrKey,startT){
 
 
 // Custom calendar events and templates
-let eventTemplates=JSON.parse(localStorage.getItem('yp_ev_templates')||'null')||[
-  {id:'et1',name:'授業',color:'#2D6A8F'},
-  {id:'et2',name:'病院・健康',color:'#10B981'},
-  {id:'et3',name:'外出',color:'#E8856A'},
-  {id:'et4',name:'大事な締め切り',color:'#DC2626'},
-  {id:'et5',name:'楽しいイベント',color:'#9B6AD4'},
-];
-let customEvents=JSON.parse(localStorage.getItem('yp_custom_ev')||'{}');
-let cancelledDays=JSON.parse(localStorage.getItem('yp_cancelled_days')||'{}');
 let dreamPillars=JSON.parse(localStorage.getItem('yp_dream_pillars')||'null')||[
   {id:'writer',icon:'✍️',name:'作家',color:'#7A4FA0',affirmation:'私は作家だ。毎日書くことで、世界に自分の声を届ける。',habitIds:['writing','vocab','teded','gemini_eng'],studyListIds:['sl6'],expanded:false},
   {id:'phil',icon:'📚',name:'哲学',color:'#2D6A8F',affirmation:'哲学的探究が、私の思考と表現を深める。',habitIds:[],studyListIds:['sl1','sl2'],expanded:false},
@@ -1770,7 +1771,6 @@ let dreamPillars=JSON.parse(localStorage.getItem('yp_dream_pillars')||'null')||[
   {id:'life',icon:'🌱',name:'整える',color:'#5A8A6A',affirmation:'心と体を整えることが、すべての土台になる。',habitIds:['yoga','med_am','clearing','med_pm','yoga_pm','clearing_pm'],studyListIds:[],expanded:false},
 ];
 function saveDreamPillars(){localStorage.setItem('yp_dream_pillars',JSON.stringify(dreamPillars));}
-let overriddenTimes=JSON.parse(localStorage.getItem('yp_overrides')||'{}');
 function addNewHabit(){
   const inp=document.getElementById('new-habit-inp');
   if(!inp||!inp.value.trim())return;
