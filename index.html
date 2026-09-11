@@ -1898,16 +1898,23 @@ function addRecurringTask(){
 }
 
 function render(){
-  if(tab==='today')renderToday();
-  else if(tab==='habits')renderHabits();
-  else if(tab==='week')renderWeek();
-  else if(tab==='month')renderMonth();
-  else if(tab==='study')renderStudy();
-  else if(tab==='dream')renderDreamAsTracker();
-  else if(tab==='memo')renderMemo();
-  else renderSettings();
+  const renders={
+    today:renderToday,
+    habits:renderHabits,
+    week:renderWeek,
+    month:renderMonth,
+    study:renderStudy,
+    dream:renderDreamAsTracker,
+    memo:renderMemo,
+    settings:renderSettings
+  };
+  const fn=renders[tab]||renderSettings;
+  try{fn();}catch(e){
+    console.error(tab+' render error:',e);
+    const el=document.getElementById('view-'+tab);
+    if(el)el.innerHTML='<div style="padding:20px;color:var(--mu);font-size:13px">⚠️ '+e.message+'</div>';
+  }
 }
-
 let memoOpenIndex=null;
 
 function getMemoPages(){
@@ -4727,6 +4734,61 @@ function renderTodayTimeAxis(key,dow,isT){
   return h;
 }
 
+function renderTodayTimeAxis(key,dow,isT){
+  const START_H=5,END_H=24,HOUR_H=50,TOTAL_H=END_H-START_H;
+  const now=new Date();
+  const nowT=now.getHours()+(now.getMinutes()/60);
+  const dayEvs=schedule.filter(e=>e.days.includes(dow)&&!isEventCancelled(key,e.id));
+  const dayTasks2=(tasks[key]||[]).filter(t=>!t.done&&t.startTime);
+  let h='';
+  h+=`<div style="display:flex;margin-bottom:12px">`;
+  h+=`<div style="width:32px;flex-shrink:0;position:relative;height:${TOTAL_H*HOUR_H}px">`;
+  for(let hr=START_H;hr<=END_H;hr++){
+    const top=(hr-START_H)*HOUR_H-7;
+    h+=`<div style="position:absolute;top:${top}px;right:2px;font-size:9px;color:var(--mu)">${hr}</div>`;
+  }
+  h+=`</div>`;
+  h+=`<div onclick="openTimeSlotFromClick(event,'${key}',${START_H},${HOUR_H})" style="flex:1;position:relative;height:${TOTAL_H*HOUR_H}px;border-left:1px solid var(--bd);cursor:pointer;background:rgba(45,106,143,0.03)">`;
+  for(let hr=START_H;hr<END_H;hr++){
+    const top=(hr-START_H)*HOUR_H;
+    h+=`<div style="position:absolute;top:${top}px;left:0;right:0;border-top:1px solid var(--bd)22;pointer-events:none"></div>`;
+  }
+  dayEvs.forEach(e=>{
+    const evStart=e.start;const evEnd=e.end;
+    const startPx=(evStart-START_H)*HOUR_H;
+    const heightPx=(evEnd-evStart)*HOUR_H;
+    if(startPx<0||startPx>TOTAL_H*HOUR_H)return;
+    h+=`<div onclick="event.stopPropagation();openSchItemModal('${e.id}','${key}')"
+      style="position:absolute;top:${startPx}px;left:2px;right:2px;height:${Math.max(heightPx-3,20)}px;
+      background:${e.bg};border-left:3px solid ${e.color};border-radius:4px;padding:2px 4px;overflow:hidden;cursor:pointer;z-index:2">
+      <div style="font-size:10px;font-weight:700;color:${e.color}">${e.label}</div>
+      <div style="font-size:9px;color:${e.color};opacity:0.8">${timeToStr(evStart)}〜${timeToStr(evEnd)}</div>
+    </div>`;
+  });
+  dayTasks2.forEach(tk=>{
+    const st=strToTime(tk.startTime);
+    if(isNaN(st)||st<START_H||st>END_H)return;
+    const startPx=(st-START_H)*HOUR_H;
+    const taskColor=tk.color||'#10B981';
+    let heightPx=28;
+    if(tk.endTime){const et=strToTime(tk.endTime);heightPx=Math.max((et-st)*HOUR_H-3,20);}
+    h+=`<div onclick="event.stopPropagation();openTaskMemo('${key}','${tk.id}')"
+      style="position:absolute;top:${startPx}px;left:2px;right:2px;height:${heightPx}px;
+      background:${taskColor}22;border-left:3px solid ${taskColor};border-radius:4px;padding:2px 4px;overflow:hidden;cursor:pointer;z-index:2">
+      <div style="font-size:10px;font-weight:700;color:${taskColor}">${tk.label}</div>
+    </div>`;
+  });
+  if(isT&&nowT>=START_H&&nowT<=END_H){
+    const topPx=(nowT-START_H)*HOUR_H;
+    h+=`<div style="position:absolute;top:${topPx}px;left:0;right:0;pointer-events:none;z-index:10">
+      <div style="position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:#DC2626"></div>
+      <div style="border-top:2px solid #DC2626;opacity:0.8"></div>
+    </div>`;
+  }
+  h+=`</div></div>`;
+  return h;
+}
+
 function renderWeek(){
   const dates=getWk(),today=dk(new Date());
   const wkStart=dates[0],wkEnd=dates[6];
@@ -6272,7 +6334,7 @@ function resetAllStudyLists(){
 
 // Force update study lists to latest version
 (function(){
-  const STUDY_VERSION='2026-09-07-v4';
+  const STUDY_VERSION='2026-09-10-v5';
   if(localStorage.getItem('yp_study_version')!==STUDY_VERSION){
     const defaultLists=[
       {id:'sl1',name:'PHIL 770 荘子',color:'#2D6A8F',items:[
