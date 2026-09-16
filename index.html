@@ -920,7 +920,15 @@ function moveTaskToTmr(key,tid){
   tasks[tKey].push({...t,id:'t'+Date.now(),done:false,startTime:undefined,endTime:undefined});
   // Remove from today
   tasks[key]=tasks[key].filter(x=>x.id!==tid);
-  save();render();
+  // Immediate save
+  const tasksToSave={};
+  Object.keys(tasks).forEach(k=>{
+    const nr=(tasks[k]||[]).filter(t=>!t.recurringId);
+    if(nr.length>0)tasksToSave[k]=nr;
+  });
+  localStorage.setItem('yp_t',JSON.stringify(tasksToSave));
+  clearTimeout(saveTimer);
+  render();
   toast('→ 明日のタスクに移動しました！');
 }
 
@@ -932,7 +940,15 @@ function moveTaskToTmr(key,tid){
   if(!tasks[tKey])tasks[tKey]=[];
   tasks[tKey].push({...t,id:'t'+Date.now(),done:false,startTime:undefined,endTime:undefined});
   tasks[key]=tasks[key].filter(x=>x.id!==tid);
-  save();render();
+  // Immediate save
+  const tasksToSave={};
+  Object.keys(tasks).forEach(k=>{
+    const nr=(tasks[k]||[]).filter(t=>!t.recurringId);
+    if(nr.length>0)tasksToSave[k]=nr;
+  });
+  localStorage.setItem('yp_t',JSON.stringify(tasksToSave));
+  clearTimeout(saveTimer);
+  render();
   toast('→ 明日のタスクに移動しました！');
 }
 function delT(key,tid){
@@ -2236,18 +2252,14 @@ function generateMealPlanPrompt(){
   prompt+='・バリエーション（和洋中）も意識して'+NL;
   prompt+='・買い足しが必要な食材はリストにまとめてください';
 
-  navigator.clipboard.writeText(prompt).then(()=>{
-    toast('📋 コピーしました！Claudeに貼り付けてください😊');
-  }).catch(()=>{
-    // Fallback: show in modal
-    const wrap=document.getElementById('modal-wrap');
-    wrap.innerHTML='<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'
-      +'<button class="modal-close" onclick="closeModal()">×</button>'
-      +'<div style="font-size:14px;font-weight:700;margin-bottom:10px">📋 プロンプトをコピー</div>'
-      +'<textarea id="prompt-copy-ta" style="width:100%;height:180px;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:11px;outline:none;background:var(--bg);box-sizing:border-box;resize:none">'+prompt+'</textarea>'
-      +'<button onclick="copyPromptAndClose()" class="abtn" style="width:100%;margin-top:8px">コピー</button>'
-      +'</div></div>';
-  });
+  // Show modal with prompt (most reliable on iOS)
+  const wrap=document.getElementById('modal-wrap');
+  wrap.innerHTML='<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'
+    +'<button class="modal-close" onclick="closeModal()">×</button>'
+    +'<div style="font-size:14px;font-weight:700;margin-bottom:10px">📋 プロンプトをコピー</div>'
+    +'<textarea id="prompt-copy-ta" style="width:100%;height:200px;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:11px;outline:none;background:var(--bg);box-sizing:border-box;resize:none">'+prompt+'</textarea>'
+    +'<button onclick="copyPromptAndClose()" class="abtn" style="width:100%;margin-top:8px">📋 コピーしてClaudeへ</button>'
+    +'</div></div>';
 }
 
 function saveMemoPages(pages){
@@ -4453,7 +4465,7 @@ h+=`<div class="sec"><span>タスク${dayTasks.length>0?(' ('+doneT+'/'+dayTasks
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       </button>
       <span class="tlb" onclick="openTaskMemo('${key}','${t.id}')" style="cursor:pointer">${t.color?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+t.color+';margin-right:4px;vertical-align:middle"></span>':''}<span style="font-size:11px;color:var(--sub)">${timeStr}</span>${t.label}${t.memo?'<span style="font-size:9px;color:var(--mu);margin-left:4px">📝</span>':''}</span>
-      ${!t.done?`<button onclick="moveTaskToTmr('${key}','${t.id}')" style="font-size:10px;padding:2px 6px;border-radius:6px;background:var(--bg);border:1px solid var(--bd);color:var(--mu);cursor:pointer;white-space:nowrap">→明日</button>`:''}
+      
       ${!t.done?`<button onclick="moveTaskToTmr('${key}','${t.id}')" style="font-size:10px;padding:2px 6px;border-radius:6px;background:var(--bg);border:1px solid var(--bd);color:var(--mu);cursor:pointer">→明日</button>`:''}
       <button class="tdl" onclick="delT('${key}','${t.id}')">×</button>
     </div>`;
