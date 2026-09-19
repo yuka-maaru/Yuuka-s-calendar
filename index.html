@@ -183,6 +183,8 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
       <button onclick="toggleNoise('cafe')" id="noise-cafe" style="padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.1);border:none;color:white;font-size:11px;cursor:pointer">☕ カフェ</button>
       <button onclick="toggleNoise('wave')" id="noise-wave" style="padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.1);border:none;color:white;font-size:11px;cursor:pointer">🌊 波</button>
       <button onclick="toggleNoise('white')" id="noise-white" style="padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.1);border:none;color:white;font-size:11px;cursor:pointer">〰️ WN</button>
+      <button onclick="toggleNoise('forest')" id="noise-forest" style="padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.1);border:none;color:white;font-size:11px;cursor:pointer">🌲 森</button>
+      <button onclick="toggleNoise('fire')" id="noise-fire" style="padding:6px 10px;border-radius:12px;background:rgba(255,255,255,0.1);border:none;color:white;font-size:11px;cursor:pointer">🔥 焚火</button>
     </div>
     
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
@@ -4180,6 +4182,8 @@ function exitFocusMode(){
 // ===== White Noise =====
 function toggleNoise(type){
   currentNoise=type;
+  // Resume AudioContext on iOS (requires user gesture)
+  if(noiseCtx&&noiseCtx.state==='suspended')noiseCtx.resume();
   document.querySelectorAll('[id^=noise-]').forEach(b=>{
     b.style.background=b.id==='noise-'+type?'rgba(255,255,255,0.35)':'rgba(255,255,255,0.1)';
   });
@@ -4196,6 +4200,8 @@ function stopNoise(){
 function startNoise(type){
   try{
     noiseCtx=new(window.AudioContext||window.webkitAudioContext)();
+    // iOS requires resume after creation
+    if(noiseCtx.state==='suspended')noiseCtx.resume();
     const bufferSize=noiseCtx.sampleRate*4;
     const buffer=noiseCtx.createBuffer(1,bufferSize,noiseCtx.sampleRate);
     const data=buffer.getChannelData(0);
