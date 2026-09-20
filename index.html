@@ -3566,8 +3566,28 @@ function openGroupEdit(){
     '<button onclick="addHabitGroup()" class="abtn">追加</button>'+
     '</div>';
   html+='<div style="font-size:11px;color:var(--mu);margin-bottom:8px">💡 習慣の設定タブでグループを変更できます</div>';
+  // Icon edit
+  html+='<div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:10px;border-top:1px solid var(--bd)">';
+  html+='<div style="font-size:11px;color:var(--mu)">絵文字：</div>';
+  html+='<input id="habit-icon-edit" value="'+hb.icon+'" maxlength="4" style="width:44px;padding:6px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);font-size:20px;text-align:center;outline:none">';
+  html+='<button onclick="saveHabitIcon(this)" data-hid="'+hb.id+'" style="padding:6px 12px;border-radius:8px;background:var(--ac);color:white;border:none;font-size:12px;cursor:pointer">保存</button>';
+  html+='</div>';
   html+='</div></div>';
   wrap.innerHTML=html;
+}
+
+function saveHabitIcon(el){const hid=typeof el==='string'?el:el.dataset.hid;
+  const inp=document.getElementById('habit-icon-edit');
+  if(!inp)return;
+  const icon=inp.value.trim();
+  if(!icon)return;
+  const hb=habits.find(h=>h.id===hid);
+  if(!hb)return;
+  hb.icon=icon;
+  localStorage.setItem('yp_h',JSON.stringify(habits));
+  closeModal();
+  render();
+  toast('✅ 絵文字を変更しました！');
 }
 
 function addHabitGroup(){
@@ -5079,14 +5099,14 @@ function renderSettings(){
           ontouchstart="touchSortStart(event,${i})"
           ontouchmove="touchSortMove(event)"
           ontouchend="touchSortEnd(event)">⠿</div>
-        <div class="hic" style="background:${hb.color}22;cursor:pointer" onclick="document.getElementById('icon-inp-${i}').focus()">
+        <div class="hic" style="background:${hb.color}22;cursor:pointer;position:relative" onclick="this.querySelector('input').focus()">
           ${hb.icon}
-          <input id="icon-inp-${i}" value="${hb.icon}" onchange="habits[${i}].icon=this.value;localStorage.setItem('yp_h',JSON.stringify(habits));render()" style="position:absolute;opacity:0;width:1px;height:1px">
+          <input type="text" maxlength="2" value="${hb.icon}"
+            onchange="habits[${i}].icon=this.value.trim()||'⭐';localStorage.setItem('yp_h',JSON.stringify(habits));renderSettings()"
+            style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
         </div>
         <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
-            <input id="icon-inp2-${i}" value="${hb.icon}" onchange="habits[${i}].icon=this.value.trim()||habits[${i}].icon;localStorage.setItem('yp_h',JSON.stringify(habits));renderSettings()" style="width:32px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);font-size:16px;text-align:center;padding:2px;outline:none">
-            <input value="${hb.name}" onchange="habits[${i}].name=this.value;save()" style="width:100%;border:none;background:transparent;font-size:13px;outline:none;color:var(--tx)">
+          <input value="${hb.name}" onchange="habits[${i}].name=this.value;save()" style="width:100%;border:none;background:transparent;font-size:13px;outline:none;color:var(--tx)">
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
             <select onchange="habits[${i}].timerMins=this.value==='timer'?20:null;save();render()" style="padding:2px 4px;border-radius:4px;border:1px solid var(--bd);font-size:11px;background:var(--bg)">
               <option value="check" ${!hb.timerMins?'selected':''}>✅ チェック</option>
