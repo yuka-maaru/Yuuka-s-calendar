@@ -275,6 +275,7 @@ let habits=JSON.parse(localStorage.getItem('yp_h')||'null')||[
   {id:'vocab',name:'Vocabulary practice',icon:'📝',color:'#E8856A',timerMins:15,group:'morning'},
   {id:'teded',name:'TED-ED shadowing',icon:'🎧',color:'#E8856A',timerMins:15,group:'morning'},
   {id:'gemini_eng',name:'Talk with Gemini in English',icon:'🤖',color:'#2D6A8F',timerMins:15,group:'morning'},
+  {id:'chinese',name:'中国語学習',icon:'🈶',color:'#DC2626',timerMins:20,group:'morning'},
   {id:'yoga',name:'Morning yoga',icon:'🧘',color:'#5A8A6A',timerMins:45,group:'morning'},
   {id:'med_am',name:'Meditation',icon:'🌿',color:'#2D6A8F',timerMins:20,group:'morning'},
   {id:'clearing',name:'Clearing (morning)',icon:'🧹',color:'#9B6AD4',timerMins:10,group:'morning'},
@@ -5327,6 +5328,7 @@ if(localStorage.getItem('yp_habit_ver')!==habitVersion){
     {id:'vocab',name:'Vocabulary practice',icon:'📝',color:'#E8856A',timerMins:15,group:'morning'},
   {id:'teded',name:'TED-ED shadowing',icon:'🎧',color:'#E8856A',timerMins:15,group:'morning'},
   {id:'gemini_eng',name:'Talk with Gemini in English',icon:'🤖',color:'#2D6A8F',timerMins:15,group:'morning'},
+  {id:'chinese',name:'中国語学習',icon:'🈶',color:'#DC2626',timerMins:20,group:'morning'},
     {id:'yoga',name:'Morning yoga',icon:'🧘',color:'#5A8A6A',timerMins:45,group:'morning'},
     {id:'med_am',name:'Meditation',icon:'🌿',color:'#2D6A8F',timerMins:20,group:'morning'},
     {id:'clearing',name:'Clearing (morning)',icon:'🧹',color:'#9B6AD4',timerMins:10,group:'morning'},
@@ -6410,7 +6412,7 @@ function resetAllStudyLists(){
 
 // Force update study lists to latest version
 (function(){
-  const STUDY_VERSION='2026-09-10-v5';
+  const STUDY_VERSION='2026-09-20-v6';
   if(localStorage.getItem('yp_study_version')!==STUDY_VERSION){
     const defaultLists=[
       {id:'sl1',name:'PHIL 770 荘子',color:'#2D6A8F',items:[
