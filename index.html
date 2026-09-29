@@ -6412,7 +6412,7 @@ function resetAllStudyLists(){
 
 // Force update study lists to latest version
 (function(){
-  const STUDY_VERSION='2026-09-20-v6';
+  const STUDY_VERSION='2026-09-29-v7';
   if(localStorage.getItem('yp_study_version')!==STUDY_VERSION){
     const defaultLists=[
       {id:'sl1',name:'PHIL 770 荘子',color:'#2D6A8F',items:[
@@ -6457,6 +6457,23 @@ function resetAllStudyLists(){
         studyLists.push(dl);
       }
     });
+    // Add sl7 and sl8 if missing
+    const sl7={id:'sl7',name:'🎧 シャドーイング（3日サイクル）',color:'#2D6A8F',items:[
+      {id:'sh1',label:'Day1-① 音声だけ聞く',done:false},
+      {id:'sh2',label:'Day1-② 意味確認（テキストあり）',done:false},
+      {id:'sh3',label:'Day1-③ オーバーラッピング',done:false},
+      {id:'sh4',label:'Day1-④ プロンプティング',done:false},
+      {id:'sh5',label:'Day1-⑤ シャドーイング本番',done:false},
+      {id:'sh6',label:'Day2 シャドーイングのみ',done:false},
+      {id:'sh7',label:'Day3 シャドーイングのみ → 次の音源へ',done:false},
+    ]};
+    const sl8={id:'sl8',name:'🈶 中国語（20分）',color:'#DC2626',items:[
+      {id:'ch1',label:'発音・ピンイン練習',done:false},
+      {id:'ch2',label:'単語・フレーズ暗記',done:false},
+      {id:'ch3',label:'リスニング・シャドーイング',done:false},
+    ]};
+    if(!studyLists.find(s=>s.id==='sl7'))studyLists.push(sl7);
+    if(!studyLists.find(s=>s.id==='sl8'))studyLists.push(sl8);
     localStorage.setItem('yp_study_lists',JSON.stringify(studyLists));
     localStorage.setItem('yp_study_version',STUDY_VERSION);
   }
