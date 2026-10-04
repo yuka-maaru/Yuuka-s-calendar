@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -10,7 +11,7 @@
 <style>
 :root{--bg:#F7F4EF;--sur:#FFF;--bd:#E8E2D9;--tx:#1A2030;--sub:#6B7280;--mu:#9CA3AF;--ac:#2D6A8F;--r:10px}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);max-width:480px;margin:0 auto;overflow-y:auto}
+html,body{height:100%;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);max-width:480px;margin:0 auto;overflow-y:auto}
 .app{padding:0 0 80px}
 header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
 .logo{width:38px;height:38px;border-radius:11px;background:var(--ac);display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -107,13 +108,13 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
 .sch-edit-row:last-child{border-bottom:none}
 .sch-edit-row input[type=text]{flex:1;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)}
 .sch-edit-row input[type=text]:focus{border-color:var(--ac)}
-.memo-box{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);resize:vertical;min-height:80px;font-family:inherit;line-height:1.5}
+.memo-box{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);resize:vertical;min-height:100px;font-family:inherit;line-height:1.5}
 .memo-box:focus{border-color:var(--ac)}
 .memo-saved{font-size:11px;color:var(--mu);margin-top:4px;transition:opacity .3s}
 .mandala-wrap{width:100%;position:relative;margin:12px 0}
 .mandala-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:340px;margin:0 auto}
-.mandala-center{grid-column:2;grid-row:2;background:linear-gradient(135deg,var(--ac),#7A4FA0);color:white;border-radius:12px;padding:10px 6px;text-align:center;font-size:11px;font-weight:700;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(45,106,143,.3)}
-.mandala-cat{background:var(--sur);border:1.5px solid var(--bd);border-radius:12px;padding:6px 4px;text-align:center;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+.mandala-center{grid-column:2;grid-row:2;background:linear-gradient(135deg,var(--ac),#7A4FA0);color:white;border-radius:12px;padding:10px 6px;text-align:center;font-size:11px;font-weight:700;min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(45,106,143,.3)}
+.mandala-cat{background:var(--sur);border:1.5px solid var(--bd);border-radius:12px;padding:6px 4px;text-align:center;min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
 .mandala-cat:hover{border-color:var(--ac);transform:scale(1.02)}
 .mandala-cat.active{border-color:var(--ac)}
 .mandala-water{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,rgba(45,106,143,.15),rgba(45,106,143,.35));transition:height .5s ease;border-radius:0 0 10px 10px}
@@ -225,7 +226,7 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
   <div id="view-today" class="view active"></div>
   <div id="view-habits" class="view"></div>
   <div id="view-week" class="view"></div>
-  <div id="view-month" class="view"></div>
+  <div id="view-month" class="view" style="background:linear-gradient(135deg,#FAF0F0 0%,#F5EEF8 50%,#EEF5F0 100%)"></div>
   <div id="view-settings" class="view"></div>
   <div id="view-dream" class="view"></div>
   <div id="view-memo" class="view"></div>
@@ -2143,7 +2144,7 @@ function openRecipeDetail(i){
   // Memo
   html+='<div style="margin-bottom:14px">';
   html+='<div style="font-size:11px;color:var(--mu);margin-bottom:4px">📝 メモ</div>';
-  html+='<textarea id="recipe-memo-inp" placeholder="材料・コツ・感想など..." style="width:100%;min-height:80px;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);box-sizing:border-box;resize:none">'+(r.memo||'')+'</textarea>';
+  html+='<textarea id="recipe-memo-inp" placeholder="材料・コツ・感想など..." style="width:100%;min-height:100px;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);box-sizing:border-box;resize:none">'+(r.memo||'')+'</textarea>';
   html+='</div>';
   html+='<button onclick="saveRecipeDetail('+i+')" class="abtn" style="width:100%;padding:11px;font-size:14px">💾 保存</button>';
   html+='</div></div>';
@@ -3530,7 +3531,7 @@ function editTodayGoal(key){
     '<button class="modal-close" onclick="closeModal()">×</button>'+
     '<div style="font-size:16px;font-weight:700;margin-bottom:4px;font-style:italic">Today&#39;s Intention</div>'+
     '<div style="font-size:12px;color:var(--mu);margin-bottom:12px">今日の言葉・意図を設定</div>'+
-    '<textarea id="goal-inp" class="memo-box" style="min-height:80px;font-style:italic;font-size:15px" placeholder="Be myself. Only choose truth.">'+current+'</textarea>'+
+    '<textarea id="goal-inp" class="memo-box" style="min-height:100px;font-style:italic;font-size:15px" placeholder="Be myself. Only choose truth.">'+current+'</textarea>'+
     '<div style="display:flex;gap:8px;margin-top:8px">'+
     '<button onclick="resetTodayGoal(this)" data-key="'+key+'" style="flex:1;padding:10px;border-radius:10px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">デフォルトに戻す</button>'+
     '<button onclick="saveTodayGoalBtn(this)" data-key="'+key+'" style="flex:1;padding:10px;border-radius:10px;background:var(--ac);color:white;border:none;font-size:13px;cursor:pointer;font-weight:600">保存</button>'+
@@ -5003,48 +5004,75 @@ function renderWeek(){
 function renderMonth(){
   const n=new Date(),yr=n.getFullYear(),mo=n.getMonth()+monOff;
   const first=new Date(yr,mo,1),last=new Date(yr,mo+1,0),today=dk(new Date());
-  let h=`<div class="cnav">
-    <button onclick="monOff--;render()">‹</button>
-    <div class="ctitle">${yr}<span style="font-size:14px;font-weight:500;color:var(--sub);margin-left:6px">${MJ[((mo%12)+12)%12]}</span></div>
-    <button onclick="monOff++;render()">›</button>
-  </div>
-  <div class="cgrid">`;
-  DJ.forEach((d,i)=>h+=`<div class="chdr" style="${i===0?'color:#E85555':i===6?'color:#5577E8':''}">${d}</div>`);
-  const startDow=first.getDay();
-  for(let i=0;i<startDow;i++){const d=new Date(first);d.setDate(d.getDate()-(startDow-i));h+=`<div class="ccell om"><div class="cdt"><div class="cdt-inner">${d.getDate()}</div></div></div>`;}
-  for(let day=1;day<=last.getDate();day++){
-    const d=new Date(yr,mo<0?mo+12:mo,day),k=dk(d),isT=k===today;
-    const doneH=habits.filter(hb=>(data[k]||{})[hb.id]);
-    const dayT=tasks[k]||[];
-    const pendT=dayT.filter(t=>!t.done).length;
-    const doneT=dayT.filter(t=>t.done).length;
-    const uhEv=UH_CALENDAR[k]||'';
-    const isSun=d.getDay()===0;
-    const isSat=d.getDay()===6;
-    // Get custom events for this day
-    const customEvs=(customEvents[k]||[]);
-    h+=`<div class="ccell${isT?' td':''}" onclick="openDayModal('${k}')" style="${isSun?'color:#E85555':isSat?'color:#5577E8':''}">
-      <div class="cdt"><div class="cdt-inner">${day}</div></div>
-      <div class="cdots">
-        ${uhEv?'<div class="cdot" style="background:#2D6A8F" title="'+uhEv+'"></div>':''}
-        ${doneH.slice(0,3).map(hb=>'<div class="cdot" style="background:'+hb.color+'"></div>').join('')}
-        ${customEvs.slice(0,2).map(e=>'<div class="cdot" style="background:'+(e.color||'#E8856A')+'"></div>').join('')}
-      </div>
-      ${pendT>0?('<div class="ctc">·'+pendT+'</div>'):''}
-    </div>`;
-  }
-  const rem=(7-((startDow+last.getDate())%7))%7;
-  for(let i=1;i<=rem;i++)h+=`<div class="ccell om"><div class="cdt"><div class="cdt-inner">${i}</div></div></div>`;
-  h+='</div>';
-  // Monthly memo
-  const monthKey=`month_${yr}_${((mo%12)+12)%12}`;
-  const monthMemo=localStorage.getItem('yp_month_memo_'+monthKey)||'';
-  h+=`<div class="sec">今月のメモ</div>
-  <div class="card" style="padding:12px">
-    <textarea id="month-memo-area" class="memo-box" style="border:none;background:transparent;min-height:80px" placeholder="今月のメモを書く..." oninput="saveMonthMemo('${monthKey}',this.value)">${monthMemo.replace(/</g,'&lt;')}</textarea>
+  const ME=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const DE=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const DE_JP=['月','火','水','木','金','土','日'];
+
+  let h=`<div class="cnav" style="padding:12px 16px 8px;background:transparent">
+    <button onclick="monOff--;render()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ac)">‹</button>
+    <div style="text-align:center">
+      <div style="font-size:26px;font-weight:800;color:var(--tx);line-height:1">${ME[((mo%12)+12)%12]}</div>
+      <div style="font-size:13px;font-weight:500;color:var(--mu)">${yr}</div>
+    </div>
+    <button onclick="sw('memo')" style="background:none;border:none;font-size:22px;cursor:pointer;padding:4px">📝</button>
+    <button onclick="monOff++;render()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ac)">›</button>
   </div>`;
+
+  // Week header
+  h+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);padding:0 8px;margin-bottom:2px">`;
+  DE.forEach((d,i)=>h+=`<div style="text-align:center;font-size:10px;font-weight:700;color:${i===5?'#3B82F6':i===6?'#EF4444':'var(--mu)'};padding:4px 0">${d}</div>`);
+  h+=`</div>`;
+
+  // Calendar grid - taller cells
+  h+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:0 8px 12px">`;
+  const startDay=(first.getDay()+6)%7;
+  for(let i=0;i<startDay;i++)h+=`<div></div>`;
+
+  for(let d=1;d<=last.getDate();d++){
+    const date=new Date(yr,mo,d);
+    const dow=date.getDay();
+    const key=dk(date);
+    const isToday=key===today;
+    const dayTasks=(tasks[key]||[]).filter(t=>!t.recurringId);
+    const dayEvs=schedule.filter(e=>e.days.includes(dow)&&!isEventCancelled(key,e.id));
+    const pinnedEvs=JSON.parse(localStorage.getItem('yp_pinned')||'{}');
+    const isPinned=pinnedEvs[key]&&pinnedEvs[key].length>0;
+    const textColor=dow===0?'#EF4444':dow===6?'#3B82F6':'var(--tx)';
+
+    h+=`<div onclick="openDayModal('${key}')" style="
+      border-radius:14px;
+      background:${isToday?'#9B6AD4':'white'};
+      border:${isToday?'none':'1.5px solid #E8D5F5'};
+      box-shadow:0 2px 6px rgba(155,106,212,0.08);
+      cursor:pointer;
+      padding:6px 4px;
+      min-height:100px;
+      position:relative;
+    ">
+      <div style="font-size:16px;font-weight:800;color:${isToday?'white':textColor};text-align:center;margin-bottom:3px">${d}</div>`;
+
+    dayEvs.slice(0,3).forEach(e=>{
+      h+=`<div style="font-size:8px;background:${isToday?'rgba(255,255,255,0.25)':e.color+'22'};color:${isToday?'white':e.color};border-radius:4px;padding:2px 3px;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.label}</div>`;
+    });
+
+    if(dayTasks.length>0){
+      h+=`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:2px;justify-content:center">`;
+      dayTasks.slice(0,4).forEach(t=>{
+        h+=`<div style="width:5px;height:5px;border-radius:50%;background:${isToday?'rgba(255,255,255,0.8)':t.color||'var(--ac)'}"></div>`;
+      });
+      h+=`</div>`;
+    }
+
+    if(isPinned)h+=`<div style="position:absolute;top:2px;right:2px;font-size:8px">📌</div>`;
+    h+=`</div>`;
+  }
+  h+=`</div>`;
+
+
+
   document.getElementById('view-month').innerHTML=h;
 }
+
 
 function saveMonthMemo(key,val){
   localStorage.setItem('yp_month_memo_'+key,val);
