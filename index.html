@@ -108,13 +108,13 @@ header{padding:18px 16px 8px;display:flex;align-items:center;gap:12px}
 .sch-edit-row:last-child{border-bottom:none}
 .sch-edit-row input[type=text]{flex:1;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg)}
 .sch-edit-row input[type=text]:focus{border-color:var(--ac)}
-.memo-box{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);resize:vertical;min-height:calc((100vw - 32px) / 7 * 1.3);max-width:100%;font-family:inherit;line-height:1.5}
+.memo-box{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);resize:vertical;height:calc((100vh - 160px) / 6);overflow:hidden;font-family:inherit;line-height:1.5}
 .memo-box:focus{border-color:var(--ac)}
 .memo-saved{font-size:11px;color:var(--mu);margin-top:4px;transition:opacity .3s}
 .mandala-wrap{width:100%;position:relative;margin:12px 0}
 .mandala-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:340px;margin:0 auto}
-.mandala-center{grid-column:2;grid-row:2;background:linear-gradient(135deg,var(--ac),#7A4FA0);color:white;border-radius:12px;padding:10px 6px;text-align:center;font-size:11px;font-weight:700;min-height:calc((100vw - 32px) / 7 * 1.3);max-width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(45,106,143,.3)}
-.mandala-cat{background:var(--sur);border:1.5px solid var(--bd);border-radius:12px;padding:6px 4px;text-align:center;min-height:calc((100vw - 32px) / 7 * 1.3);max-width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+.mandala-center{grid-column:2;grid-row:2;background:linear-gradient(135deg,var(--ac),#7A4FA0);color:white;border-radius:12px;padding:10px 6px;text-align:center;font-size:11px;font-weight:700;height:calc((100vh - 160px) / 6);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(45,106,143,.3)}
+.mandala-cat{background:var(--sur);border:1.5px solid var(--bd);border-radius:12px;padding:6px 4px;text-align:center;height:calc((100vh - 160px) / 6);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
 .mandala-cat:hover{border-color:var(--ac);transform:scale(1.02)}
 .mandala-cat.active{border-color:var(--ac)}
 .mandala-water{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,rgba(45,106,143,.15),rgba(45,106,143,.35));transition:height .5s ease;border-radius:0 0 10px 10px}
@@ -2144,7 +2144,7 @@ function openRecipeDetail(i){
   // Memo
   html+='<div style="margin-bottom:14px">';
   html+='<div style="font-size:11px;color:var(--mu);margin-bottom:4px">📝 メモ</div>';
-  html+='<textarea id="recipe-memo-inp" placeholder="材料・コツ・感想など..." style="width:100%;min-height:calc((100vw - 32px) / 7 * 1.3);max-width:100%;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);box-sizing:border-box;resize:none">'+(r.memo||'')+'</textarea>';
+  html+='<textarea id="recipe-memo-inp" placeholder="材料・コツ・感想など..." style="width:100%;height:calc((100vh - 160px) / 6);overflow:hidden;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);box-sizing:border-box;resize:none">'+(r.memo||'')+'</textarea>';
   html+='</div>';
   html+='<button onclick="saveRecipeDetail('+i+')" class="abtn" style="width:100%;padding:11px;font-size:14px">💾 保存</button>';
   html+='</div></div>';
@@ -3531,7 +3531,7 @@ function editTodayGoal(key){
     '<button class="modal-close" onclick="closeModal()">×</button>'+
     '<div style="font-size:16px;font-weight:700;margin-bottom:4px;font-style:italic">Today&#39;s Intention</div>'+
     '<div style="font-size:12px;color:var(--mu);margin-bottom:12px">今日の言葉・意図を設定</div>'+
-    '<textarea id="goal-inp" class="memo-box" style="min-height:calc((100vw - 32px) / 7 * 1.3);max-width:100%;font-style:italic;font-size:15px" placeholder="Be myself. Only choose truth.">'+current+'</textarea>'+
+    '<textarea id="goal-inp" class="memo-box" style="height:calc((100vh - 160px) / 6);overflow:hidden;font-style:italic;font-size:15px" placeholder="Be myself. Only choose truth.">'+current+'</textarea>'+
     '<div style="display:flex;gap:8px;margin-top:8px">'+
     '<button onclick="resetTodayGoal(this)" data-key="'+key+'" style="flex:1;padding:10px;border-radius:10px;background:var(--sur);border:1px solid var(--bd);font-size:13px;cursor:pointer">デフォルトに戻す</button>'+
     '<button onclick="saveTodayGoalBtn(this)" data-key="'+key+'" style="flex:1;padding:10px;border-radius:10px;background:var(--ac);color:white;border:none;font-size:13px;cursor:pointer;font-weight:600">保存</button>'+
@@ -5008,7 +5008,7 @@ function renderMonth(){
   const DE=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const DE_JP=['月','火','水','木','金','土','日'];
 
-  let h=`<div class="cnav" style="padding:12px 16px 8px;background:transparent">
+  let h=`<div class="cnav" style="padding:8px 12px 6px;background:transparent">
     <button onclick="monOff--;render()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--ac)">‹</button>
     <div style="text-align:center">
       <div style="font-size:26px;font-weight:800;color:var(--tx);line-height:1">${ME[((mo%12)+12)%12]}</div>
@@ -5019,12 +5019,12 @@ function renderMonth(){
   </div>`;
 
   // Week header
-  h+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);padding:0 4px;margin-bottom:2px">`;
+  h+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);padding:0 2px;margin-bottom:2px">`;
   DE.forEach((d,i)=>h+=`<div style="text-align:center;font-size:10px;font-weight:700;color:${i===5?'#3B82F6':i===6?'#EF4444':'var(--mu)'};padding:4px 0">${d}</div>`);
   h+=`</div>`;
 
   // Calendar grid - taller cells
-  h+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:0 4px 12px">`;
+  h+=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:0 2px 4px">`;
   const startDay=(first.getDay()+6)%7;
   for(let i=0;i<startDay;i++)h+=`<div></div>`;
 
@@ -5046,7 +5046,7 @@ function renderMonth(){
       box-shadow:0 2px 6px rgba(155,106,212,0.08);
       cursor:pointer;
       padding:6px 4px;
-      min-height:calc((100vw - 32px) / 7 * 1.3);max-width:100%;
+      height:calc((100vh - 160px) / 6);overflow:hidden;
       position:relative;
     ">
       <div style="font-size:16px;font-weight:800;color:${isToday?'white':textColor};text-align:center;margin-bottom:3px">${d}</div>`;
