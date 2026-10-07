@@ -4623,7 +4623,7 @@ h+=`<div class="sec"><span>タスク${dayTasks.length>0?(' ('+doneT+'/'+dayTasks
       ondragend="habitDragEnd()"
       onclick="openHabitModal('${hb.id}','${key}')">
       <div style="color:var(--mu);font-size:16px;cursor:grab;padding:0 6px;flex-shrink:0">⠿</div>
-      <div class="hic" style="background:${hb.color}22">${hb.icon}</div>
+      <div class="hic" style="background:${hb.color}22;cursor:pointer" onclick="openEditIconModal(${i})">${hb.icon}</div>
       <div class="hin"><div class="hn">${hb.name}</div><div class="hs">${s>0?('🔥 '+s+'日連続'):'今日からスタート'}${hb.timerMins?' · ⏱'+hb.timerMins+'分':''}</div></div>
       ${hb.timerMins&&!done?buildHabitTimerBtn(hb,key):''}
       <button class="hck${done?' done':''}" style="${done?('background:'+hb.color+';border-color:'+hb.color):''}" onclick="toggleH('${hb.id}','${key}')" aria-label="${hb.name}">
