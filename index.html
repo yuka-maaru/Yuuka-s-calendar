@@ -1798,14 +1798,80 @@ let dreamPillars=JSON.parse(localStorage.getItem('yp_dream_pillars')||'null')||[
   {id:'life',icon:'🌱',name:'整える',color:'#5A8A6A',affirmation:'心と体を整えることが、すべての土台になる。',habitIds:['yoga','med_am','clearing','med_pm','yoga_pm','clearing_pm'],studyListIds:[],expanded:false},
 ];
 function saveDreamPillars(){localStorage.setItem('yp_dream_pillars',JSON.stringify(dreamPillars));}
-function addNewHabit(){
-  const inp=document.getElementById('new-habit-inp');
-  if(!inp||!inp.value.trim())return;
-  habits.push({id:'h'+Date.now(),name:inp.value.trim(),icon:'⭐',color:'#9B6AD4',group:'morning'});
+function addNewHabit(){openAddHabitModal();}
+
+function openAddHabitModal(){
+  const wrap=document.getElementById('modal-wrap');
+  const colors=['#9B6AD4','#E8856A','#10B981','#2D6A8F','#F59E0B','#DC2626','#EC4899'];
+  const groups=habitGroupConfig.map(g=>`<option value="${g.key}">${g.icon} ${g.label}</option>`).join('');
+  let html='<div class="modal-bg" onclick="closeModal(event)"><div class="modal" style="max-height:88vh;overflow-y:auto">';
+  html+='<button class="modal-close" onclick="closeModal()">×</button>';
+  html+='<div style="font-size:16px;font-weight:700;margin-bottom:16px">＋ 習慣を追加</div>';
+  // Icon
+  html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+  html+='<div id="new-habit-icon-preview" style="width:44px;height:44px;border-radius:50%;background:#9B6AD422;display:flex;align-items:center;justify-content:center;font-size:22px">⭐</div>';
+  html+='<input id="new-habit-icon-inp" maxlength="2" value="⭐" oninput="document.getElementById(&quot;new-habit-icon-preview&quot;).textContent=this.value||&quot;⭐&quot;" placeholder="絵文字" style="width:60px;padding:8px;border-radius:8px;border:1px solid var(--bd);font-size:20px;text-align:center;outline:none;background:var(--bg)">';
+  html+='<input id="new-habit-name-inp" placeholder="習慣の名前" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg)">';
+  html+='</div>';
+  // Color
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:6px">カラー</div>';
+  html+='<div style="display:flex;gap:8px;margin-bottom:12px">';
+  colors.forEach(c=>{
+    html+=`<div onclick="document.querySelectorAll('.color-sel').forEach(x=>x.style.outline='none');this.style.outline='3px solid '+this.dataset.color;document.getElementById('new-habit-color').value=this.dataset.color" class="color-sel" data-color="${c}" style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer"></div>`;
+  });
+  html+='<input type="hidden" id="new-habit-color" value="#9B6AD4">';
+  html+='</div>';
+  // Group
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:6px">グループ</div>';
+  html+=`<select id="new-habit-group" style="width:100%;padding:9px;border-radius:10px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);margin-bottom:12px">${groups}</select>`;
+  // Timer
+  html+='<div style="font-size:11px;color:var(--mu);margin-bottom:6px">タイマー（分）</div>';
+  html+='<select id="new-habit-timer" style="width:100%;padding:9px;border-radius:10px;border:1px solid var(--bd);font-size:13px;outline:none;background:var(--bg);margin-bottom:14px">';
+  html+='<option value="">なし</option>';
+  [5,10,15,20,25,30,45,60].forEach(m=>html+=`<option value="${m}">${m}分</option>`);
+  html+='</select>';
+  html+='<button onclick="saveNewHabitFromModal()" class="abtn" style="width:100%;padding:11px;font-size:14px">追加</button>';
+  html+='</div></div>';
+  wrap.innerHTML=html;
+}
+
+function saveNewHabitFromModal(){
+  const name=document.getElementById('new-habit-name-inp')?.value.trim();
+  if(!name){toast('名前を入力してください');return;}
+  const icon=document.getElementById('new-habit-icon-inp')?.value||'⭐';
+  const color=document.getElementById('new-habit-color')?.value||'#9B6AD4';
+  const group=document.getElementById('new-habit-group')?.value||'morning';
+  const timerVal=document.getElementById('new-habit-timer')?.value;
+  const habit={id:'h'+Date.now(),name,icon,color,group};
+  if(timerVal)habit.timerMins=parseInt(timerVal);
+  habits.push(habit);
   localStorage.setItem('yp_h',JSON.stringify(habits));
-  inp.value='';renderSettings();
+  closeModal();renderSettings();
   toast('✅ 習慣を追加しました！');
 }
+function openEditIconModal(i){
+  const hb=habits[i];
+  if(!hb)return;
+  const wrap=document.getElementById('modal-wrap');
+  let html='<div class="modal-bg" onclick="closeModal(event)"><div class="modal">';
+  html+='<button class="modal-close" onclick="closeModal()">×</button>';
+  html+='<div style="font-size:15px;font-weight:700;margin-bottom:14px">絵文字を変更</div>';
+  html+='<div style="text-align:center;font-size:40px;margin-bottom:12px" id="icon-edit-preview">'+hb.icon+'</div>';
+  html+='<input id="icon-edit-inp" type="text" maxlength="2" value="'+hb.icon+'" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--bd);font-size:24px;text-align:center;outline:none;background:var(--bg);box-sizing:border-box;margin-bottom:12px">';
+  html+='<button onclick="saveEditIcon('+i+')" class="abtn" style="width:100%;padding:11px">保存</button>';
+  html+='</div></div>';
+  wrap.innerHTML=html;
+}
+
+function saveEditIcon(i){
+  const val=(document.getElementById('icon-edit-inp')?.value||'').trim();
+  if(!val)return;
+  habits[i].icon=val;
+  localStorage.setItem('yp_h',JSON.stringify(habits));
+  closeModal();renderSettings();
+  toast('✅ 絵文字を変更しました！');
+}
+
 function saveCancelledDays(){localStorage.setItem('yp_cancelled_days',JSON.stringify(cancelledDays));localStorage.setItem('yp_overrides',JSON.stringify(overriddenTimes));}
 
 function isEventCancelled(key,eventId){
@@ -5151,8 +5217,7 @@ function renderSettings(){
     });
     h+='</div>';
     h+=`<div style="display:flex;gap:8px;margin-top:10px">
-      <input id="new-habit-inp" placeholder="新しい習慣を追加..." style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--bd);font-size:14px;outline:none;background:var(--bg)">
-      <button class="abtn" onclick="addNewHabit()">追加</button>
+      <button class="abtn" onclick="openAddHabitModal()" style="width:100%;padding:11px;margin-top:4px">＋ 新しい習慣を追加</button>
     </div>`;
 
   } else if(settingsSection==='groups'){
